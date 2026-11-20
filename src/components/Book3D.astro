@@ -7,20 +7,41 @@ const t = TYPES[item.type] || TYPES.book;
 
 // Spine thickness by media type (relative to cover height).
 const DEPTH = { book: 0.17, movie: 0.13, tv: 0.15, music: 0.08, videogame: 0.11, boardgame: 0.3 };
-const w = Math.round(height * t.aspect);
-const d = Math.max(14, Math.round(height * (DEPTH[item.type] ?? 0.15)));
+const isCart = item.type === 'videogame';
+// Video games are drawn as retro cartridges: shorter than the slot, wider than tall, thin.
+const bh = isCart ? Math.round(height * 0.74) : height;
+const w = isCart ? Math.round(height * 0.84) : Math.round(height * t.aspect);
+const d = isCart ? Math.max(14, Math.round(height * 0.13)) : Math.max(14, Math.round(height * (DEPTH[item.type] ?? 0.15)));
 const spineImg = item.cover ? `url("${String(item.cover).replace(/"/g, '%22')}")` : 'none';
 const label = `${item.title}${item.creator ? ' — ' + item.creator : ''}`;
 ---
 <a
   href={href}
-  class:list={['book3d', { 'is-front': front, 'has-cover': !!item.cover }]}
+  class:list={['book3d', { 'is-front': front, 'has-cover': !!item.cover, cart: isCart }]}
   data-type={item.type}
   title={label}
   aria-label={label}
-  style={`--h:${height}px; --w:${w}px; --d:${d}px; --tc:${t.color}; --spine-img:${spineImg}`}
+  style={`--h:${height}px; --bh:${bh}px; --w:${w}px; --d:${d}px; --tc:${t.color}; --spine-img:${spineImg}`}
 >
   <span class="b3-box" aria-hidden="true">
+    {isCart ? (
+    <>
+    <span class="b3-front cart-front">
+      <span class="cart-label">
+        {item.cover && (
+          <img src={item.cover} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+            onerror="this.closest('.book3d').classList.remove('has-cover');this.remove();" />
+        )}
+        <span class="b3-ph"><span class="b3-ph-title">{item.title}</span></span>
+      </span>
+      <span class="cart-grip"></span>
+    </span>
+    <span class="b3-spine cart-spine">
+      <span class="cart-end-label"><span class="b3-spine-title">{item.title}</span></span>
+    </span>
+    </>
+    ) : (
+    <>
     <span class="b3-front">
       {item.cover && (
         <img src={item.cover} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
@@ -35,6 +56,8 @@ const label = `${item.title}${item.creator ? ' — ' + item.creator : ''}`;
       <span class="b3-spine-title">{item.title}</span>
       {item.creator && d >= 24 && <span class="b3-spine-creator">{item.creator}</span>}
     </span>
+    </>
+    )}
   </span>
   {item.status === 'in-progress' && <span class="badge-doing" aria-label="In progress">●</span>}
 </a>

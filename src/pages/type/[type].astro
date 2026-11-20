@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import Shelf from '../../components/Shelf.astro';
+import { getItems } from '../../lib/items.js';
+import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../lib/types.js';
+
+export function getStaticPaths() {
+  return TYPE_KEYS.map((type) => ({ params: { type } }));
+}
+const { type } = Astro.params;
+const t = TYPES[type];
+const all = (await getItems()).filter((e) => e.data.type === type);
+const groups = ['in-progress', 'finished', 'want', 'abandoned']
+  .map((status) => ({ status, label: STATUS_LABEL(type, status), items: all.filter((e) => e.data.status === status) }))
+  .filter((g) => g.items.length);
+---
+<Base title={t.plural}>
+  <section class="page-head">
+    <p class="eyebrow">{all.length} {all.length === 1 ? t.label : t.plural}</p>
+    <h1>{t.plural}</h1>
+  </section>
+  <div class="bookcase">
+    {groups.length === 0 && <Shelf items={[]} empty={`No ${t.plural.toLowerCase()} yet.`} />}
+    {groups.map((g) => <Shelf title={g.label} items={g.items} />)}
+  </div>
+</Base>

@@ -1,0 +1,24 @@
+---
+import Cover from './Cover.astro';
+interface Props { items: any[]; title?: string; href?: string; description?: string; scroll?: boolean; limit?: number; height?: number; empty?: string }
+const { items, title, href, description, scroll = false, limit, height = 180, empty = 'Nothing here yet.' } = Astro.props;
+const shown = limit ? items.slice(0, limit) : items;
+---
+<section class="shelf-section">
+  {title && (
+    <div class="shelf-head">
+      <h2>{href ? <a href={href}>{title}</a> : title}</h2>
+      <span class="count">{items.length}</span>
+      {href && items.length > shown.length && <a class="see-all" href={href}>See all →</a>}
+    </div>
+  )}
+  {description && <p class="shelf-desc">{description}</p>}
+  <div class:list={['shelf', { 'shelf-scroll': scroll }]} style={`--h:${height}px`}>
+    {shown.length === 0 && <p class="shelf-empty">{empty}</p>}
+    {shown.map((e) => (
+      <div class="shelf-slot">
+        <Cover item={e.data} height={height} link={`/item/${e.id}/`} />
+      </div>
+    ))}
+  </div>
+</section>

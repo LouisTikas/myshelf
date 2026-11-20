@@ -1,0 +1,153 @@
+---
+import Base from '../../layouts/Base.astro';
+import { TYPES, TYPE_KEYS } from '../../lib/types.js';
+import '../../styles/admin.css';
+const typesJson = JSON.stringify(TYPES);
+---
+<Base title="Manage" noindex>
+  <div id="admin" class="admin" data-types={typesJson}>
+    <!-- Login -->
+    <section id="login" class="panel" hidden>
+      <h1>Manage your shelf</h1>
+      <p class="muted">Enter the <code>ADMIN_TOKEN</code> you set in Cloudflare. It's stored only in this browser.</p>
+      <form id="login-form" class="row">
+        <input id="login-token" type="password" placeholder="Admin token" autocomplete="current-password" required />
+        <button class="btn primary" type="submit">Unlock</button>
+      </form>
+      <p id="login-error" class="error" hidden></p>
+    </section>
+
+    <!-- App -->
+    <section id="app" hidden>
+      <div class="admin-top">
+        <nav class="tabs" role="tablist">
+          <button class="tab active" data-tab="add">＋ Add</button>
+          <button class="tab" data-tab="library">Library</button>
+          <button class="tab" data-tab="collections">Collections</button>
+        </nav>
+        <div class="admin-status">
+          <span id="config-status"></span>
+          <button id="logout" class="btn ghost small">Lock</button>
+        </div>
+      </div>
+
+      <!-- Add / search -->
+      <div class="tabpanel" data-panel="add">
+        <div class="panel">
+          <div class="type-picker" id="type-picker">
+            {TYPE_KEYS.map((t, i) => (
+              <button type="button" class:list={['type-btn', { active: i === 0 }]} data-type={t}>{TYPES[t].label}</button>
+            ))}
+          </div>
+          <form id="search-form" class="row">
+            <input id="search-q" type="search" placeholder="Search books…" autocomplete="off" required minlength="2" />
+            <button class="btn primary" type="submit">Search</button>
+            <button class="btn ghost" type="button" id="manual-add">Add manually</button>
+          </form>
+          <p id="search-msg" class="muted"></p>
+          <div id="results" class="results"></div>
+        </div>
+      </div>
+
+      <!-- Library -->
+      <div class="tabpanel" data-panel="library" hidden>
+        <div class="panel">
+          <div class="row">
+            <input id="lib-filter" type="search" placeholder="Filter by title or creator…" />
+            <select id="lib-type">
+              <option value="">All types</option>
+              {TYPE_KEYS.map((t) => <option value={t}>{TYPES[t].plural}</option>)}
+            </select>
+          </div>
+          <p class="muted small">Changes take about a minute to appear on the public site while Cloudflare rebuilds it.</p>
+          <ul id="lib-list" class="lib-list"></ul>
+        </div>
+      </div>
+
+      <!-- Collections -->
+      <div class="tabpanel" data-panel="collections" hidden>
+        <div class="panel">
+          <h2>Collections</h2>
+          <p class="muted">Each collection becomes a shelf on your home page, in this order.</p>
+          <ul id="col-list" class="col-list"></ul>
+          <div class="row">
+            <button id="col-add" class="btn ghost" type="button">＋ New collection</button>
+            <button id="col-save" class="btn primary" type="button">Save collections</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Editor (modal) -->
+    <dialog id="editor" class="editor">
+      <form id="editor-form" method="dialog">
+        <header class="editor-head">
+          <h2 id="editor-title">Add item</h2>
+          <button type="button" class="btn ghost small" data-close>✕</button>
+        </header>
+        <div class="editor-grid">
+          <div class="editor-cover">
+            <div id="cover-preview" class="cover-preview"></div>
+            <label>Cover image URL
+              <input name="cover" type="text" placeholder="https://…" />
+            </label>
+            <p class="muted small">Remote images are downloaded into your repo when you save.</p>
+          </div>
+          <div class="editor-fields">
+            <label class="span2">Title <input name="title" required /></label>
+            <label><span id="creator-label">Creator</span> <input name="creator" /></label>
+            <label>Year <input name="year" inputmode="numeric" /></label>
+            <label>Type
+              <select name="type">{TYPE_KEYS.map((t) => <option value={t}>{TYPES[t].label}</option>)}</select>
+            </label>
+            <label>Status
+              <select name="status">
+                <option value="finished">Finished</option>
+                <option value="in-progress">In progress</option>
+                <option value="want">Want to</option>
+                <option value="abandoned">Abandoned</option>
+              </select>
+            </label>
+            <label>Rating
+              <select name="rating">
+                <option value="">No rating</option>
+                {[5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5].map((r) => <option value={r}>{'★'.repeat(Math.floor(r)) + (r % 1 ? '½' : '')} ({r})</option>)}
+              </select>
+            </label>
+            <label>Started <input name="dateStarted" type="date" /></label>
+            <label>Finished <input name="dateFinished" type="date" /></label>
+            <fieldset class="span2">
+              <legend>Collections</legend>
+              <div id="editor-collections" class="checks"></div>
+            </fieldset>
+            <label>Tags <input name="tags" placeholder="comma, separated" /></label>
+            <label>Genres <input name="genres" placeholder="comma, separated" /></label>
+            <label class="span2">
+              <span class="label-row">My notes / journal <span class="muted small">(Markdown)</span>
+                <button type="button" class="btn ghost small" id="add-entry">＋ Dated entry</button></span>
+              <textarea name="body" rows="8" placeholder="What did you think?"></textarea>
+            </label>
+            <details class="span2">
+              <summary>Description &amp; details</summary>
+              <label>Description <textarea name="description" rows="4"></textarea></label>
+              <label>Details <span class="muted small">(one <code>key: value</code> per line — lists comma-separated)</span>
+                <textarea name="details" rows="4" placeholder="pages: 412"></textarea>
+              </label>
+            </details>
+          </div>
+        </div>
+        <footer class="editor-foot">
+          <span id="editor-source" class="muted small"></span>
+          <span class="spacer"></span>
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="submit" class="btn primary" id="editor-save" value="save">Save to shelf</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+  <script>
+    import '../../scripts/admin.js';
+  </script>
+</Base>

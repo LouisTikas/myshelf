@@ -1,0 +1,20 @@
+---
+import { TYPES } from '../lib/types.js';
+interface Props { item: any; height?: number; link?: string | false; eager?: boolean }
+const { item, height = 180, link, eager = false } = Astro.props;
+const t = TYPES[item.type] || TYPES.book;
+const placeholderWidth = Math.round(height * t.aspect);
+const href = link === false ? null : link;
+const Tag = href ? 'a' : 'div';
+---
+<Tag href={href} class="cover" data-type={item.type} title={`${item.title}${item.creator ? ' — ' + item.creator : ''}`} style={`--h:${height}px; --pw:${placeholderWidth}px; --tc:${t.color}`}>
+  {item.cover ? (
+    <img src={item.cover} alt={`${item.title} cover`} loading={eager ? 'eager' : 'lazy'} decoding="async" referrerpolicy="no-referrer"
+      onerror="this.parentElement.classList.add('broken');this.remove();" />
+  ) : null}
+  <span class="placeholder" aria-hidden={item.cover ? 'true' : undefined}>
+    <span class="ph-title">{item.title}</span>
+    {item.creator && <span class="ph-creator">{item.creator}</span>}
+  </span>
+  {item.status === 'in-progress' && <span class="badge-doing" aria-label="In progress">●</span>}
+</Tag>

@@ -1,0 +1,12 @@
+[
+  {
+    "slug": "favorites",
+    "name": "All-Time Favorites",
+    "description": "The ones I keep coming back to."
+  },
+  {
+    "slug": "2026",
+    "name": "2026",
+    "description": "Everything I finished this year."
+  }
+]

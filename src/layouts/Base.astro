@@ -1,0 +1,50 @@
+---
+import site from '../data/site.json';
+import { TYPES, TYPE_KEYS } from '../lib/types.js';
+import '../styles/global.css';
+
+interface Props { title?: string; description?: string; noindex?: boolean }
+const { title, description = site.tagline, noindex = false } = Astro.props;
+const pageTitle = title ? `${title} · ${site.title}` : site.title;
+const path = Astro.url.pathname;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a href="/" class="brand">
+        <span class="brand-mark" aria-hidden="true">▤</span>
+        <span>{site.title}</span>
+      </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/" class:list={{ active: path === '/' }}>Shelves</a>
+        {TYPE_KEYS.map((t) => (
+          <a href={`/type/${t}/`} class:list={{ active: path.startsWith(`/type/${t}`) }}>{TYPES[t].plural}</a>
+        ))}
+        <a href="/journal/" class:list={{ active: path.startsWith('/journal') }}>Journal</a>
+      </nav>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <p>{site.title} · <a href="/admin/" class="quiet">Manage</a></p>
+      <p class="attrib">
+        Metadata from Open Library, Google Books, Spotify, MusicBrainz, IGDB, and
+        <a href="https://boardgamegeek.com" rel="noopener">BoardGameGeek</a> (Powered by BGG).
+        This product uses the TMDB API but is not endorsed or certified by TMDB.
+      </p>
+    </footer>
+  </body>
+</html>

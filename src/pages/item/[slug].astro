@@ -1,0 +1,71 @@
+---
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Cover from '../../components/Cover.astro';
+import { getItems, getShelves, fmtDate } from '../../lib/items.js';
+import { TYPES, STATUS_LABEL, DETAIL_LABELS, formatDetail, stars } from '../../lib/types.js';
+
+export async function getStaticPaths() {
+  const items = await getItems();
+  return items.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+const { entry } = Astro.props;
+const d = entry.data;
+const t = TYPES[d.type];
+const { Content } = await render(entry);
+const shelves = getShelves().filter((s) => d.collections?.includes(s.slug));
+const details = Object.entries(d.details || {})
+  .map(([k, v]) => [DETAIL_LABELS[k] || k, formatDetail(k, v)])
+  .filter(([, v]) => v);
+const hasBody = Boolean(entry.body && entry.body.trim());
+---
+<Base title={d.title} description={d.description}>
+  <article class="item-page">
+    <div class="item-cover">
+      <Cover item={d} height={d.type === 'music' || d.type === 'boardgame' ? 300 : 360} link={false} eager />
+    </div>
+    <div class="item-info">
+      <p class="eyebrow"><a href={`/type/${d.type}/`}>{t.label}</a>{d.year && <> · {d.year}</>}</p>
+      <h1>{d.title}</h1>
+      {d.creator && <p class="creator">{t.creator}: {d.creator}</p>}
+
+      <div class="item-meta">
+        <span class:list={['status', `status-${d.status}`]}>{STATUS_LABEL(d.type, d.status)}</span>
+        {d.rating != null && <span class="rating" aria-label={`${d.rating} out of 5`}>{stars(d.rating)}</span>}
+      </div>
+
+      <dl class="facts">
+        {d.dateStarted && <><dt>Started</dt><dd>{fmtDate(d.dateStarted)}</dd></>}
+        {d.dateFinished && <><dt>Finished</dt><dd>{fmtDate(d.dateFinished)}</dd></>}
+        {details.map(([k, v]) => <><dt>{k}</dt><dd>{v}</dd></>)}
+        {d.genres?.length > 0 && <><dt>Genres</dt><dd>{d.genres.join(', ')}</dd></>}
+      </dl>
+
+      {(shelves.length > 0 || d.tags?.length > 0) && (
+        <div class="chips">
+          {shelves.map((s) => <a class="chip" href={`/shelf/${s.slug}/`}>{s.name}</a>)}
+          {d.tags?.map((tag) => <span class="chip chip-tag">#{tag}</span>)}
+        </div>
+      )}
+
+      {hasBody && (
+        <section class="journal-body prose">
+          <h2>My notes</h2>
+          <Content />
+        </section>
+      )}
+
+      {d.description && (
+        <section class="synopsis">
+          <h2>About</h2>
+          <p>{d.description}</p>
+        </section>
+      )}
+
+      <p class="item-foot">
+        {d.source?.url && <a href={d.source.url} rel="noopener" target="_blank">View on {d.source.name}</a>}
+        <a class="quiet" href={`/admin/#edit=${entry.id}`}>Edit</a>
+      </p>
+    </div>
+  </article>
+</Base>

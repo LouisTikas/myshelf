@@ -1,0 +1,34 @@
+---
+import { render } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Cover from '../components/Cover.astro';
+import { getItems, fmtDate } from '../lib/items.js';
+import { TYPES, STATUS_LABEL, stars } from '../lib/types.js';
+
+const items = (await getItems()).filter((e) => e.body && e.body.trim());
+const entries = await Promise.all(items.map(async (e) => ({ e, Content: (await render(e)).Content })));
+---
+<Base title="Journal">
+  <section class="page-head">
+    <p class="eyebrow">{entries.length} entries</p>
+    <h1>Journal</h1>
+  </section>
+  <div class="journal-feed">
+    {entries.map(({ e, Content }) => {
+      const d = e.data;
+      const date = d.dateFinished || d.dateStarted || d.dateAdded;
+      return (
+        <article class="journal-entry">
+          <Cover item={d} height={120} link={`/item/${e.id}/`} />
+          <div>
+            <p class="eyebrow">{TYPES[d.type].label} · {STATUS_LABEL(d.type, d.status)}{date && <> · {fmtDate(date)}</>}</p>
+            <h2><a href={`/item/${e.id}/`}>{d.title}</a> {d.rating != null && <span class="rating">{stars(d.rating)}</span>}</h2>
+            {d.creator && <p class="creator">{d.creator}</p>}
+            <div class="prose"><Content /></div>
+          </div>
+        </article>
+      );
+    })}
+    {entries.length === 0 && <p class="shelf-empty">No journal entries yet.</p>}
+  </div>
+</Base>

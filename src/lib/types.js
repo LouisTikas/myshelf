@@ -1,18 +1,18 @@
 // Shared media-type config. Keep keys in sync with functions/api/_lib/types.js.
 export const TYPES = {
-  book:      { label: 'Book',       plural: 'Books',       creator: 'Author',    verb: 'Read',    doing: 'Reading',   want: 'Want to read',  aspect: 2 / 3, color: '#8a3b2e' },
-  movie:     { label: 'Movie',      plural: 'Movies',      creator: 'Director',  verb: 'Watched', doing: 'Watching',  want: 'Want to watch', aspect: 2 / 3, color: '#2e4a6b' },
-  tv:        { label: 'TV Show',    plural: 'TV Shows',    creator: 'Creator',   verb: 'Watched', doing: 'Watching',  want: 'Want to watch', aspect: 2 / 3, color: '#4b3b6b' },
-  music:     { label: 'Music',      plural: 'Music',       creator: 'Artist',    verb: 'Listened',doing: 'Listening', want: 'Want to hear',  aspect: 1,     color: '#2f5e4e' },
-  videogame: { label: 'Video Game', plural: 'Video Games', creator: 'Developer', verb: 'Played',  doing: 'Playing',   want: 'Want to play',  aspect: 3 / 4, color: '#6b4b1f' },
-  boardgame: { label: 'Board Game', plural: 'Board Games', creator: 'Designer',  verb: 'Played',  doing: 'Playing',   want: 'Want to play',  aspect: 1,     color: '#5e2f45' },
+  book:      { label: 'Book',       plural: 'Books',       creator: 'Author',    verb: 'Read',    doing: 'Reading',   want: 'Want to read',   dropped: "Didn't finish",  aspect: 2 / 3, color: '#8a3b2e' },
+  movie:     { label: 'Movie',      plural: 'Movies',      creator: 'Director',  verb: 'Watched', doing: 'Watching',  want: 'Want to watch',  dropped: 'Stopped watching', aspect: 2 / 3, color: '#2e4a6b' },
+  tv:        { label: 'TV Show',    plural: 'TV Shows',    creator: 'Creator',   verb: 'Watched', doing: 'Watching',  want: 'Want to watch',  dropped: 'Stopped watching', aspect: 2 / 3, color: '#4b3b6b' },
+  music:     { label: 'Music',      plural: 'Music',       creator: 'Artist',    verb: 'Listened',doing: 'On repeat', want: 'Want to listen', dropped: 'Not for me',  aspect: 1,     color: '#2f5e4e' },
+  videogame: { label: 'Video Game', plural: 'Video Games', creator: 'Developer', verb: 'Played',  doing: 'Playing',   want: 'Want to play',   dropped: 'Gave up',  aspect: 3 / 4, color: '#6b4b1f' },
+  boardgame: { label: 'Board Game', plural: 'Board Games', creator: 'Designer',  verb: 'Played',  doing: 'Playing',   want: 'Want to play',   dropped: 'Not for me',  aspect: 1,     color: '#5e2f45' },
 };
 
 export const TYPE_KEYS = Object.keys(TYPES);
 
 export const STATUS_LABEL = (type, status) => {
   const t = TYPES[type] || TYPES.book;
-  return { want: t.want, 'in-progress': t.doing, finished: t.verb, abandoned: 'Abandoned' }[status] || status;
+  return { want: t.want, 'in-progress': t.doing, finished: t.verb, abandoned: t.dropped || 'Abandoned' }[status] || status;
 };
 
 // Readable labels for the `details` object.

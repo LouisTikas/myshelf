@@ -209,7 +209,11 @@ function renderCollectionChecks(selected = []) {
     : '<span class="muted small">No collections yet — create some in the Collections tab.</span>';
 }
 function updateCreatorLabel() {
-  $('#creator-label').textContent = (TYPES[form.type.value] || TYPES.book).creator;
+  const t = TYPES[form.type.value] || TYPES.book;
+  $('#creator-label').textContent = t.creator;
+  // Status wording matches the media type (e.g. music: Listened / On repeat / Want to listen / Not for me).
+  const words = { finished: t.verb, 'in-progress': t.doing, want: t.want, abandoned: t.dropped || 'Abandoned' };
+  for (const opt of form.status.options) opt.textContent = words[opt.value] || opt.textContent;
 }
 
 function openEditor(item, slug = null) {
@@ -554,7 +558,7 @@ $('#arrange-save').addEventListener('click', async () => {
 // ───────── live preview ─────────
 const STATUS_WORDS = (type, status) => {
   const t = TYPES[type] || TYPES.book;
-  return { want: t.want, 'in-progress': t.doing, finished: t.verb, abandoned: 'Abandoned' }[status] || status;
+  return { want: t.want, 'in-progress': t.doing, finished: t.verb, abandoned: t.dropped || 'Abandoned' }[status] || status;
 };
 const DETAIL_NAMES = {
   pages: 'Pages', isbn: 'ISBN', publisher: 'Publisher', runtime: 'Runtime', seasons: 'Seasons', episodes: 'Episodes',

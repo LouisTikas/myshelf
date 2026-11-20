@@ -250,7 +250,7 @@
   text-shadow: 0 1px 2px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.45);
 }
 /* a touch more contrast behind the name */
-.kind-box.has-cover .b3-spine::before { filter: blur(10px) saturate(1.2) brightness(0.8); }
+.kind-box.has-cover .b3-spine::before { filter: blur(2px) saturate(1.1) brightness(0.75); }
 
 @media (prefers-reduced-motion: reduce) {
   .book3d, .b3-box { transition: none; }

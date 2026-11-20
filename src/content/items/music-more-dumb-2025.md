@@ -8,6 +8,8 @@ status: finished
 dateAdded: 2026-11-20
 dateStarted: 2026-11-20
 dateFinished: 2026-11-20
+collections:
+  - audio-hyperfixations
 details:
   kind: Single
   tracks: 3

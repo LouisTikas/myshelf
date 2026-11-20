@@ -372,9 +372,11 @@ test('save now, publish once', async () => {
   assert.equal(state.commitMsg, 'Publish site');
   assert.equal(state.tree.tree[0].path, 'src/data/published.json');
 
-  mockFetch([[/\/compare\/abc1234\.\.\.main/, () => ({ ahead_by: 3, commits: [
+  mockFetch([[/\/compare\/abc1234\.\.\.main/, () => ({ ahead_by: 5, commits: [
     { commit: { message: '[CI Skip] Add boardgame: Catan\n\nbody' } },
+    { commit: { message: 'Blu-ray cases taller (a code update that deploys itself)' } },
     { commit: { message: '[CI Skip] Update collections' } },
+    { commit: { message: 'Publish site' } },
     { commit: { message: '[CI Skip] Remove book: X' } },
   ] })]]);
   res = await pub.onRequestGet({ request: new Request('https://x/api/publish?since=abc1234'), env: GH_ENV });

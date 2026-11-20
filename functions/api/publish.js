@@ -5,9 +5,11 @@ import { commitFiles, commitsSince, SKIP_PREFIX } from '../../server/github.js';
 export const onRequestGet = handler(async ({ request, env }) => {
   const since = new URL(request.url).searchParams.get('since') || '';
   if (!/^[0-9a-f]{7,40}$/i.test(since)) return json({ pending: null, changes: [] });
-  const { aheadBy, commits } = await commitsSince(env, since);
-  const changes = commits.map((m) => m.replace(SKIP_PREFIX, '')).filter((m) => !/^Publish site/.test(m));
-  return json({ pending: aheadBy, changes });
+  const { commits } = await commitsSince(env, since);
+  // Only count saves that are waiting for a publish (tagged to skip the build). Code updates
+  // and publishes build by themselves, so they're never "unpublished".
+  const changes = commits.filter((m) => m.startsWith(SKIP_PREFIX)).map((m) => m.slice(SKIP_PREFIX.length));
+  return json({ pending: changes.length, changes });
 });
 
 // POST /api/publish → one commit WITHOUT the skip tag, so Cloudflare builds once and

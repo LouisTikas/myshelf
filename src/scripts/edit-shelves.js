@@ -40,37 +40,7 @@ function reorderOnPage(selector, order) {
 }
 
 function savedToast(mod, name, published) {
-  mod.toast(published ? `Saved “${name}”. Your public shelf updates in about a minute.` : `Saved “${name}”. Publish when you’re ready to update the public site.`);
-  if (!published) updatePublishPill();
-}
-
-// Small floating "N unpublished · Publish" pill on public pages, only when signed in.
-let pill;
-async function updatePublishPill() {
-  try {
-    const lib = await fetch('/library.json', { cache: 'no-store' }).then((r) => r.json());
-    if (!lib.commit) return;
-    const { pending } = await api(`publish?since=${encodeURIComponent(lib.commit)}`);
-    if (!pill) {
-      pill = document.createElement('div');
-      pill.className = 'pub-pill';
-      pill.innerHTML = '<span class="pub-text"></span><button type="button">Publish</button>';
-      document.body.appendChild(pill);
-      pill.querySelector('button').addEventListener('click', async (e) => {
-        e.currentTarget.disabled = true;
-        try {
-          await api('publish', { method: 'POST', body: {} });
-          pill.querySelector('.pub-text').textContent = 'Publishing — live in about a minute';
-          pill.querySelector('button').hidden = true;
-        } catch (err) {
-          e.currentTarget.disabled = false;
-          (await import('./arrange.js')).toast(err.message, 'error');
-        }
-      });
-    }
-    pill.hidden = !pending;
-    pill.querySelector('.pub-text').textContent = `${pending} unpublished change${pending === 1 ? '' : 's'}`;
-  } catch { /* not important */ }
+  mod.toast(published ? `Saved “${name}”. Your public shelf updates in about a minute.` : `Saved “${name}”. Publish from the Manage page when you’re ready.`);
 }
 
 // Open the editor for a collection shelf.
@@ -112,7 +82,6 @@ async function editTypeShelf(mod, lib, key, title) {
 }
 
 if (token) {
-  updatePublishPill();
   document.querySelectorAll('.shelf-edit').forEach((btn) => {
     btn.hidden = false;
     btn.addEventListener('click', async (e) => {

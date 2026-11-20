@@ -88,7 +88,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
     linear-gradient(180deg, #0b0a09, var(--panel) 30%) padding-box,
     /* gloss: a soft diagonal sheen + faint grain over the black lacquer */
     linear-gradient(115deg, transparent 22%, rgba(255,255,255,0.07) 38%, rgba(255,255,255,0.015) 48%, transparent 60%) border-box,
-    repeating-linear-gradient(92deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 11px, rgba(0,0,0,0.12) 11px 13px, transparent 13px 23px, rgba(255,255,255,0.02) 23px 24px, transparent 24px 37px) border-box,
+    repeating-linear-gradient(181deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 4px, rgba(0,0,0,0.14) 4px 5px, transparent 5px 8px, rgba(255,255,255,0.02) 8px 9px, transparent 9px 13px) border-box, /* grain runs lengthwise */
     linear-gradient(180deg, var(--wood-edge), var(--wood-hi) 5%, var(--wood) 35%, var(--wood-lo)) border-box;
   box-shadow:
     inset 0 0 60px rgba(0,0,0,0.85),

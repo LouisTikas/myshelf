@@ -70,5 +70,12 @@
       "boardgame-lairs-2026",
       "boardgame-keep-the-heroes-out-2022"
     ]
+  },
+  {
+    "slug": "my-board-game-collection",
+    "name": "My Board Game Collection",
+    "description": "Games that have earned a spot in my home",
+    "show": "both",
+    "sort": "title"
   }
 ]

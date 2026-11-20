@@ -306,5 +306,14 @@
 .shelf.shelf-3d { touch-action: pan-y; scroll-behavior: smooth; }
 .book3d { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
 
-/* Row breaks placed by shelf3d.js so wrapping shelves keep their rows when an item turns front. */
-.shelf-break { flex-basis: 100%; width: 0; height: 0; }
+/* Row strips built by shelf3d.js on wrapping shelves: packed full, overflow fades at the edges. */
+.shelf-row {
+  flex: 0 0 100%; display: flex; flex-wrap: nowrap; align-items: flex-end; column-gap: inherit;
+  overflow: hidden; scrollbar-width: none;
+  padding-top: 40px; margin-top: -40px; /* room above for covers' shadows without changing row height */
+  --fade: 70px;
+}
+.shelf-row::-webkit-scrollbar { display: none; }
+.shelf-row.fade-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); }
+.shelf-row.fade-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade)); mask-image: linear-gradient(to right, transparent, #000 var(--fade)); }
+.shelf-row.fade-left.fade-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); }

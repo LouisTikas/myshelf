@@ -167,39 +167,68 @@ function watchEdge(shelf) {
 document.querySelectorAll('.shelf-scroll').forEach(watchEdge);
 
 // ── Wrapping shelves (collection pages): stop items jumping between rows.
-// Turning an item to face front makes it wider, which used to re-wrap the shelf. Instead we decide
-// the rows once, leaving room in each row for its widest item to face front, and lock them in with
-// line breaks. Re-done only when the shelf's width changes or its items are filtered/reordered.
+// Turning an item to face front makes it wider, which used to re-wrap the shelf. Instead, rows are
+// packed full (by spine width) into fixed row strips. When an item turns front, its row grows past
+// the edge; the overflow fades out on the right, and the row slides so the front item stays in view.
+// Rows are only re-packed when the shelf's width changes or its items are filtered/reordered.
 function lockRows(shelf) {
   let lastWidth = 0;
   const px = (el, v) => parseFloat(getComputedStyle(el).getPropertyValue(v)) || 0;
+
+  const edges = (row) => {
+    const max = row.scrollWidth - row.clientWidth;
+    row.classList.toggle('fade-right', max - row.scrollLeft > 4);
+    row.classList.toggle('fade-left', row.scrollLeft > 4);
+  };
+  // Keep the front-facing item fully visible; other rows go back to the start.
+  const reveal = () => {
+    for (const row of shelf.querySelectorAll(':scope > .shelf-row')) {
+      const front = row.querySelector('.book3d.is-front');
+      let left = 0;
+      if (front) {
+        const slot = front.closest('.shelf-slot');
+        const end = slot.offsetLeft - row.offsetLeft + slot.offsetWidth + 8;
+        left = Math.max(0, end - row.clientWidth);
+      }
+      if (Math.abs(row.scrollLeft - left) > 1) row.scrollTo({ left, behavior: 'smooth' });
+      else edges(row);
+    }
+  };
+
   const layout = () => {
-    shelf.querySelectorAll(':scope > .shelf-break').forEach((b) => b.remove());
+    const slots = [...shelf.querySelectorAll('.shelf-slot')];
+    if (!slots.length) return;
+    slots.forEach((sl) => shelf.appendChild(sl));
+    shelf.querySelectorAll(':scope > .shelf-row, :scope > .shelf-break').forEach((r) => r.remove());
     const cs = getComputedStyle(shelf);
     const avail = shelf.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     const gap = parseFloat(cs.columnGap) || 0;
-    const slots = [...shelf.querySelectorAll(':scope > .shelf-slot')].filter((s) => !s.hidden);
-    let used = 0, extra = 0, count = 0;
+    let row = null, used = 0;
     for (const slot of slots) {
-      const b = slot.querySelector('.book3d');
-      const spine = px(b, '--d'), front = Math.max(spine, px(b, '--w'));
-      const add = (count ? gap : 0) + spine;
-      if (count && used + add + Math.max(extra, front - spine) > avail) {
-        const br = document.createElement('span');
-        br.className = 'shelf-break';
-        br.setAttribute('aria-hidden', 'true');
-        slot.before(br);
-        used = spine; extra = front - spine; count = 1;
-      } else {
-        used += add; extra = Math.max(extra, front - spine); count++;
+      const spine = slot.hidden ? 0 : px(slot.querySelector('.book3d'), '--d');
+      const add = (used ? gap : 0) + spine;
+      if (!row || (spine && used && used + add > avail)) {
+        row = document.createElement('div');
+        row.className = 'shelf-row';
+        row.addEventListener('scroll', () => edges(row), { passive: true });
+        shelf.appendChild(row);
+        used = 0;
       }
+      row.appendChild(slot);
+      if (spine) used += (used ? gap : 0) + spine;
     }
+    reveal();
   };
+
   new ResizeObserver(() => {
     if (shelf.clientWidth === lastWidth) return;
     lastWidth = shelf.clientWidth;
     layout();
   }).observe(shelf);
   shelf.addEventListener('shelf:reorder', () => requestAnimationFrame(layout));
+  // When an item finishes turning front (its width transition), make sure it's in view.
+  shelf.addEventListener('transitionend', (e) => {
+    if (e.propertyName === 'width' && e.target.classList?.contains('book3d')) reveal();
+  });
 }
 document.querySelectorAll('.shelf-3d:not(.shelf-scroll)').forEach(lockRows);

@@ -305,3 +305,6 @@
 /* Touch: vertical swipes scroll the page; horizontal swipes are ours (flip through the shelf). */
 .shelf.shelf-3d { touch-action: pan-y; scroll-behavior: smooth; }
 .book3d { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
+
+/* Row breaks placed by shelf3d.js so wrapping shelves keep their rows when an item turns front. */
+.shelf-break { flex-basis: 100%; width: 0; height: 0; }

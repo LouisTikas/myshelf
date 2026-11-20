@@ -165,3 +165,41 @@ function watchEdge(shelf) {
   update();
 }
 document.querySelectorAll('.shelf-scroll').forEach(watchEdge);
+
+// ── Wrapping shelves (collection pages): stop items jumping between rows.
+// Turning an item to face front makes it wider, which used to re-wrap the shelf. Instead we decide
+// the rows once, leaving room in each row for its widest item to face front, and lock them in with
+// line breaks. Re-done only when the shelf's width changes or its items are filtered/reordered.
+function lockRows(shelf) {
+  let lastWidth = 0;
+  const px = (el, v) => parseFloat(getComputedStyle(el).getPropertyValue(v)) || 0;
+  const layout = () => {
+    shelf.querySelectorAll(':scope > .shelf-break').forEach((b) => b.remove());
+    const cs = getComputedStyle(shelf);
+    const avail = shelf.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const gap = parseFloat(cs.columnGap) || 0;
+    const slots = [...shelf.querySelectorAll(':scope > .shelf-slot')].filter((s) => !s.hidden);
+    let used = 0, extra = 0, count = 0;
+    for (const slot of slots) {
+      const b = slot.querySelector('.book3d');
+      const spine = px(b, '--d'), front = Math.max(spine, px(b, '--w'));
+      const add = (count ? gap : 0) + spine;
+      if (count && used + add + Math.max(extra, front - spine) > avail) {
+        const br = document.createElement('span');
+        br.className = 'shelf-break';
+        br.setAttribute('aria-hidden', 'true');
+        slot.before(br);
+        used = spine; extra = front - spine; count = 1;
+      } else {
+        used += add; extra = Math.max(extra, front - spine); count++;
+      }
+    }
+  };
+  new ResizeObserver(() => {
+    if (shelf.clientWidth === lastWidth) return;
+    lastWidth = shelf.clientWidth;
+    layout();
+  }).observe(shelf);
+  shelf.addEventListener('shelf:reorder', () => requestAnimationFrame(layout));
+}
+document.querySelectorAll('.shelf-3d:not(.shelf-scroll)').forEach(lockRows);

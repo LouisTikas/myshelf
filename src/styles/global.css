@@ -18,8 +18,8 @@
   --ok: #4d7c4f;
   --danger: #a33a2a;
   --radius: 10px;
-  --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sans: 'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --serif: var(--sans); /* sans-serif everywhere (headings, spines, placeholders) */
   --plank: 22px;
 }
 
@@ -38,7 +38,7 @@ body {
 }
 a { color: inherit; }
 img { max-width: 100%; }
-h1, h2, h3 { font-family: var(--serif); line-height: 1.15; margin: 0 0 0.4em; }
+h1, h2, h3 { font-family: var(--sans); font-weight: 700; line-height: 1.15; margin: 0 0 0.4em; letter-spacing: -0.015em; }
 main { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
 
 /* Header */
@@ -187,7 +187,7 @@ a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
 .journal-body, .synopsis { border-top: 1px solid #ddd0b6; padding-top: 18px; margin-top: 18px; }
 .journal-body h2, .synopsis h2 { font-size: 1.1rem; color: var(--accent-ink); }
 .synopsis p { color: var(--ink-soft); white-space: pre-line; }
-.prose { font-family: var(--serif); font-size: 1.08rem; line-height: 1.7; }
+.prose { font-family: var(--sans); font-size: 1.05rem; line-height: 1.75; }
 .prose p { margin: 0 0 0.9em; }
 .prose blockquote { border-left: 3px solid var(--accent); margin: 0 0 1em; padding-left: 14px; color: var(--ink-soft); font-style: italic; }
 .item-foot { display: flex; gap: 16px; margin-top: 28px; font-size: 0.88rem; }
@@ -213,3 +213,7 @@ a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
   .shelf { padding: 0 14px; column-gap: 12px; }
   .shelf-head, .shelf-desc { padding: 0 14px; }
 }
+
+/* "MyShelf | Lex Judge" */
+.hero-owner { font-weight: 500; color: var(--cream-soft); letter-spacing: -0.01em; }
+.hero-owner .sep { color: var(--accent); margin: 0 0.25em; font-weight: 400; }

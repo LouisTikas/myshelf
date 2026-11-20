@@ -16,7 +16,7 @@ const counts = Object.fromEntries(TYPE_KEYS.map((t) => [t, items.filter((e) => e
 ---
 <Base>
   <section class="hero">
-    <h1>{site.title}</h1>
+    <h1>{site.title}{site.owner && <span class="hero-owner"><span class="sep">|</span>{site.owner}</span>}</h1>
     <p>{site.tagline}</p>
     <ul class="type-counts">
       {TYPE_KEYS.map((t) => (

@@ -16,7 +16,11 @@
     "slug": "favorites",
     "name": "All-Time Favorites",
     "description": "The ones I keep coming back to.",
-    "sort": "custom"
+    "sort": "custom",
+    "order": [
+      "videogame-the-legend-of-zelda-ocarina-of-time-2026-2",
+      "boardgame-keep-the-heroes-out-2022"
+    ]
   },
   {
     "slug": "2026",

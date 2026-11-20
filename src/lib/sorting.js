@@ -61,3 +61,8 @@ export const AUTO_RULES = { 'in-progress': 'In progress', finished: 'Finished', 
 export function inShelf(item, shelf) {
   return (item.collections || []).includes(shelf.slug) || (!!shelf.auto && item.status === shelf.auto);
 }
+
+/** Where a collection appears: 'shelves' (home page, default), 'type' (media pages) or 'both'. */
+export const SHOW_OPTIONS = { shelves: 'Shelves page', type: 'Media pages', both: 'Both' };
+export const showsOnHome = (c) => !c.show || c.show === 'shelves' || c.show === 'both';
+export const showsOnType = (c) => c.show === 'type' || c.show === 'both';

@@ -338,3 +338,15 @@ test('refresh board games: links manual entries, keeps notes, one commit', async
   assert.match(md, /id: "266192"/);
   assert.match(md, /- Engine Building/);
 });
+
+test('collections API keeps the "show on" setting', async () => {
+  const { onRequestPost } = await import('../functions/api/collections.js');
+  const { state } = githubMock();
+  const req = new Request('https://x/api/collections', { method: 'POST', body: JSON.stringify({ collections: [
+    { slug: 'a', name: 'A', show: 'type' }, { slug: 'b', name: 'B', show: 'both' }, { slug: 'c', name: 'C', show: 'shelves' }, { slug: 'd', name: 'D', show: 'bogus' },
+  ] }) });
+  const res = await onRequestPost({ request: req, env: GH_ENV });
+  assert.equal(res.status, 200);
+  const saved = JSON.parse(state.blobs[0].content);
+  assert.deepEqual(saved.map((c) => c.show), ['type', 'both', undefined, undefined]);
+});

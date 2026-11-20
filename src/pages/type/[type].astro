@@ -5,7 +5,8 @@ import BoardgameFilters from '../../components/BoardgameFilters.astro';
 import '../../styles/filters.css';
 import { getItems } from '../../lib/items.js';
 import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../lib/types.js';
-import { sortShelf } from '../../lib/sorting.js';
+import { sortShelf, inShelf, showsOnType } from '../../lib/sorting.js';
+import { getShelves } from '../../lib/items.js';
 import arrangements from '../../data/arrangements.json';
 
 export function getStaticPaths() {
@@ -14,6 +15,10 @@ export function getStaticPaths() {
 const { type } = Astro.params;
 const t = TYPES[type];
 const all = (await getItems()).filter((e) => e.data.type === type);
+const typeCollections = getShelves()
+  .filter(showsOnType)
+  .map((c) => ({ c, items: sortShelf(all.filter((e) => inShelf(e.data, c)), c) }))
+  .filter((x) => x.items.length);
 const groups = ['in-progress', 'finished', 'want', 'abandoned']
   .map((status) => {
     const key = `${type}:${status}`;
@@ -32,6 +37,10 @@ const groups = ['in-progress', 'finished', 'want', 'abandoned']
   {type === 'boardgame' && all.length > 0 && <BoardgameFilters items={all} />}
   <div class="bookcase">
     {groups.length === 0 && <Shelf items={[]} empty={`No ${t.plural.toLowerCase()} yet.`} />}
+    {typeCollections.map(({ c, items }) => (
+      <Shelf title={c.name} description={c.description} items={items} href={`/shelf/${c.slug}/`} scroll collection={c.slug}
+        height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />
+    ))}
     {groups.map((g) => <Shelf title={g.label} items={g.items} arrangeKey={g.key} height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />)}
   </div>
 </Base>

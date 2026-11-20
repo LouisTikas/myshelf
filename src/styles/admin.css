@@ -143,10 +143,12 @@ details label { margin-bottom: 10px; }
 .publish-pill[hidden] { display: none; }
 
 /* Collections: sort + arrange */
-.col-row { grid-template-columns: auto minmax(140px, 1fr) minmax(160px, 1.6fr) auto auto auto; }
+.col-row { grid-template-columns: auto minmax(130px, 1fr) minmax(150px, 1.4fr) auto auto auto auto; }
+.col-show { display: flex; align-items: center; gap: 6px; }
+.col-show select { width: auto; padding: 6px 8px; font-size: 0.85rem; }
 .col-sort { display: flex; gap: 6px; align-items: center; }
 .col-sort select { width: auto; padding: 6px 8px; font-size: 0.85rem; }
 @media (max-width: 760px) {
   .col-row { grid-template-columns: 1fr auto; }
-  .col-sort { grid-column: 1 / -1; }
+  .col-sort, .col-show { grid-column: 1 / -1; }
 }

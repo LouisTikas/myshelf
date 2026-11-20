@@ -1,6 +1,6 @@
 // Admin UI: search external databases, add/edit/delete items, manage collections.
 import { marked } from 'marked';
-import { SORTS, sortShelf, inShelf, AUTO_RULES } from '../lib/sorting.js';
+import { SORTS, sortShelf, inShelf, AUTO_RULES, SHOW_OPTIONS } from '../lib/sorting.js';
 import { openArrange } from './arrange.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -470,6 +470,12 @@ function renderCollections() {
       </span>
       <input class="col-name" value="${esc(c.name)}" placeholder="Collection name" />
       <input class="col-desc" value="${esc(c.description)}" placeholder="Description (optional)" />
+      <label class="col-show" title="Where this collection appears">
+        <span class="muted small">Show on</span>
+        <select class="col-show-select" aria-label="Show on">
+          ${Object.entries(SHOW_OPTIONS).map(([k, label]) => `<option value="${k}" ${(c.show || 'shelves') === k ? 'selected' : ''}>${esc(label)}</option>`).join('')}
+        </select>
+      </label>
       <span class="col-sort">
         <select class="col-sort-select" aria-label="Sort order">
           ${Object.entries(SORTS).map(([k, label]) => `<option value="${k}" ${(c.sort || 'newest') === k ? 'selected' : ''}>${esc(label)}</option>`).join('')}
@@ -487,6 +493,7 @@ function syncCollectionsFromInputs() {
     c.name = $('.col-name', row).value;
     c.description = $('.col-desc', row).value;
     c.sort = $('.col-sort-select', row).value;
+    c.show = $('.col-show-select', row).value;
   });
 }
 $('#col-list').addEventListener('change', (e) => {

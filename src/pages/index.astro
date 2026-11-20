@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import Shelf from '../components/Shelf.astro';
 import site from '../data/site.json';
 import { getItems, getShelves } from '../lib/items.js';
-import { sortShelf, inShelf } from '../lib/sorting.js';
+import { sortShelf, inShelf, showsOnHome } from '../lib/sorting.js';
 import { TYPES, TYPE_KEYS } from '../lib/types.js';
 
 const items = await getItems();
@@ -16,7 +16,7 @@ const shelves = getShelves();
   </section>
 
   <div class="bookcase">
-    {shelves.map((s) => {
+    {shelves.filter(showsOnHome).map((s) => {
       const list = sortShelf(items.filter((e) => inShelf(e.data, s)), s);
       return <Shelf title={s.name} description={s.description} items={list} href={`/shelf/${s.slug}/`} scroll limit={24} empty="No items on this shelf yet." collection={s.slug} />;
     })}

@@ -127,6 +127,7 @@ function init() {
     toggle.setAttribute('aria-expanded', String(open));
     root.classList.toggle('collapsed', !open);
   });
-  if (matchMedia('(max-width: 760px)').matches && !isFiltering()) { toggle.setAttribute('aria-expanded', 'false'); root.classList.add('collapsed'); }
+  // Start closed on every device, unless the page was opened with filters already set (bookmark).
+  if (!isFiltering()) { toggle.setAttribute('aria-expanded', 'false'); root.classList.add('collapsed'); }
   render();
 }

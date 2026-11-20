@@ -303,3 +303,8 @@ a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
 @media (max-width: 760px) and (prefers-reduced-motion: reduce) {
   .fab-menu li { transition: none; }
 }
+
+/* icons in the desktop menu pills */
+.site-nav a { display: inline-flex; align-items: center; gap: 7px; }
+.site-nav .nav-icon { flex: 0 0 auto; opacity: 0.85; }
+.site-nav a.active .nav-icon, .site-nav a:hover .nav-icon { opacity: 1; }

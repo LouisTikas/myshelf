@@ -43,11 +43,12 @@ const navItems = [
         <span>{site.title}</span>
       </a>
       <nav class="site-nav" aria-label="Main">
-        <a href="/" class:list={{ active: path === '/' }}>Shelves</a>
-        {TYPE_KEYS.map((t) => (
-          <a href={`/type/${t}/`} class:list={{ active: path.startsWith(`/type/${t}`) }}>{TYPES[t].plural}</a>
+        {navItems.map((n) => (
+          <a href={n.href} class:list={{ active: n.active }} aria-current={n.active ? 'page' : undefined}>
+            <svg class="nav-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" set:html={ICONS[n.icon]} />
+            {n.label}
+          </a>
         ))}
-        <a href="/journal/" class:list={{ active: path.startsWith('/journal') }}>Journal</a>
       </nav>
     </header>
     <main>

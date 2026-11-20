@@ -214,3 +214,7 @@
 @media (prefers-reduced-motion: reduce) {
   .book3d, .b3-box { transition: none; }
 }
+
+/* Touch: vertical swipes scroll the page; horizontal swipes are ours (flip through the shelf). */
+.shelf.shelf-3d { touch-action: pan-y; scroll-behavior: smooth; }
+.book3d { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }

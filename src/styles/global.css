@@ -97,6 +97,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
   padding: 18px 0 0;
   border-bottom-width: 6px; /* the last shelf board + this thin edge form the base */
   overflow: hidden;
+  overflow: clip; /* clip, not hidden: keeps the page as the scroll container for the shelf scroll motion */
 }
 .bookcase > .shelf-section:last-of-type { padding-bottom: 0; }
 .shelf-section { padding: 6px 0 14px; }

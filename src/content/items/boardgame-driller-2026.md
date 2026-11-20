@@ -1,5 +1,5 @@
 ---
-title: Driller
+title: Drillers
 type: boardgame
 creator: Roman Bednář, Adam Španěl
 year: "2026"

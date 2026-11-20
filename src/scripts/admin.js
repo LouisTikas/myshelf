@@ -2,6 +2,7 @@
 import { marked } from 'marked';
 import { SORTS, sortShelf, inShelf, AUTO_RULES, SHOW_OPTIONS } from '../lib/sorting.js';
 import { openArrange } from './arrange.js';
+import Sortable from 'sortablejs';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const root = $('#admin');
@@ -494,8 +495,9 @@ function renderCollections() {
     .map((c, i) => `
     <li class="col-row" data-i="${i}">
       <span class="col-move">
-        <button class="btn ghost small" data-up ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
-        <button class="btn ghost small" data-down ${i === state.collections.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+        <span class="col-handle" title="Drag to reorder" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+        <button class="btn ghost small col-arrow" data-up ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+        <button class="btn ghost small col-arrow" data-down ${i === state.collections.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
       </span>
       <input class="col-name" value="${esc(c.name)}" placeholder="Collection name" />
       <input class="col-desc" value="${esc(c.description)}" placeholder="Description (optional)" />
@@ -542,7 +544,29 @@ $('#col-list').addEventListener('click', (e) => {
   else if (e.target.closest('[data-remove]')) list.splice(i, 1);
   else return;
   renderCollections();
+  if (!e.target.closest('[data-remove]')) markOrderChanged();
 });
+
+// Drag the handle to reorder collections (the order they appear on the Shelves and media pages).
+Sortable.create($('#col-list'), {
+  handle: '.col-handle',
+  draggable: '.col-row',
+  animation: 160,
+  ghostClass: 'col-ghost',
+  onStart: () => syncCollectionsFromInputs(),
+  onEnd: (e) => {
+    if (e.oldIndex === e.newIndex) return;
+    const order = $$('.col-row').map((row) => state.collections[Number(row.dataset.i)]);
+    state.collections = order;
+    renderCollections();
+    markOrderChanged();
+  },
+});
+function markOrderChanged() {
+  const btn = $('#col-save');
+  btn.classList.add('needs-save');
+  btn.textContent = 'Save new order';
+}
 $('#col-add').addEventListener('click', () => {
   syncCollectionsFromInputs();
   state.collections.push({ slug: '', name: '', description: '' });
@@ -560,6 +584,8 @@ $('#col-save').addEventListener('click', async () => {
     });
     state.collections = collections;
     renderCollections();
+    btn.classList.remove('needs-save');
+    btn.textContent = 'Save collections';
     toast('Collections saved.');
   } catch (err) {
     toast(err.message, 'error');

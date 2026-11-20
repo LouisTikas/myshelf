@@ -4,8 +4,10 @@ const root = document.getElementById('bg-filters');
 if (root) init();
 
 function init() {
-  const slots = [...document.querySelectorAll('.shelf-slot[data-f]')].map((el) => ({ el, f: JSON.parse(el.dataset.f) }));
-  const total = slots.length;
+  // A game can sit on several shelves (a collection + its status shelf), so count unique games by their item link.
+  const slugOf = (el) => el.querySelector('.book3d')?.getAttribute('href') || el.dataset.f;
+  const slots = [...document.querySelectorAll('.shelf-slot[data-f]')].map((el) => ({ el, slug: slugOf(el), f: JSON.parse(el.dataset.f) }));
+  const total = new Set(slots.map((s) => s.slug)).size;
   const groups = [...root.querySelectorAll('.bgf-chips')];
   const best = root.querySelector('#bgf-best');
   const state = readUrl();
@@ -79,12 +81,13 @@ function init() {
     best.parentElement.classList.toggle('disabled', !state.players);
 
     // items
-    let shown = 0;
+    const shownGames = new Set();
     for (const s of slots) {
       const ok = matches(s.f);
       s.el.hidden = !ok;
-      if (ok) shown++;
+      if (ok) shownGames.add(s.slug);
     }
+    const shown = shownGames.size;
     // shelves: update counts, hide empty ones, tell the 3D shelf which items are visible
     for (const section of document.querySelectorAll('.bookcase .shelf-section')) {
       const shelf = section.querySelector('.shelf');
@@ -95,7 +98,7 @@ function init() {
       shelf.dispatchEvent(new CustomEvent('shelf:reorder'));
     }
     const active = isFiltering();
-    root.querySelector('#bgf-summary').textContent = active ? `Showing ${shown} of ${total}` : `${total} games`;
+    root.querySelector('#bgf-summary').textContent = active ? `Showing ${shown} of ${total}` : `${total} game${total === 1 ? '' : 's'}`;
     root.querySelector('#bgf-clear').hidden = !active;
     root.querySelector('#bgf-empty').hidden = !(active && shown === 0);
     writeUrl();

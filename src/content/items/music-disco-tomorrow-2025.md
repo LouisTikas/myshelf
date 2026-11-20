@@ -7,6 +7,8 @@ cover: /covers/music-disco-tomorrow-2025.jpg
 status: finished
 dateAdded: 2026-11-20
 dateFinished: 2026-11-20
+collections:
+  - audio-hyperfixations
 description: From HYPERYOUTH
 details:
   kind: Song

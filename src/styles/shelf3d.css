@@ -234,10 +234,10 @@
 }
 /* cover sits under the clear sleeve, below the blue top band */
 .kind-bluray .b3-front > img, .kind-bluray .b3-front > .b3-ph {
-  position: absolute; left: 4px; top: 14%; width: calc(100% - 8px); height: calc(86% - 4px); border-radius: 2px;
+  position: absolute; left: 4px; top: 9%; width: calc(100% - 8px); height: calc(91% - 4px); border-radius: 2px;
 }
 .br-band { /* plain blue band across the top of the case */
-  position: absolute; left: 4px; right: 4px; top: 4px; height: calc(14% - 6px); z-index: 1; border-radius: 3px 3px 1px 1px;
+  position: absolute; left: 4px; right: 4px; top: 3px; height: calc(9% - 5px); z-index: 1; border-radius: 3px 3px 1px 1px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.05) 55%, rgba(0,0,0,0.12)),
     linear-gradient(90deg, #2a6fd6, #4f95f0 50%, #2a6fd6);

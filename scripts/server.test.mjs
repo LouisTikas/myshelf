@@ -271,3 +271,12 @@ test('shelf sort orders', async () => {
   assert.equal(ids('custom', { order: ['c', 'a'] }), 'bca'); // unarranged (new) 'b' goes first
   assert.equal(ids(undefined), 'cab');
 });
+
+test('automatic collections include items by status', async () => {
+  const { inShelf } = await import('../src/lib/sorting.js');
+  const cur = { slug: 'currently', auto: 'in-progress' };
+  assert.ok(inShelf({ status: 'in-progress', collections: [] }, cur));
+  assert.ok(!inShelf({ status: 'finished', collections: [] }, cur));
+  assert.ok(inShelf({ status: 'finished', collections: ['currently'] }, cur)); // manual add still works
+  assert.ok(inShelf({ status: 'want', collections: ['favorites'] }, { slug: 'favorites' }));
+});

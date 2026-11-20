@@ -3,34 +3,22 @@ import Base from '../layouts/Base.astro';
 import Shelf from '../components/Shelf.astro';
 import site from '../data/site.json';
 import { getItems, getShelves } from '../lib/items.js';
-import { sortShelf } from '../lib/sorting.js';
+import { sortShelf, inShelf } from '../lib/sorting.js';
 import { TYPES, TYPE_KEYS } from '../lib/types.js';
 
 const items = await getItems();
 const shelves = getShelves();
-const current = items.filter((e) => e.data.status === 'in-progress');
-const recent = [...items]
-  .filter((e) => e.data.status === 'finished')
-  .slice(0, 24);
-const counts = Object.fromEntries(TYPE_KEYS.map((t) => [t, items.filter((e) => e.data.type === t).length]));
 ---
 <Base>
   <section class="hero">
     <h1>{site.title}{site.owner && <span class="hero-owner"><span class="sep">|</span>{site.owner}</span>}</h1>
     <p>{site.tagline}</p>
-    <ul class="type-counts">
-      {TYPE_KEYS.map((t) => (
-        <li><a href={`/type/${t}/`}><strong>{counts[t]}</strong> {TYPES[t].plural}</a></li>
-      ))}
-    </ul>
   </section>
 
   <div class="bookcase">
-    {current.length > 0 && <Shelf title="Currently" description="What I'm working through" items={current} scroll />}
     {shelves.map((s) => {
-      const list = sortShelf(items.filter((e) => e.data.collections?.includes(s.slug)), s);
+      const list = sortShelf(items.filter((e) => inShelf(e.data, s)), s);
       return <Shelf title={s.name} description={s.description} items={list} href={`/shelf/${s.slug}/`} scroll limit={24} empty="No items on this shelf yet." collection={s.slug} />;
     })}
-    <Shelf title="Recently finished" items={recent} scroll />
   </div>
 </Base>

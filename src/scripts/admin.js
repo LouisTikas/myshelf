@@ -1,6 +1,6 @@
 // Admin UI: search external databases, add/edit/delete items, manage collections.
 import { marked } from 'marked';
-import { SORTS, sortShelf } from '../lib/sorting.js';
+import { SORTS, sortShelf, inShelf, AUTO_RULES } from '../lib/sorting.js';
 import { openArrange } from './arrange.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -204,7 +204,9 @@ function renderCoverPreview() {
 function renderCollectionChecks(selected = []) {
   $('#editor-collections').innerHTML = state.collections.length
     ? state.collections
-        .map((c) => `<label class="check"><input type="checkbox" value="${esc(c.slug)}" ${selected.includes(c.slug) ? 'checked' : ''}> ${esc(c.name)}</label>`)
+        .map((c) => c.auto
+          ? `<label class="check muted" title="Fills automatically from status"><input type="checkbox" disabled ${form.status.value === c.auto ? 'checked' : ''} data-auto="${esc(c.auto)}"> ${esc(c.name)} <span class="small">(automatic)</span></label>`
+          : `<label class="check"><input type="checkbox" value="${esc(c.slug)}" ${selected.includes(c.slug) ? 'checked' : ''}> ${esc(c.name)}</label>`)
         .join('')
     : '<span class="muted small">No collections yet — create some in the Collections tab.</span>';
 }
@@ -249,6 +251,7 @@ function openEditor(item, slug = null) {
 form.cover.addEventListener('input', renderCoverPreview);
 form.type.addEventListener('change', () => { updateCreatorLabel(); renderCoverPreview(); });
 form.status.addEventListener('change', () => {
+  $$('#editor-collections input[data-auto]').forEach((cb) => (cb.checked = form.status.value === cb.dataset.auto));
   const today = new Date().toISOString().slice(0, 10);
   if (form.status.value === 'finished' && !form.dateFinished.value) form.dateFinished.value = today;
   if (form.status.value === 'in-progress' && !form.dateStarted.value) form.dateStarted.value = today;
@@ -277,7 +280,7 @@ form.addEventListener('submit', async (e) => {
     rating: form.rating.value === '' ? null : Number(form.rating.value),
     dateStarted: form.dateStarted.value || null,
     dateFinished: form.dateFinished.value || null,
-    collections: $$('#editor-collections input:checked').map((i) => i.value),
+    collections: $$('#editor-collections input:checked:not([disabled])').map((i) => i.value),
     tags: form.tags.value,
     genres: form.genres.value,
     description: form.description.value.trim(),
@@ -430,7 +433,7 @@ function renderCollections() {
         </select>
         ${(c.sort || 'newest') === 'custom' ? `<button class="btn ghost small" data-arrange ${c.slug ? '' : 'disabled title="Save the collection first"'}>Arrange</button>` : ''}
       </span>
-      <span class="muted small col-slug">${c.slug ? '/shelf/' + esc(c.slug) : 'new'}</span>
+      <span class="muted small col-slug">${c.auto ? `auto: ${esc(AUTO_RULES[c.auto] || c.auto)}` : c.slug ? '/shelf/' + esc(c.slug) : 'new'}</span>
       <button class="btn ghost small danger" data-remove aria-label="Remove">✕</button>
     </li>`)
     .join('') || '<li class="muted">No collections yet.</li>';
@@ -491,7 +494,7 @@ $('#col-save').addEventListener('click', async () => {
 function openArrangeFor(index) {
   const c = state.collections[index];
   // Start from what the shelf shows now; new items (not yet arranged) come first.
-  const entries = libraryItems().filter((i) => (i.collections || []).includes(c.slug)).map((i) => ({ id: i.slug, data: i }));
+  const entries = libraryItems().filter((i) => inShelf(i, c)).map((i) => ({ id: i.slug, data: i }));
   openArrange({
     title: c.name,
     items: sortShelf(entries, c).map((e) => e.data),

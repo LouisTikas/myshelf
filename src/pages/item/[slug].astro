@@ -3,6 +3,7 @@ import { render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Cover from '../../components/Cover.astro';
 import { getItems, getShelves, fmtDate } from '../../lib/items.js';
+import { inShelf } from '../../lib/sorting.js';
 import { TYPES, STATUS_LABEL, DETAIL_LABELS, formatDetail, stars } from '../../lib/types.js';
 
 export async function getStaticPaths() {
@@ -13,7 +14,7 @@ const { entry } = Astro.props;
 const d = entry.data;
 const t = TYPES[d.type];
 const { Content } = await render(entry);
-const shelves = getShelves().filter((s) => d.collections?.includes(s.slug));
+const shelves = getShelves().filter((s) => inShelf(d, s));
 const details = Object.entries(d.details || {})
   .map(([k, v]) => [DETAIL_LABELS[k] || k, formatDetail(k, v)])
   .filter(([, v]) => v);

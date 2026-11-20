@@ -1,6 +1,6 @@
 // Pencil buttons on collection shelves: only visible in a browser that's signed in to the admin.
 // Clicking opens the arrange dialog; saving updates the shelf instantly and commits the new order.
-import { sortShelf } from '../lib/sorting.js';
+import { sortShelf, inShelf } from '../lib/sorting.js';
 
 const TOKEN_KEY = 'myshelf_token';
 const token = (() => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } })();
@@ -53,7 +53,7 @@ if (token) {
         const c = collections.find((x) => x.slug === slug);
         if (!c) throw new Error('That collection was not found.');
         // Start from exactly what the shelf shows now (whatever its sort order is).
-        const entries = (lib.items || []).filter((i) => (i.collections || []).includes(slug)).map((i) => ({ id: i.slug, data: i }));
+        const entries = (lib.items || []).filter((i) => inShelf(i, c)).map((i) => ({ id: i.slug, data: i }));
         const items = sortShelf(entries, c).map((e) => e.data);
         mod.openArrange({
           title: c.name,

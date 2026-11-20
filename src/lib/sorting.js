@@ -53,3 +53,11 @@ export function arrangeOrder(items, order = []) {
     return ia ? 1 : -1;
   });
 }
+
+/** Automatic collections: items with this status are included without being added by hand. */
+export const AUTO_RULES = { 'in-progress': 'In progress', finished: 'Finished', want: 'Want to' };
+
+/** Is a plain item ({ collections, status }) on this shelf? Works for manual and automatic collections. */
+export function inShelf(item, shelf) {
+  return (item.collections || []).includes(shelf.slug) || (!!shelf.auto && item.status === shelf.auto);
+}

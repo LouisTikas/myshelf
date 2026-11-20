@@ -23,6 +23,7 @@ export const onRequestPost = handler(async ({ request, env }) => {
     while (seen.has(slug)) slug += '-2';
     seen.add(slug);
     const out = { slug, name, description: String(c.description || '').trim() };
+    if (['in-progress', 'finished', 'want'].includes(c.auto)) out.auto = c.auto;
     if (SORTS.includes(c.sort) && c.sort !== 'newest') out.sort = c.sort;
     if (Array.isArray(c.order)) {
       const order = [...new Set(c.order.map(String).filter((s) => /^[a-z0-9][a-z0-9-]{0,120}$/.test(s)))].slice(0, 5000);

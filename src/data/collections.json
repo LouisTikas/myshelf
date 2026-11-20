@@ -1,5 +1,11 @@
 [
   {
+    "slug": "currently",
+    "name": "Currently",
+    "description": "What I'm working through",
+    "auto": "in-progress"
+  },
+  {
     "slug": "favorites",
     "name": "All-Time Favorites",
     "description": "The ones I keep coming back to.",
@@ -24,5 +30,11 @@
     "name": "Audio Hyperfixations",
     "description": "Absolute Bangers",
     "sort": "custom"
+  },
+  {
+    "slug": "recently-finished",
+    "name": "Recently finished",
+    "description": "",
+    "auto": "finished"
   }
 ]

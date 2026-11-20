@@ -21,6 +21,10 @@ const hasBody = Boolean(bodyHtml);
 const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.expansions : [];
 ---
 <Base title={d.title} description={d.description}>
+  <a class="back-link" id="back-link" href={`/type/${d.type}/`} data-fallback={`/type/${d.type}/`}>
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <span>Back</span>
+  </a>
   <article class="item-page">
     <div class="item-cover">
       <Cover item={d} height={d.type === 'music' || d.type === 'boardgame' ? 300 : 360} link={false} eager />
@@ -95,3 +99,18 @@ const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.exp
     </div>
   </article>
 </Base>
+
+<script>
+  // Go back to wherever the item was opened from (keeps that page's scroll position).
+  // Opened directly (shared link, new tab)? Fall back to this item's media page.
+  const back = document.getElementById('back-link');
+  const cameFromSite = (() => {
+    try { return document.referrer && new URL(document.referrer).origin === location.origin; } catch { return false; }
+  })();
+  if (back && cameFromSite && history.length > 1) {
+    back.addEventListener('click', (e) => {
+      e.preventDefault();
+      history.back();
+    });
+  }
+</script>

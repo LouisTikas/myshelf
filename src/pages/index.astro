@@ -26,7 +26,7 @@ const counts = Object.fromEntries(TYPE_KEYS.map((t) => [t, items.filter((e) => e
   </section>
 
   <div class="bookcase">
-    {current.length > 0 && <Shelf title="Currently" items={current} scroll />}
+    {current.length > 0 && <Shelf title="Currently" description="What I'm working through" items={current} scroll />}
     {shelves.map((s) => {
       const list = sortShelf(items.filter((e) => e.data.collections?.includes(s.slug)), s);
       return <Shelf title={s.name} description={s.description} items={list} href={`/shelf/${s.slug}/`} scroll limit={24} empty="No items on this shelf yet." />;

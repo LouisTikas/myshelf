@@ -332,3 +332,25 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
   .toast, .ar-toast { bottom: calc(146px + env(safe-area-inset-bottom)) !important; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
   .publish-pill { right: calc(18px + env(safe-area-inset-right)) !important; bottom: calc(92px + env(safe-area-inset-bottom)) !important; }
 }
+
+/* Scroll motion: shelves below rise up to meet you; shelves above fade away as they leave.
+   Pure CSS scroll-driven animation. Browsers without it (e.g. Firefox today) just show still shelves,
+   and it's off for anyone who has "reduce motion" turned on. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .bookcase > .shelf-section {
+      animation: shelf-rise linear both, shelf-fade linear forwards;
+      animation-timeline: view(), view();
+      animation-range: entry 0% entry 90%, exit 15% exit 100%;
+      transform-origin: 50% 100%;
+    }
+  }
+}
+@keyframes shelf-rise {
+  from { opacity: 0.25; transform: translateY(70px) scale(0.97); }
+  to   { opacity: 1;    transform: none; }
+}
+@keyframes shelf-fade {
+  from { opacity: 1;    transform: none; filter: none; }
+  to   { opacity: 0.12; transform: translateY(-24px) scale(0.97); filter: blur(1.5px); }
+}

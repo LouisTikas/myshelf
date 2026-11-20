@@ -280,3 +280,16 @@ test('automatic collections include items by status', async () => {
   assert.ok(inShelf({ status: 'finished', collections: ['currently'] }, cur)); // manual add still works
   assert.ok(inShelf({ status: 'want', collections: ['favorites'] }, { slug: 'favorites' }));
 });
+
+test('arrangements API saves per-type shelf orders', async () => {
+  const { onRequestPost } = await import('../functions/api/arrangements.js');
+  const { state } = githubMock({ existing: { 'src/data/arrangements.json': '{"music:finished":["x"]}' } });
+  const req = (body) => new Request('https://x/api/arrangements', { method: 'POST', body: JSON.stringify(body) });
+  const res = await onRequestPost({ request: req({ key: 'book:finished', order: ['b', 'a', 'b', '../bad'] }), env: GH_ENV });
+  assert.equal(res.status, 200);
+  const saved = JSON.parse(state.blobs[0].content);
+  assert.deepEqual(saved, { 'book:finished': ['b', 'a'], 'music:finished': ['x'] });
+  assert.equal(state.commitMsg, 'Arrange book:finished');
+  const bad = await onRequestPost({ request: req({ key: 'book:nope', order: [] }), env: GH_ENV });
+  assert.equal(bad.status, 400);
+});

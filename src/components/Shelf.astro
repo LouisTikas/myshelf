@@ -2,8 +2,9 @@
 import Book3D from './Book3D.astro';
 import '../styles/shelf3d.css';
 import '../styles/arrange.css';
-interface Props { items: any[]; title?: string; href?: string; description?: string; scroll?: boolean; limit?: number; height?: number; empty?: string; collection?: string }
-const { items, title, href, description, scroll = false, limit, height = 180, empty = 'Nothing here yet.', collection } = Astro.props;
+interface Props { items: any[]; title?: string; href?: string; description?: string; scroll?: boolean; limit?: number; height?: number; empty?: string; collection?: string; arrangeKey?: string }
+const { items, title, href, description, scroll = false, limit, height = 180, empty = 'Nothing here yet.', collection, arrangeKey } = Astro.props;
+const editable = Boolean(collection || arrangeKey);
 const shown = limit ? items.slice(0, limit) : items;
 ---
 <section class="shelf-section">
@@ -11,8 +12,8 @@ const shown = limit ? items.slice(0, limit) : items;
     <div class="shelf-head">
       <h2>{href ? <a href={href}>{title}</a> : title}</h2>
       <span class="count">{items.length}</span>
-      {collection && (
-        <button type="button" class="shelf-edit" data-collection={collection} hidden aria-label={`Arrange ${title}`} title="Arrange this shelf">
+      {editable && (
+        <button type="button" class="shelf-edit" data-collection={collection} data-arrange-key={arrangeKey} hidden aria-label={`Arrange ${title}`} title="Arrange this shelf">
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         </button>
       )}
@@ -20,7 +21,7 @@ const shown = limit ? items.slice(0, limit) : items;
     </div>
   )}
   {description && <p class="shelf-desc">{description}</p>}
-  <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${height}px`} data-collection={collection}>
+  <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${height}px`} data-collection={collection} data-arrange-key={arrangeKey}>
     {shown.length === 0 && <p class="shelf-empty">{empty}</p>}
     {shown.map((e, i) => (
       <div class="shelf-slot">

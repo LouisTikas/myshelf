@@ -3,6 +3,8 @@ import Base from '../../layouts/Base.astro';
 import Shelf from '../../components/Shelf.astro';
 import { getItems } from '../../lib/items.js';
 import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../lib/types.js';
+import { sortShelf } from '../../lib/sorting.js';
+import arrangements from '../../data/arrangements.json';
 
 export function getStaticPaths() {
   return TYPE_KEYS.map((type) => ({ params: { type } }));
@@ -11,7 +13,13 @@ const { type } = Astro.params;
 const t = TYPES[type];
 const all = (await getItems()).filter((e) => e.data.type === type);
 const groups = ['in-progress', 'finished', 'want', 'abandoned']
-  .map((status) => ({ status, label: STATUS_LABEL(type, status), items: all.filter((e) => e.data.status === status) }))
+  .map((status) => {
+    const key = `${type}:${status}`;
+    const list = all.filter((e) => e.data.status === status);
+    // Arranged with the pencil? Use that order (new items first); otherwise newest first.
+    const items = arrangements[key] ? sortShelf(list, { sort: 'custom', order: arrangements[key] }) : list;
+    return { status, key, label: STATUS_LABEL(type, status), items };
+  })
   .filter((g) => g.items.length);
 ---
 <Base title={t.plural}>
@@ -21,6 +29,6 @@ const groups = ['in-progress', 'finished', 'want', 'abandoned']
   </section>
   <div class="bookcase">
     {groups.length === 0 && <Shelf items={[]} empty={`No ${t.plural.toLowerCase()} yet.`} />}
-    {groups.map((g) => <Shelf title={g.label} items={g.items} />)}
+    {groups.map((g) => <Shelf title={g.label} items={g.items} arrangeKey={g.key} />)}
   </div>
 </Base>

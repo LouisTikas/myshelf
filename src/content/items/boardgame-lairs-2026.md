@@ -9,6 +9,7 @@ dateAdded: 2026-11-20
 dateFinished: 2026-11-20
 collections:
   - "2026"
+  - my-board-game-collection
 description: |-
   You’ve worked hard to earn your spot in the Adventurers Guild, but one last obstacle remains. You must square off with a cunning rival guild hopeful in an exam of precarious paths that will test your skills at building a devious dungeon...and exploring one. To pass, you have to complete the tricky labyrinth your opponent has created full of dead ends, traps, enchanted monsters — oh, and if you can find it, valuable treasures. You enter their dungeon with your own set of skills and over the course of this challenge, you'll grow as an adventurer. Will it be enough to map the right path, defeat the monsters in your way, and escape with the most valuable collection of treasure? Your spot in the Adventurers Guild depends on it!
 
@@ -21,10 +22,10 @@ genres:
   - Maze
   - Puzzle
 details:
-  players: "2"
+  players: 2
   playtime: 60
   weight: 2.2
-  bggRank: "2273"
+  bggRank: 2273
   publishers:
     - KTBG
     - Cranio Creations

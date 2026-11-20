@@ -33,3 +33,4 @@
 @media (max-width: 760px) {
   .bgf-label { width: 100%; }
 }
+.shelf-slot[hidden] { display: none; }

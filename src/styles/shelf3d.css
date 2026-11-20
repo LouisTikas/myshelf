@@ -1,11 +1,11 @@
-/* 3D shelf items: spine-out by default, rotate to face front when active. */
+/* 3D shelf items: edge-out by default, rotate to face front when active. */
 .book3d {
   --dur: 0.55s;
   --ease: cubic-bezier(0.22, 0.9, 0.28, 1);
   position: relative; z-index: 1;
   display: block; flex: 0 0 auto;
   height: var(--h);
-  width: var(--d);                 /* spine-out footprint */
+  width: var(--d);                 /* edge-out footprint */
   perspective: 1400px;
   text-decoration: none;
   outline: none;
@@ -14,18 +14,18 @@
 .book3d.is-front { width: var(--w); }
 
 .b3-box {
-  position: absolute; top: calc(var(--h) - var(--bh, var(--h))); left: 50%;
-  width: var(--w); height: var(--bh, var(--h));
+  position: absolute; top: calc(var(--h) - var(--bh)); left: 50%;
+  width: var(--w); height: var(--bh);
   margin-left: calc(var(--w) / -2);
   transform-style: preserve-3d;
-  /* Spine facing us: rotate the box a quarter turn and push it back so it doesn't loom. */
+  /* Edge facing us: a quarter turn, pushed back so it doesn't loom. */
   transform: translateZ(calc(var(--w) / -2)) rotateY(90deg);
   transition: transform var(--dur) var(--ease);
 }
 .book3d.is-front .b3-box { transform: translateZ(calc(var(--d) / -2)) rotateY(0deg); }
 
 .b3-front, .b3-spine {
-  position: absolute; top: 0; height: var(--bh, var(--h));
+  position: absolute; top: 0; height: var(--bh);
   backface-visibility: hidden; -webkit-backface-visibility: hidden;
   overflow: hidden;
 }
@@ -36,8 +36,8 @@
   background: var(--tc);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
 }
-.b3-front img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.b3-front img + .b3-ph { display: none; }
+.b3-front > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.b3-front > img + .b3-ph, .cart-label > img + .b3-ph { display: none; }
 .b3-ph {
   display: flex; flex-direction: column; justify-content: space-between;
   width: 100%; height: 100%; padding: 12px 10px;
@@ -46,8 +46,9 @@
 }
 .b3-ph-title { font-family: var(--serif, Georgia, serif); font-weight: 600; font-size: calc(var(--h) * 0.085); line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .b3-ph-creator { font-size: calc(var(--h) * 0.055); text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+.b3-gloss { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 
-/* Spine: sits on the box's left edge, facing left (−X). */
+/* Spine/edge: sits on the box's left side, facing left (−X). */
 .b3-spine {
   left: calc((var(--w) - var(--d)) / 2);
   width: var(--d);
@@ -58,13 +59,13 @@
   background: var(--tc);
   border-radius: 2px;
 }
-/* Blurred slice of the cover gives each spine the cover's colors. */
+/* Blurred slice of the cover gives the spine the cover's colors. */
 .book3d.has-cover .b3-spine::before {
   content: ''; position: absolute; inset: -20px;
   background: var(--spine-img) left center / cover no-repeat;
   filter: blur(10px) saturate(1.25);
 }
-.b3-spine::after { /* shading + a highlight ridge like a real spine */
+.b3-spine::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
   background:
     linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 18%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.12) 70%, rgba(0,0,0,0.5) 100%),
@@ -79,78 +80,136 @@
 .b3-spine-title {
   font-family: var(--serif, Georgia, serif); font-weight: 600;
   font-size: clamp(9px, calc(var(--d) * 0.42), 15px);
-  max-height: calc(var(--h) * 0.6);
+  max-height: calc(var(--bh) * 0.6);
   letter-spacing: 0.02em;
 }
 .b3-spine-creator {
   font-size: clamp(8px, calc(var(--d) * 0.26), 10px);
   text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85;
-  max-height: calc(var(--h) * 0.32);
+  max-height: calc(var(--bh) * 0.32);
 }
 
-/* Active item: a little lift and glow. */
+/* Active item: lift and shadow. */
 .book3d.is-front .b3-front { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1), 6px 10px 22px rgba(0,0,0,0.55); }
 .book3d:focus-visible .b3-front { outline: 2px solid var(--accent, #d99a4e); outline-offset: 3px; }
-.book3d .badge-doing { z-index: 3; transition: right var(--dur) var(--ease); right: -8px; }
+.book3d .badge-doing { z-index: 3; right: -8px; top: calc(var(--h) - var(--bh) - 7px); }
 
-/* Shelves full of spines can sit closer together. */
 .shelf.shelf-3d { column-gap: 4px; }
 .shelf.shelf-3d .shelf-slot::after { left: -2px; right: -2px; }
 
 /* ───────── Video games: retro cartridge ───────── */
-.book3d.cart { --shell-hi: #d9d8dc; --shell: #b5b4ba; --shell-lo: #8d8c93; }
-.cart-front {
-  border-radius: 9px 9px 4px 4px !important;
+.kind-cart { --shell-hi: #d9d8dc; --shell: #b5b4ba; --shell-lo: #8d8c93; }
+.kind-cart .b3-front {
+  border-radius: 9px 9px 4px 4px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 8%),
-    linear-gradient(90deg, var(--shell-lo), var(--shell) 6%, var(--shell-hi) 50%, var(--shell) 94%, var(--shell-lo)) !important;
-  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.18), inset 0 2px 0 rgba(255,255,255,0.4) !important;
+    linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 7%),
+    linear-gradient(90deg, var(--shell-lo), var(--shell) 6%, var(--shell-hi) 50%, var(--shell) 94%, var(--shell-lo));
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.18), inset 0 2px 0 rgba(255,255,255,0.4);
 }
-.book3d.cart.is-front .cart-front { box-shadow: inset 0 -3px 0 rgba(0,0,0,0.18), inset 0 2px 0 rgba(255,255,255,0.4), 6px 10px 22px rgba(0,0,0,0.55) !important; }
-/* seam where the top half of the shell meets the bottom */
-.cart-front::before {
-  content: ''; position: absolute; left: 0; right: 0; top: 13%; height: 2px; z-index: 1;
+.kind-cart.is-front .b3-front { box-shadow: inset 0 -3px 0 rgba(0,0,0,0.18), inset 0 2px 0 rgba(255,255,255,0.4), 6px 10px 22px rgba(0,0,0,0.55); }
+.kind-cart .b3-front::before { /* top seam */
+  content: ''; position: absolute; left: 0; right: 0; top: 10%; height: 2px; z-index: 1;
   background: linear-gradient(180deg, rgba(0,0,0,0.22), rgba(255,255,255,0.45));
 }
-/* moulded grip ridges down both sides */
-.cart-front::after {
-  content: ''; position: absolute; top: 24%; bottom: 14%; left: 3.5%; right: 3.5%; z-index: 1;
+.kind-cart .b3-front::after { /* side grip ridges */
+  content: ''; position: absolute; top: 20%; bottom: 12%; left: 3.5%; right: 3.5%; z-index: 1;
   background:
     repeating-linear-gradient(180deg, rgba(0,0,0,0.22) 0 1.5px, rgba(255,255,255,0.4) 1.5px 2.5px, transparent 2.5px 5px) left / 6% 100% no-repeat,
     repeating-linear-gradient(180deg, rgba(0,0,0,0.22) 0 1.5px, rgba(255,255,255,0.4) 1.5px 2.5px, transparent 2.5px 5px) right / 6% 100% no-repeat;
 }
-/* recessed label well holding the cover art */
 .cart-label {
-  position: absolute; left: 14%; right: 14%; top: 20%; bottom: 10%;
+  position: absolute; left: 13%; right: 13%; top: 15%; bottom: 6%;
   border-radius: 4px; overflow: hidden; background: #222;
   box-shadow: 0 0 0 3px rgba(0,0,0,0.12), inset 0 1px 3px rgba(0,0,0,0.5);
 }
-.cart-label img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.cart-label img + .b3-ph { display: none; }
+.cart-label > img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cart-label .b3-ph { padding: 8px; justify-content: center; text-align: center; }
-.cart-label .b3-ph-title { font-size: calc(var(--h) * 0.07); -webkit-line-clamp: 3; }
-.cart-grip { display: none; }
-.book3d.cart .badge-doing { top: calc(var(--h) - var(--bh) - 7px); }
-/* side edge: plastic with vertical ridges and a small end label */
-.cart-spine {
+.cart-label .b3-ph-title { font-size: calc(var(--h) * 0.07); -webkit-line-clamp: 4; }
+.kind-cart .b3-spine {
   background:
     repeating-linear-gradient(180deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 5px),
-    linear-gradient(90deg, var(--shell-lo), var(--shell-hi) 45%, var(--shell) 70%, var(--shell-lo)) !important;
-  border-radius: 4px !important;
-  justify-content: center !important; padding: 0 !important;
+    linear-gradient(90deg, var(--shell-lo), var(--shell-hi) 45%, var(--shell) 70%, var(--shell-lo));
+  border-radius: 4px; justify-content: center; padding: 0;
 }
-.cart-spine::before, .cart-spine::after { display: none !important; }
+.kind-cart .b3-spine::before, .kind-cart .b3-spine::after { display: none; }
 .cart-end-label {
-  position: relative; z-index: 1;
-  width: 64%; height: 70%;
+  position: relative; z-index: 1; width: 64%; height: 72%;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 2px;
+  border-radius: 2px; overflow: hidden;
   background: linear-gradient(90deg, rgba(0,0,0,0.25), transparent 30%), var(--tc);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
-  overflow: hidden;
 }
-.book3d.cart.has-cover .cart-end-label { background: linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15)), var(--spine-img) center / cover; }
+.kind-cart.has-cover .cart-end-label { background: linear-gradient(90deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15)), var(--spine-img) center / cover; }
 .cart-end-label .b3-spine-title { font-size: clamp(8px, calc(var(--d) * 0.36), 12px); max-height: 92%; }
+
+/* ───────── Music: CD jewel case ───────── */
+.kind-cd .b3-front { border-radius: 2px; background: #111; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+.kind-cd .b3-front > img, .kind-cd .b3-front > .b3-ph {
+  position: absolute; top: 3%; bottom: 3%; left: 12%; right: 2%; width: auto; height: auto;
+}
+.kind-cd .b3-ph { padding: 8px; }
+.kind-cd .b3-ph-title { font-size: calc(var(--h) * 0.07); }
+.kind-cd .b3-front::before { /* hinge strip */
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 10%; z-index: 3;
+  background:
+    repeating-linear-gradient(180deg, rgba(255,255,255,0.12) 0 1px, transparent 1px 4px),
+    linear-gradient(90deg, rgba(40,40,46,0.95), rgba(90,90,100,0.85) 45%, rgba(25,25,30,0.95));
+  box-shadow: 1px 0 0 rgba(255,255,255,0.3), 2px 0 3px rgba(0,0,0,0.4);
+}
+.kind-cd .b3-gloss { /* clear plastic lid */
+  display: block;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.06) 28%, transparent 40%, transparent 70%, rgba(255,255,255,0.1) 85%, transparent),
+    linear-gradient(180deg, rgba(255,255,255,0.18), transparent 3%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35);
+}
+.kind-cd .b3-spine {
+  background: linear-gradient(90deg, #0d0d10, #2b2b33 40%, #18181d 70%, #08080a);
+  border-radius: 1px; justify-content: center; padding: 6px 0;
+}
+.kind-cd.has-cover .b3-spine::before { opacity: 0.35; }
+.kind-cd .b3-spine::after { background: linear-gradient(90deg, rgba(255,255,255,0.18), transparent 25%, transparent 75%, rgba(255,255,255,0.1)); }
+.kind-cd .b3-spine-title { font-family: var(--sans, system-ui, sans-serif); font-weight: 500; font-size: clamp(7px, calc(var(--d) * 0.55), 10px); letter-spacing: 0.06em; max-height: 90%; }
+.kind-cd .badge-doing { right: -6px; }
+
+/* ───────── Movies & TV: VHS box ───────── */
+.kind-vhs .b3-front { border-radius: 3px; background: #0b0b0d; box-shadow: inset 0 0 0 2px #0b0b0d; }
+.kind-vhs .b3-front > img, .kind-vhs .b3-front > .b3-ph { position: absolute; inset: 3px; width: auto; height: auto; border-radius: 1px; }
+.kind-vhs .b3-gloss { /* shrink-wrap sleeve glare */
+  display: block;
+  background:
+    linear-gradient(100deg, transparent 10%, rgba(255,255,255,0.22) 18%, rgba(255,255,255,0.04) 26%, transparent 34%),
+    linear-gradient(170deg, rgba(255,255,255,0.12), transparent 22%, transparent 80%, rgba(0,0,0,0.25));
+}
+.kind-vhs.is-front .b3-front { box-shadow: inset 0 0 0 2px #0b0b0d, 6px 10px 22px rgba(0,0,0,0.6); }
+.kind-vhs .b3-spine { border-radius: 2px; justify-content: center; padding: 0; }
+.kind-vhs .b3-spine::after { /* black case bands top and bottom */
+  background:
+    linear-gradient(180deg, #0b0b0d 0, #0b0b0d 9%, rgba(255,255,255,0.15) 9.3%, transparent 10%, transparent 89%, rgba(255,255,255,0.15) 90%, #0b0b0d 90.5%),
+    linear-gradient(90deg, rgba(0,0,0,0.5), rgba(255,255,255,0.15) 20%, transparent 45%, rgba(0,0,0,0.45));
+}
+.kind-vhs .b3-spine-title { font-size: clamp(9px, calc(var(--d) * 0.42), 14px); max-height: calc(var(--bh) * 0.62); }
+.kind-vhs .b3-spine-creator { display: none; }
+
+/* ───────── Board games: box ───────── */
+.kind-box .b3-front { border-radius: 3px; }
+.kind-box .b3-gloss { /* lid edge shading */
+  display: block;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), transparent 4%),
+    linear-gradient(0deg, rgba(0,0,0,0.3), transparent 5%),
+    linear-gradient(90deg, rgba(0,0,0,0.25), transparent 4%, transparent 96%, rgba(0,0,0,0.3));
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35), inset 0 0 12px rgba(0,0,0,0.25);
+}
+.kind-box .b3-spine { border-radius: 3px; justify-content: center; gap: 8px; padding: 0; }
+.kind-box .b3-spine::after { /* lid overlapping the base: seam down the side */
+  background:
+    linear-gradient(90deg, transparent 0, transparent 72%, rgba(0,0,0,0.45) 72%, rgba(255,255,255,0.2) 73.5%, rgba(0,0,0,0.15) 75%, rgba(0,0,0,0.25) 100%),
+    linear-gradient(90deg, rgba(0,0,0,0.35), rgba(255,255,255,0.12) 12%, transparent 35%),
+    linear-gradient(180deg, rgba(255,255,255,0.15), transparent 6%, transparent 94%, rgba(0,0,0,0.3));
+}
+.kind-box .b3-spine-title { font-size: clamp(10px, calc(var(--d) * 0.32), 16px); max-height: calc(var(--bh) * 0.62); margin-right: 22%; }
+.kind-box .b3-spine-creator { margin-right: 22%; }
 
 @media (prefers-reduced-motion: reduce) {
   .book3d, .b3-box { transition: none; }

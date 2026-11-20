@@ -1,63 +1,65 @@
 ---
-// A cover rendered as a 3D box: front = cover art, side = spine with the title.
+// An item rendered as a 3D object that matches its media type:
+// books, game cartridges, CD jewel cases, VHS boxes and board game boxes.
+// Front face = cover art; side face = spine/edge with the title.
 import { TYPES } from '../lib/types.js';
 interface Props { item: any; height?: number; href: string; front?: boolean }
-const { item, height = 180, href, front = false } = Astro.props;
+const { item, height: h = 180, href, front = false } = Astro.props;
 const t = TYPES[item.type] || TYPES.book;
 
-// Spine thickness by media type (relative to cover height).
-const DEPTH = { book: 0.17, movie: 0.13, tv: 0.15, music: 0.08, videogame: 0.11, boardgame: 0.3 };
-const isCart = item.type === 'videogame';
-// Video games are drawn as retro cartridges: shorter than the slot, wider than tall, thin.
-const bh = isCart ? Math.round(height * 0.74) : height;
-const w = isCart ? Math.round(height * 0.84) : Math.round(height * t.aspect);
-const d = isCart ? Math.max(14, Math.round(height * 0.13)) : Math.max(14, Math.round(height * (DEPTH[item.type] ?? 0.15)));
+// kind, box height (bh), front width (w) and depth (d) as fractions of the slot height.
+const SHAPES = {
+  book:      { kind: 'book', bh: 1,    w: 2 / 3, d: 0.17, min: 14 },
+  videogame: { kind: 'cart', bh: 0.92, w: 0.76, d: 0.13, min: 14 },
+  music:     { kind: 'cd',   bh: 0.74, w: 0.83, d: 0.07, min: 12 },
+  movie:     { kind: 'vhs',  bh: 1,    w: 0.58, d: 0.16, min: 16 },
+  tv:        { kind: 'vhs',  bh: 1,    w: 0.58, d: 0.16, min: 16 },
+  boardgame: { kind: 'box',  bh: 0.88, w: 0.88, d: 0.3,  min: 20 },
+};
+const s = SHAPES[item.type] || SHAPES.book;
+const bh = Math.round(h * s.bh);
+const w = Math.round(h * s.w);
+const d = Math.max(s.min, Math.round(h * s.d));
 const spineImg = item.cover ? `url("${String(item.cover).replace(/"/g, '%22')}")` : 'none';
 const label = `${item.title}${item.creator ? ' — ' + item.creator : ''}`;
+const onErr = "this.closest('.book3d').classList.remove('has-cover');this.remove();";
 ---
 <a
   href={href}
-  class:list={['book3d', { 'is-front': front, 'has-cover': !!item.cover, cart: isCart }]}
+  class:list={['book3d', `kind-${s.kind}`, { 'is-front': front, 'has-cover': !!item.cover }]}
   data-type={item.type}
   title={label}
   aria-label={label}
-  style={`--h:${height}px; --bh:${bh}px; --w:${w}px; --d:${d}px; --tc:${t.color}; --spine-img:${spineImg}`}
+  style={`--h:${h}px; --bh:${bh}px; --w:${w}px; --d:${d}px; --tc:${t.color}; --spine-img:${spineImg}`}
 >
   <span class="b3-box" aria-hidden="true">
-    {isCart ? (
-    <>
-    <span class="b3-front cart-front">
-      <span class="cart-label">
-        {item.cover && (
-          <img src={item.cover} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-            onerror="this.closest('.book3d').classList.remove('has-cover');this.remove();" />
-        )}
-        <span class="b3-ph"><span class="b3-ph-title">{item.title}</span></span>
-      </span>
-      <span class="cart-grip"></span>
-    </span>
-    <span class="b3-spine cart-spine">
-      <span class="cart-end-label"><span class="b3-spine-title">{item.title}</span></span>
-    </span>
-    </>
-    ) : (
-    <>
     <span class="b3-front">
-      {item.cover && (
-        <img src={item.cover} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-          onerror="this.closest('.book3d').classList.remove('has-cover');this.remove();" />
+      {s.kind === 'cart' ? (
+        <span class="cart-label">
+          {item.cover && <img src={item.cover} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={onErr} />}
+          <span class="b3-ph"><span class="b3-ph-title">{item.title}</span></span>
+        </span>
+      ) : (
+        <>
+          {item.cover && <img src={item.cover} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror={onErr} />}
+          <span class="b3-ph">
+            <span class="b3-ph-title">{item.title}</span>
+            {item.creator && <span class="b3-ph-creator">{item.creator}</span>}
+          </span>
+        </>
       )}
-      <span class="b3-ph">
-        <span class="b3-ph-title">{item.title}</span>
-        {item.creator && <span class="b3-ph-creator">{item.creator}</span>}
-      </span>
+      <span class="b3-gloss"></span>
     </span>
     <span class="b3-spine">
-      <span class="b3-spine-title">{item.title}</span>
-      {item.creator && d >= 24 && <span class="b3-spine-creator">{item.creator}</span>}
+      {s.kind === 'cart' ? (
+        <span class="cart-end-label"><span class="b3-spine-title">{item.title}</span></span>
+      ) : (
+        <>
+          <span class="b3-spine-title">{item.title}</span>
+          {item.creator && d >= 24 && <span class="b3-spine-creator">{item.creator}</span>}
+        </>
+      )}
     </span>
-    </>
-    )}
   </span>
   {item.status === 'in-progress' && <span class="badge-doing" aria-label="In progress">●</span>}
 </a>

@@ -3,7 +3,12 @@
     "slug": "currently",
     "name": "Currently",
     "description": "What I'm working through",
-    "auto": "in-progress"
+    "auto": "in-progress",
+    "sort": "custom",
+    "order": [
+      "videogame-pokemon-pokopia-2026",
+      "tv-from-2022"
+    ]
   },
   {
     "slug": "favorites",

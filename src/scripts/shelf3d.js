@@ -50,6 +50,38 @@ function initShelf(shelf) {
     });
   }, { passive: true });
 
+  // ── Long shelves glide with the mouse: the cursor's position across the shelf maps to the
+  // scroll position, so moving to the right edge brings the last item fully into view
+  // (even after it widens to face front). Trackpad/wheel scrolling takes over instantly.
+  if (shelf.classList.contains('shelf-scroll')) {
+    const EDGE = 70; // px at each end that count as "all the way"
+    let target = 0;
+    let glide = 0;
+    const step = () => {
+      const cur = shelf.scrollLeft;
+      const max = shelf.scrollWidth - shelf.clientWidth;
+      const goal = Math.max(0, Math.min(max, target));
+      const d = goal - cur;
+      if (Math.abs(d) < 0.5) { shelf.scrollTo({ left: goal, behavior: 'instant' }); glide = 0; return; }
+      shelf.scrollTo({ left: cur + d * 0.16, behavior: 'instant' });
+      glide = requestAnimationFrame(step);
+    };
+    const aim = (clientX) => {
+      const max = shelf.scrollWidth - shelf.clientWidth;
+      if (max <= 0) return;
+      const r = shelf.getBoundingClientRect();
+      const t = Math.min(1, Math.max(0, (clientX - r.left - EDGE) / Math.max(1, r.width - 2 * EDGE)));
+      target = t * max;
+      if (!glide) glide = requestAnimationFrame(step);
+    };
+    shelf.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') aim(e.clientX); }, { passive: true });
+    // When an item turns and the shelf gets wider, re-aim so the end stays reachable.
+    shelf.addEventListener('transitionend', (e) => {
+      if (e.propertyName === 'width' && mouse) aim(mouse.x);
+    });
+    shelf.addEventListener('wheel', () => { cancelAnimationFrame(glide); glide = 0; }, { passive: true });
+  }
+
   // ── Keyboard: only keyboard focus turns an item. (A tap also focuses the link; reacting
   // to that turned the item before the tap was handled, so a single tap opened it.)
   books.forEach((b) => {

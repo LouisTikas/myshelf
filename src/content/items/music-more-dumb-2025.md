@@ -4,7 +4,7 @@ type: music
 creator: DURRY
 year: "2025"
 cover: /covers/music-more-dumb-2025.jpg
-status: in-progress
+status: finished
 dateAdded: 2026-11-20
 dateStarted: 2026-11-20
 dateFinished: 2026-11-20

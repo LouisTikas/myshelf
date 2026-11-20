@@ -220,6 +220,8 @@ function lockRows(shelf) {
     reveal();
   };
 
+  lastWidth = shelf.clientWidth;
+  layout(); // right away, so rows are set before the first paint
   new ResizeObserver(() => {
     if (shelf.clientWidth === lastWidth) return;
     lastWidth = shelf.clientWidth;

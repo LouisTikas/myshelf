@@ -2,11 +2,11 @@
 :root {
   --wall: #1e1f22;     /* dark grey background */
   --wall-2: #26272b;
-  --panel: #130d09;    /* inside of the bookcase */
-  --wood-edge: #7c5434; /* lit top edge of each shelf so dark wood still reads */
-  --wood-hi: #5e3e25;  /* dark brown shelving */
-  --wood: #4a301b;
-  --wood-lo: #2e1c0f;
+  --panel: #110f0e;    /* inside of the bookcase */
+  --wood-edge: #6f6964; /* glossy highlight along the top edge of each shelf */
+  --wood-hi: #36322f;   /* lacquered black (ebonized) wood, slightly warm */
+  --wood: #282523;
+  --wood-lo: #171514;
   --wood-shadow: rgba(0, 0, 0, 0.55);
   --paper: #f5eedf;
   --paper-2: #ebe1cc;
@@ -85,8 +85,11 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
   border: 14px solid transparent;
   border-radius: 20px;
   background:
-    linear-gradient(180deg, #100b07, var(--panel) 30%) padding-box,
-    linear-gradient(180deg, var(--wood-edge), var(--wood-hi) 6%, var(--wood) 35%, var(--wood-lo)) border-box;
+    linear-gradient(180deg, #0b0a09, var(--panel) 30%) padding-box,
+    /* gloss: a soft diagonal sheen + faint grain over the black lacquer */
+    linear-gradient(115deg, transparent 22%, rgba(255,255,255,0.07) 38%, rgba(255,255,255,0.015) 48%, transparent 60%) border-box,
+    repeating-linear-gradient(92deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 11px, rgba(0,0,0,0.12) 11px 13px, transparent 13px 23px, rgba(255,255,255,0.02) 23px 24px, transparent 24px 37px) border-box,
+    linear-gradient(180deg, var(--wood-edge), var(--wood-hi) 5%, var(--wood) 35%, var(--wood-lo)) border-box;
   box-shadow:
     inset 0 0 60px rgba(0,0,0,0.85),
     0 0 0 1px rgba(0,0,0,0.6),

@@ -1,5 +1,5 @@
 ---
-title: "Dungeon Crawler Carl: Unstoppable"
+title: "Unstoppable: DCC"
 type: boardgame
 creator: John D. Clair
 year: "2026"

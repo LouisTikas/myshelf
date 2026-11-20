@@ -159,9 +159,9 @@ details label { margin-bottom: 10px; }
   margin: 0 0 14px; padding: 10px 14px; border-radius: 12px;
   background: rgba(255,255,255,0.04); border: 1px solid rgba(241,230,208,0.12); color: var(--cream);
 }
-.publish-bar.has-pending { border-color: var(--accent); background: rgba(242, 201, 76, 0.08); }
+.publish-bar.has-pending { border-color: var(--accent); background: rgba(217, 154, 78, 0.08); }
 .publish-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); flex: 0 0 auto; }
-.publish-bar.has-pending .publish-dot { background: var(--accent); box-shadow: 0 0 0 4px rgba(242, 201, 76, 0.2); }
+.publish-bar.has-pending .publish-dot { background: var(--accent); box-shadow: 0 0 0 4px rgba(217, 154, 78, 0.2); }
 .publish-count { font-weight: 600; font-size: 0.92rem; }
 .publish-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--cream-soft); cursor: pointer; }
 .publish-toggle input { accent-color: var(--accent); width: auto; }

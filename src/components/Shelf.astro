@@ -1,5 +1,6 @@
 ---
-import Cover from './Cover.astro';
+import Book3D from './Book3D.astro';
+import '../styles/shelf3d.css';
 interface Props { items: any[]; title?: string; href?: string; description?: string; scroll?: boolean; limit?: number; height?: number; empty?: string }
 const { items, title, href, description, scroll = false, limit, height = 180, empty = 'Nothing here yet.' } = Astro.props;
 const shown = limit ? items.slice(0, limit) : items;
@@ -13,12 +14,16 @@ const shown = limit ? items.slice(0, limit) : items;
     </div>
   )}
   {description && <p class="shelf-desc">{description}</p>}
-  <div class:list={['shelf', { 'shelf-scroll': scroll }]} style={`--h:${height}px`}>
+  <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${height}px`}>
     {shown.length === 0 && <p class="shelf-empty">{empty}</p>}
-    {shown.map((e) => (
+    {shown.map((e, i) => (
       <div class="shelf-slot">
-        <Cover item={e.data} height={height} link={`/item/${e.id}/`} />
+        <Book3D item={e.data} height={height} href={`/item/${e.id}/`} front={i === 0} />
       </div>
     ))}
   </div>
 </section>
+
+<script>
+  import '../scripts/shelf3d.js';
+</script>

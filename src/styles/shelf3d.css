@@ -1,0 +1,102 @@
+/* 3D shelf items: spine-out by default, rotate to face front when active. */
+.book3d {
+  --dur: 0.55s;
+  --ease: cubic-bezier(0.22, 0.9, 0.28, 1);
+  position: relative; z-index: 1;
+  display: block; flex: 0 0 auto;
+  height: var(--h);
+  width: var(--d);                 /* spine-out footprint */
+  perspective: 1400px;
+  text-decoration: none;
+  outline: none;
+  transition: width var(--dur) var(--ease);
+}
+.book3d.is-front { width: var(--w); }
+
+.b3-box {
+  position: absolute; top: 0; left: 50%;
+  width: var(--w); height: var(--h);
+  margin-left: calc(var(--w) / -2);
+  transform-style: preserve-3d;
+  /* Spine facing us: rotate the box a quarter turn and push it back so it doesn't loom. */
+  transform: translateZ(calc(var(--w) / -2)) rotateY(90deg);
+  transition: transform var(--dur) var(--ease);
+}
+.book3d.is-front .b3-box { transform: translateZ(calc(var(--d) / -2)) rotateY(0deg); }
+
+.b3-front, .b3-spine {
+  position: absolute; top: 0; height: var(--h);
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+.b3-front {
+  left: 0; width: var(--w);
+  transform: translateZ(calc(var(--d) / 2));
+  border-radius: 2px 4px 4px 2px;
+  background: var(--tc);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.b3-front img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.b3-front img + .b3-ph { display: none; }
+.b3-ph {
+  display: flex; flex-direction: column; justify-content: space-between;
+  width: 100%; height: 100%; padding: 12px 10px;
+  color: #fbf6ec;
+  background: linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%), linear-gradient(0deg, rgba(0,0,0,0.28), transparent 55%), var(--tc);
+}
+.b3-ph-title { font-family: var(--serif, Georgia, serif); font-weight: 600; font-size: calc(var(--h) * 0.085); line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.b3-ph-creator { font-size: calc(var(--h) * 0.055); text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+
+/* Spine: sits on the box's left edge, facing left (−X). */
+.b3-spine {
+  left: calc((var(--w) - var(--d)) / 2);
+  width: var(--d);
+  transform: rotateY(-90deg) translateZ(calc(var(--w) / 2));
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 10px 0;
+  color: #fff;
+  background: var(--tc);
+  border-radius: 2px;
+}
+/* Blurred slice of the cover gives each spine the cover's colors. */
+.book3d.has-cover .b3-spine::before {
+  content: ''; position: absolute; inset: -20px;
+  background: var(--spine-img) left center / cover no-repeat;
+  filter: blur(10px) saturate(1.25);
+}
+.b3-spine::after { /* shading + a highlight ridge like a real spine */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(255,255,255,0.18) 18%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.12) 70%, rgba(0,0,0,0.5) 100%),
+    linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.05) 20%, rgba(0,0,0,0.05) 80%, rgba(0,0,0,0.35));
+}
+.b3-spine-title, .b3-spine-creator {
+  position: relative; z-index: 1;
+  writing-mode: vertical-rl;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+}
+.b3-spine-title {
+  font-family: var(--serif, Georgia, serif); font-weight: 600;
+  font-size: clamp(9px, calc(var(--d) * 0.42), 15px);
+  max-height: calc(var(--h) * 0.6);
+  letter-spacing: 0.02em;
+}
+.b3-spine-creator {
+  font-size: clamp(8px, calc(var(--d) * 0.26), 10px);
+  text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85;
+  max-height: calc(var(--h) * 0.32);
+}
+
+/* Active item: a little lift and glow. */
+.book3d.is-front .b3-front { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1), 6px 10px 22px rgba(0,0,0,0.55); }
+.book3d:focus-visible .b3-front { outline: 2px solid var(--accent, #d99a4e); outline-offset: 3px; }
+.book3d .badge-doing { z-index: 3; transition: right var(--dur) var(--ease); right: -8px; }
+
+/* Shelves full of spines can sit closer together. */
+.shelf.shelf-3d { column-gap: 4px; }
+.shelf.shelf-3d .shelf-slot::after { left: -2px; right: -2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .book3d, .b3-box { transition: none; }
+}

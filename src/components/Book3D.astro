@@ -15,7 +15,7 @@ const SHAPES = {
   music:     { kind: 'cd',   bh: 0.85, w: 0.95, d: 0.075, min: 12 },
   movie:     { kind: 'vhs',  bh: 1,    w: 0.58, d: 0.16, min: 16 },
   tv:        { kind: 'vhs',  bh: 1,    w: 0.58, d: 0.16, min: 16 },
-  boardgame: { kind: 'box',  bh: 0.88, w: 0.88, d: 0.3,  min: 20 },
+  boardgame: { kind: 'box',  bh: 0.88, w: 0.88, d: 0.25, min: 20 },
 };
 const s = SHAPES[item.type] || SHAPES.book;
 let bh = Math.round(h * s.bh);
@@ -72,7 +72,7 @@ const onErr = "this.closest('.book3d').classList.remove('has-cover');this.remove
       ) : (
         <>
           <span class="b3-spine-title">{item.title}</span>
-          {item.creator && d >= 24 && <span class="b3-spine-creator">{item.creator}</span>}
+          {item.creator && d >= 24 && s.kind !== 'box' && <span class="b3-spine-creator">{item.creator}</span>}
         </>
       )}
     </span>

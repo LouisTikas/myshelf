@@ -5,6 +5,7 @@ creator: Game Freak, Nintendo
 year: "2005"
 cover: /covers/videogame-drill-dozer-2005.jpg
 status: finished
+rating: 5
 dateAdded: 2026-11-20
 dateFinished: 2026-11-20
 collections:
@@ -24,4 +25,4 @@ source:
   url: https://www.igdb.com/games/drill-dozer
 ---
 
-
+Played this for the first time recently. Absolutely blown away with how good a game from 2005 is. Feels like a modern indie platformer. BGA era games were incredible.

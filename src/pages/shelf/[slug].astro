@@ -1,6 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Shelf from '../../components/Shelf.astro';
+import BoardgameFilters from '../../components/BoardgameFilters.astro';
+import '../../styles/filters.css';
 import { getItems, getShelves } from '../../lib/items.js';
 import { sortShelf, inShelf } from '../../lib/sorting.js';
 
@@ -8,6 +10,8 @@ const env = Astro.locals.runtime.env;
 const shelf = (await getShelves(env)).find((s) => s.slug === Astro.params.slug);
 if (!shelf) return new Response(null, { status: 404, statusText: 'Not found' });
 const items = sortShelf((await getItems(env)).filter((e) => inShelf(e.data, shelf)), shelf);
+// A collection of only board games gets the same filters as the Board Games page.
+const boardgames = items.length > 0 && items.every((e) => e.data.type === 'boardgame');
 ---
 <Base title={shelf.name} description={shelf.description}>
   <section class="page-head">
@@ -15,7 +19,8 @@ const items = sortShelf((await getItems(env)).filter((e) => inShelf(e.data, shel
     <h1>{shelf.name}<button type="button" class="shelf-edit" data-collection={shelf.slug} hidden aria-label={`Arrange ${shelf.name}`} title="Arrange this shelf"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></h1>
     {shelf.description && <p class="lede">{shelf.description}</p>}
   </section>
+  {boardgames && <BoardgameFilters items={items} />}
   <div class="bookcase">
-    <Shelf items={items} empty="No items on this shelf yet." collection={shelf.slug} />
+    <Shelf items={items} empty="No items on this shelf yet." collection={shelf.slug} filterable={boardgames} />
   </div>
 </Base>

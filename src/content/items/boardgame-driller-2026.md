@@ -12,4 +12,4 @@ source:
   name: Manual
 ---
 
-
+**Nov 19, 2026** — playing this on BGA with Raf

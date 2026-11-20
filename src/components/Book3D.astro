@@ -49,10 +49,13 @@ const onErr = "this.closest('.book3d').classList.remove('has-cover');this.remove
         </>
       )}
       <span class="b3-gloss"></span>
+      {s.kind === 'vhs' && <span class="vhs-notch"></span>}
     </span>
     <span class="b3-spine">
       {s.kind === 'cart' ? (
         <span class="cart-end-label"><span class="b3-spine-title">{item.title}</span></span>
+      ) : s.kind === 'vhs' ? (
+        <span class="vhs-label"><span class="b3-spine-title">{item.title}</span></span>
       ) : (
         <>
           <span class="b3-spine-title">{item.title}</span>

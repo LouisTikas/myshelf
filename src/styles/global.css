@@ -348,10 +348,24 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
   }
 }
 @keyframes shelf-rise {
-  from { opacity: 0.25; transform: translateY(70px) scale(0.97); }
+  from { opacity: 0.1;  transform: translateY(120px) scale(0.94); }
   to   { opacity: 1;    transform: none; }
 }
 @keyframes shelf-fade {
   from { opacity: 1;    transform: none; filter: none; }
-  to   { opacity: 0.12; transform: translateY(-24px) scale(0.97); filter: blur(1.5px); }
+  to   { opacity: 0.04; transform: translateY(-44px) scale(0.94); filter: blur(3px); }
+}
+
+/* Covers fade out at the right edge of a scrolling shelf while there's more to see.
+   Two mask layers: the cover area fades; the plank (and scrollbar) below stays solid. */
+.shelf-scroll.fade-right {
+  --fade: 120px;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent), linear-gradient(#000, #000);
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent), linear-gradient(#000, #000);
+  -webkit-mask-size: 100% calc(var(--row) - var(--plank)), 100% calc(100% - var(--row) + var(--plank));
+  mask-size: 100% calc(var(--row) - var(--plank)), 100% calc(100% - var(--row) + var(--plank));
+  -webkit-mask-position: 0 0, 0 calc(var(--row) - var(--plank));
+  mask-position: 0 0, 0 calc(var(--row) - var(--plank));
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }

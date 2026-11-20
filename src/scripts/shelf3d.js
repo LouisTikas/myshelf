@@ -152,3 +152,16 @@ function initShelf(shelf) {
 }
 
 document.querySelectorAll('.shelf-3d').forEach(initShelf);
+
+// ── Fade covers out at the right edge while there's more shelf to scroll to.
+function watchEdge(shelf) {
+  const update = () => {
+    const more = shelf.scrollWidth - shelf.clientWidth - shelf.scrollLeft > 4;
+    shelf.classList.toggle('fade-right', more);
+  };
+  shelf.addEventListener('scroll', update, { passive: true });
+  shelf.addEventListener('shelf:reorder', () => requestAnimationFrame(update));
+  new ResizeObserver(update).observe(shelf);
+  update();
+}
+document.querySelectorAll('.shelf-scroll').forEach(watchEdge);

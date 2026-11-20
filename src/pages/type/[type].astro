@@ -29,6 +29,6 @@ const groups = ['in-progress', 'finished', 'want', 'abandoned']
   </section>
   <div class="bookcase">
     {groups.length === 0 && <Shelf items={[]} empty={`No ${t.plural.toLowerCase()} yet.`} />}
-    {groups.map((g) => <Shelf title={g.label} items={g.items} arrangeKey={g.key} />)}
+    {groups.map((g) => <Shelf title={g.label} items={g.items} arrangeKey={g.key} height={type === 'music' ? 160 : 180} />)}
   </div>
 </Base>

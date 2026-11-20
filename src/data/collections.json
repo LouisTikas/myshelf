@@ -40,6 +40,25 @@
     "slug": "recently-finished",
     "name": "Recently finished",
     "description": "",
-    "auto": "finished"
+    "auto": "finished",
+    "sort": "custom",
+    "order": [
+      "videogame-star-fox-2026",
+      "videogame-the-legend-of-zelda-ocarina-of-time-2026-2",
+      "movie-godzilla-minus-zero-2026",
+      "movie-the-odyssey-2026",
+      "book-a-knight-of-the-seven-kingdoms-2013",
+      "book-books-of-blood-volume-one-1985",
+      "book-carl-s-doomsday-scenario-2021",
+      "book-a-parade-of-horribles-2026",
+      "book-dungeon-crawler-carl-2020",
+      "book-the-butcher-s-masquerade-2022",
+      "book-the-dungeon-anarchist-s-cookbook-2021",
+      "book-the-eye-of-the-bedlam-bride-2023",
+      "book-the-gate-of-the-feral-gods-2021",
+      "book-this-inevitable-ruin-2024",
+      "music-more-dumb-2025",
+      "music-disco-tomorrow-2025"
+    ]
   }
 ]

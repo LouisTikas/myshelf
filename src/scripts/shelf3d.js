@@ -75,9 +75,22 @@ function initShelf(shelf) {
       if (!glide) glide = requestAnimationFrame(step);
     };
     shelf.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') aim(e.clientX); }, { passive: true });
-    // When an item turns and the shelf gets wider, re-aim so the end stays reachable.
+    // When an item finishes turning (the shelf just got wider), make sure the front-facing
+    // item is completely visible — nudge the shelf just enough if it's cut off at either end.
+    const PAD = 12;
     shelf.addEventListener('transitionend', (e) => {
-      if (e.propertyName === 'width' && mouse) aim(mouse.x);
+      if (e.propertyName !== 'width' || !e.target.classList?.contains('book3d')) return;
+      if (mouse) aim(mouse.x);
+      const r = shelf.getBoundingClientRect();
+      const a = active.getBoundingClientRect();
+      const base = glide ? target : shelf.scrollLeft;
+      let goal = base;
+      if (a.right > r.right - PAD) goal = shelf.scrollLeft + (a.right - (r.right - PAD));
+      else if (a.left < r.left + PAD) goal = shelf.scrollLeft - ((r.left + PAD) - a.left);
+      if (goal !== base) {
+        target = goal;
+        if (!glide) glide = requestAnimationFrame(step);
+      }
     });
     shelf.addEventListener('wheel', () => { cancelAnimationFrame(glide); glide = 0; }, { passive: true });
   }

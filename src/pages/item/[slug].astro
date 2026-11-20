@@ -18,6 +18,7 @@ const details = Object.entries(d.details || {})
   .map(([k, v]) => [DETAIL_LABELS[k] || k, formatDetail(k, v, d.details)])
   .filter(([, v]) => v);
 const hasBody = Boolean(bodyHtml);
+const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.expansions : [];
 ---
 <Base title={d.title} description={d.description}>
   <article class="item-page">
@@ -46,6 +47,31 @@ const hasBody = Boolean(bodyHtml);
           {shelves.map((s) => <a class="chip" href={`/shelf/${s.slug}/`}>{s.name}</a>)}
           {d.tags?.map((tag) => <span class="chip chip-tag">#{tag}</span>)}
         </div>
+      )}
+
+      {expansions.length > 0 && (
+        <section class="expansions-section">
+          <h2>Expansions <span class="count">{expansions.length}</span></h2>
+          <ul class="expansion-grid">
+            {expansions.map((x) => {
+              const Tag = x.url ? 'a' : 'div';
+              return (
+                <li>
+                  <Tag class="expansion" href={x.url || undefined} target={x.url ? '_blank' : undefined} rel={x.url ? 'noopener' : undefined}>
+                    <span class="expansion-img">
+                      {x.cover
+                        ? <img src={x.cover} alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add('broken');this.remove();" />
+                        : null}
+                      <span class="expansion-ph" aria-hidden="true">{x.title.slice(0, 1)}</span>
+                    </span>
+                    <span class="expansion-title">{x.title}</span>
+                    {x.year && <span class="expansion-year">{x.year}</span>}
+                  </Tag>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       {hasBody && (

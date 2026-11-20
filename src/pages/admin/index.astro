@@ -108,7 +108,8 @@ const typesJson = JSON.stringify(TYPES);
               <select name="type">{TYPE_KEYS.map((t) => <option value={t}>{TYPES[t].label}</option>)}</select>
             </label>
             <label>Status
-              <select name="status">
+              <select name="status" required>
+                <option value="" disabled>Choose…</option>
                 <option value="finished">Finished</option>
                 <option value="in-progress">In progress</option>
                 <option value="want">Want to</option>
@@ -126,6 +127,18 @@ const typesJson = JSON.stringify(TYPES);
             <fieldset class="span2">
               <legend>Collections</legend>
               <div id="editor-collections" class="checks"></div>
+            </fieldset>
+            <fieldset class="span2 expansions" id="editor-expansions" hidden>
+              <legend>Expansions <span class="muted small" id="exp-count"></span></legend>
+              <ul id="exp-list" class="exp-list"></ul>
+              <div class="row exp-search">
+                <input id="exp-q" type="search" placeholder="Search BGG expansions…" autocomplete="off" />
+                <button type="button" class="btn ghost small" id="exp-search-btn">Search</button>
+                <button type="button" class="btn ghost small" id="exp-known-btn" hidden>Show this game’s expansions</button>
+                <button type="button" class="btn ghost small" id="exp-manual-btn" title="Attach the typed name without a BGG match">Add as typed</button>
+              </div>
+              <p id="exp-msg" class="muted small"></p>
+              <ul id="exp-results" class="exp-results"></ul>
             </fieldset>
             <label>Tags <input name="tags" placeholder="comma, separated" /></label>
             <label>Genres <input name="genres" placeholder="comma, separated" /></label>

@@ -210,14 +210,13 @@ $('#results').addEventListener('click', async (e) => {
   }
   openEditor({
     title: r.title, type: r.type, creator: r.creator, year: r.year, cover: r.cover,
-    status: 'finished', description: r.description, genres: r.genres, details: r.details,
-    dateFinished: new Date().toISOString().slice(0, 10),
+    status: '', description: r.description, genres: r.genres, details: r.details,
     source: { name: SOURCE_NAMES[r.source] || r.source, id: r.sourceId, url: r.url },
   });
 });
 
 $('#manual-add').addEventListener('click', () =>
-  openEditor({ type: state.type, status: 'finished', title: $('#search-q').value.trim(), source: { name: 'Manual' } }),
+  openEditor({ type: state.type, status: '', title: $('#search-q').value.trim(), source: { name: 'Manual' } }),
 );
 
 // ───────── editor ─────────
@@ -276,7 +275,7 @@ function openEditor(item, slug = null) {
   form.creator.value = item.creator || '';
   form.year.value = item.year || '';
   form.type.value = item.type || 'book';
-  form.status.value = item.status || 'finished';
+  form.status.value = item.status || '';
   form.rating.value = item.rating == null ? '' : String(item.rating);
   form.dateStarted.value = item.dateStarted || '';
   form.dateFinished.value = item.status === 'want' ? '' : item.dateFinished || '';
@@ -289,6 +288,9 @@ function openEditor(item, slug = null) {
   const src = item.source || {};
   $('#editor-source').innerHTML = src.url ? `From <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.name)}</a>` : esc(src.name || '');
   renderCollectionChecks(item.collections || []);
+  state.editing.expansions = (item.expansions || []).map((x) => ({ ...x }));
+  resetExpansionSearch();
+  renderExpansionsField();
   $('#editor-refresh-bgg').hidden = !(slug && (item.type || 'book') === 'boardgame');
   updateCreatorLabel();
   renderCoverPreview();
@@ -297,7 +299,7 @@ function openEditor(item, slug = null) {
 }
 
 form.cover.addEventListener('input', renderCoverPreview);
-form.type.addEventListener('change', () => { updateCreatorLabel(); renderCoverPreview(); });
+form.type.addEventListener('change', () => { updateCreatorLabel(); renderCoverPreview(); renderExpansionsField(); });
 form.status.addEventListener('change', () => {
   $$('#editor-collections input[data-auto]').forEach((cb) => (cb.checked = form.status.value === cb.dataset.auto));
   const today = new Date().toISOString().slice(0, 10);
@@ -334,6 +336,7 @@ form.addEventListener('submit', async (e) => {
     description: form.description.value.trim(),
     details: textToDetails(form.details.value),
     source,
+    expansions: form.type.value === 'boardgame' ? state.editing.expansions || [] : [],
   };
   delete item.body;
   if (!slug && !saveBtn.dataset.confirmDup) {
@@ -366,6 +369,95 @@ form.addEventListener('submit', async (e) => {
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = 'Save to shelf';
+  }
+});
+
+// ───────── expansions (board games): attached to the base game, not their own entries ─────────
+const expKey = (x) => (x.id ? `id:${x.id}` : `t:${String(x.title).toLowerCase()}`);
+const bggIdOfSource = (src = {}) => (/boardgamegeek|bgg/i.test(`${src.name} ${src.url}`) && src.id ? String(src.id) : '');
+let expResults = [];
+
+function expThumb(x, size = 44) {
+  const ph = `<span class="exp-ph" style="width:${size}px;height:${size}px">${esc((x.title || '?').slice(0, 1))}</span>`;
+  return x.cover
+    ? `<span class="exp-thumb" style="width:${size}px;height:${size}px"><img src="${esc(x.cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(this.nextElementSibling.content.cloneNode(true))"><template>${ph}</template></span>`
+    : ph;
+}
+function renderExpansionsField() {
+  const field = $('#editor-expansions');
+  const isGame = form.type.value === 'boardgame';
+  field.hidden = !isGame;
+  if (!isGame || !state.editing) return;
+  const list = state.editing.expansions || [];
+  $('#exp-count').textContent = list.length ? `(${list.length})` : '';
+  $('#exp-list').innerHTML = list.length
+    ? list.map((x, i) => `
+      <li class="exp-row">${expThumb(x)}
+        <span class="exp-name">${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>` : esc(x.title)}${x.year ? ` <span class="muted small">${esc(x.year)}</span>` : ''}</span>
+        <button type="button" class="btn ghost small danger" data-exp-remove="${i}" aria-label="Detach ${esc(x.title)}">✕</button>
+      </li>`).join('')
+    : '<li class="muted small">None attached yet. Search below to attach expansions you own.</li>';
+  $('#exp-known-btn').hidden = !bggIdOfSource(state.editing.source);
+  renderExpansionResults();
+}
+function renderExpansionResults() {
+  const attached = new Set((state.editing?.expansions || []).map(expKey));
+  $('#exp-results').innerHTML = expResults.map((x, i) => {
+    const on = attached.has(expKey(x));
+    return `<li class="exp-row">${expThumb(x, 40)}
+      <span class="exp-name">${esc(x.title)}${x.year ? ` <span class="muted small">${esc(x.year)}</span>` : ''}</span>
+      <button type="button" class="btn ${on ? 'ghost' : 'primary'} small" data-exp-add="${i}" ${on ? 'disabled' : ''}>${on ? 'Attached' : 'Attach'}</button>
+    </li>`;
+  }).join('');
+}
+function resetExpansionSearch() {
+  expResults = [];
+  $('#exp-q').value = '';
+  $('#exp-msg').textContent = '';
+  $('#exp-results').innerHTML = '';
+}
+async function loadExpansions(query, label) {
+  $('#exp-msg').textContent = 'Searching BoardGameGeek…';
+  $('#exp-results').innerHTML = '';
+  try {
+    const { expansions } = await api(`expansions?${query}`);
+    expResults = expansions;
+    $('#exp-msg').textContent = expansions.length ? label(expansions.length) : 'No expansions found.';
+    renderExpansionResults();
+  } catch (err) {
+    $('#exp-msg').textContent = '';
+    toast(err.message, 'error');
+  }
+}
+$('#exp-search-btn').addEventListener('click', () => {
+  const q = $('#exp-q').value.trim();
+  if (q.length < 2) return $('#exp-q').focus();
+  loadExpansions(`q=${encodeURIComponent(q)}`, (n) => `${n} result${n === 1 ? '' : 's'} — attach the ones you have.`);
+});
+$('#exp-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#exp-search-btn').click(); } });
+$('#exp-known-btn').addEventListener('click', () => {
+  const id = bggIdOfSource(state.editing?.source);
+  if (id) loadExpansions(`base=${id}`, (n) => `BGG lists ${n} expansion${n === 1 ? '' : 's'} for this game.`);
+});
+$('#exp-manual-btn').addEventListener('click', () => {
+  const title = $('#exp-q').value.trim();
+  if (!title) return $('#exp-q').focus();
+  const list = state.editing.expansions;
+  if (!list.some((x) => expKey(x) === expKey({ title }))) list.push({ title });
+  $('#exp-q').value = '';
+  renderExpansionsField();
+});
+$('#editor-expansions').addEventListener('click', (e) => {
+  const add = e.target.closest('[data-exp-add]');
+  if (add) {
+    const x = expResults[Number(add.dataset.expAdd)];
+    if (x && !state.editing.expansions.some((y) => expKey(y) === expKey(x))) state.editing.expansions.push({ ...x });
+    return renderExpansionsField();
+  }
+  const rm = e.target.closest('[data-exp-remove]');
+  if (rm) {
+    state.editing.expansions.splice(Number(rm.dataset.expRemove), 1);
+    renderExpansionsField();
   }
 });
 

@@ -198,7 +198,7 @@ test('saveItem: new item goes to D1, cover is copied into KV with its proportion
 test('saveItem: editing keeps slug, date added and cover; replacing/deleting cleans up KV', async () => {
   const env = fakeEnv();
   mockFetch([['example.com', () => new Response(PNG_1x2, { headers: { 'content-type': 'image/png' } })]]);
-  const first = await saveItem(env, { item: { title: 'Dune', type: 'book', year: 1965, cover: 'https://example.com/a.png' }, body: 'Old.' });
+  const first = await saveItem(env, { item: { title: 'Dune', type: 'book', year: 1965, status: 'finished', cover: 'https://example.com/a.png' }, body: 'Old.' });
   const edit = await saveItem(env, { slug: first.slug, item: { ...first.item, rating: 5 }, body: 'New.' });
   assert.equal(edit.slug, first.slug);
   assert.equal(edit.item.cover, first.item.cover);
@@ -212,11 +212,11 @@ test('saveItem: editing keeps slug, date added and cover; replacing/deleting cle
   assert.equal(env.COVERS._store.size, 0);
   await assert.rejects(() => deleteItem(env, first.slug), /not found/);
   await assert.rejects(() => deleteItem(env, '../etc/passwd'), /Invalid slug/);
-  await assert.rejects(() => saveItem(env, { slug: 'nope', item: { title: 'X', type: 'book' } }), /not found/);
+  await assert.rejects(() => saveItem(env, { slug: 'nope', item: { title: 'X', type: 'book', status: 'want' } }), /not found/);
 });
 
 test('missing bindings give a clear error', async () => {
-  await assert.rejects(() => saveItem({}, { item: { title: 'X', type: 'book' } }), /binding named DB/);
+  await assert.rejects(() => saveItem({}, { item: { title: 'X', type: 'book', status: 'want' } }), /binding named DB/);
 });
 
 test('auth check + search handler', async () => {
@@ -376,4 +376,43 @@ test('pages get entries in the old content-collection shape', async () => {
   assert.equal(e.data.status, 'finished');
   assert.deepEqual(e.data.collections, []);
   assert.equal(e.data.rating, null);
+});
+
+test('expansions are cleaned, stored with the base game, images copied and cleaned up', async () => {
+  const env = fakeEnv();
+  mockFetch([['geekdo', () => new Response(PNG_1x2, { headers: { 'content-type': 'image/png' } })]]);
+  const base = { title: 'Wingspan', type: 'boardgame', status: 'finished' };
+  const res = await saveItem(env, { item: { ...base, expansions: [
+    { id: '290837', title: 'Wingspan: European Expansion', year: 2019, cover: 'https://cf.geekdo-images.com/a.png' },
+    { id: '290837', title: 'dup' },
+    { title: 'Homemade promo cards' },
+    { title: '   ' },
+  ] }, body: '' });
+  const ex = res.item.expansions;
+  assert.equal(ex.length, 2);
+  assert.match(ex[0].cover, /^\/img\/boardgame-wingspan-x290837-/);
+  assert.equal(ex[0].url, 'https://boardgamegeek.com/boardgameexpansion/290837');
+  assert.equal(ex[0].year, '2019');
+  assert.deepEqual(ex[1], { title: 'Homemade promo cards' });
+  assert.equal(env.COVERS._store.size, 1);
+  const again = await saveItem(env, { slug: res.slug, item: { ...res.item, expansions: [ex[1]] }, body: '' });
+  assert.equal(again.item.expansions.length, 1);
+  assert.equal(env.COVERS._store.size, 0, 'detached expansion image removed');
+  const none = await saveItem(env, { slug: res.slug, item: { ...again.item, expansions: [] }, body: '' });
+  assert.equal(none.item.expansions, undefined);
+  const book = await saveItem(env, { item: { title: 'B', type: 'book', status: 'want', expansions: [{ title: 'x' }] }, body: '' });
+  assert.equal(book.item.expansions, undefined, 'only board games keep expansions');
+  await assert.rejects(() => saveItem(env, { item: { title: 'C', type: 'book' } }), /Choose a status/);
+});
+
+test('BGG base game lists its expansions', async () => {
+  const { parseBggThings } = await import('../server/providers.js');
+  const [t] = parseBggThings(`<items><item type="boardgame" id="1"><name type="primary" value="Base"/>
+    <link type="boardgameexpansion" id="10" value="Exp A"/><link type="boardgameexpansion" id="11" value="Exp B"/></item>
+    <item type="boardgameexpansion" id="10"><name type="primary" value="Exp A"/><link type="boardgameexpansion" id="1" value="Base" inbound="true"/></item></items>`);
+  assert.equal(t.kind, 'boardgame');
+  assert.deepEqual(t.expansionLinks.map((l) => l.id), ['10', '11']);
+  const [, e] = parseBggThings(`<items><item type="boardgame" id="1"></item><item type="boardgameexpansion" id="10"><link type="boardgameexpansion" id="1" value="Base" inbound="true"/></item></items>`);
+  assert.equal(e.kind, 'boardgameexpansion');
+  assert.deepEqual(e.expansionLinks, []);
 });

@@ -203,6 +203,20 @@ a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
 .journal-body, .synopsis { border-top: 1px solid #ddd0b6; padding-top: 18px; margin-top: 18px; }
 .journal-body h2, .synopsis h2 { font-size: 1.1rem; color: var(--accent-ink); }
 .synopsis p { color: var(--ink-soft); white-space: pre-line; }
+
+/* Expansions attached to a board game */
+.expansions-section { border-top: 1px solid #ddd0b6; padding-top: 18px; margin-top: 18px; }
+.expansions-section h2 { font-size: 1.1rem; color: var(--accent-ink); display: flex; align-items: center; gap: 8px; }
+.expansions-section .count { font-size: 0.75rem; font-weight: 600; color: var(--ink-soft); background: var(--paper-2); border-radius: 999px; padding: 1px 8px; }
+.expansion-grid { list-style: none; padding: 0; margin: 10px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 14px; }
+.expansion { display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: var(--ink); }
+.expansion-img { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #5e2f45; box-shadow: 0 3px 10px rgba(0,0,0,0.18); display: grid; place-items: center; }
+.expansion-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.expansion-ph { color: rgba(255,255,255,0.75); font-weight: 700; font-size: 1.6rem; }
+.expansion-title { font-size: 0.82rem; font-weight: 600; line-height: 1.25; }
+.expansion-year { font-size: 0.75rem; color: var(--ink-soft); margin-top: -4px; }
+a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: underline; }
+
 .prose { font-family: var(--sans); font-size: 1.05rem; line-height: 1.75; }
 .prose p { margin: 0 0 0.9em; }
 .prose blockquote { border-left: 3px solid var(--accent); margin: 0 0 1em; padding-left: 14px; color: var(--ink-soft); font-style: italic; }

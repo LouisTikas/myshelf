@@ -3,6 +3,7 @@ import { normalizeItem } from './markdown.js';
 import { assertSlug } from './paths.js';
 import { getItem, itemExists, putItem, removeItem } from './db.js';
 import { downloadImage, storeCover, deleteCover, storedCoverName, aspectOf } from './covers.js';
+import { cleanExpansions, storeExpansionCovers, deleteExpansionCovers } from './expansions.js';
 
 async function uniqueSlug(env, base) {
   let slug = base;
@@ -22,6 +23,7 @@ async function uniqueSlug(env, base) {
 export async function saveItem(env, payload) {
   const raw = payload?.item;
   if (!raw || !raw.title || !TYPE_KEYS.includes(raw.type)) throw new HttpError(400, 'Item needs a title and a valid type');
+  if (!['want', 'in-progress', 'finished', 'abandoned'].includes(raw.status)) throw new HttpError(400, 'Choose a status before saving');
   const item = normalizeItem(raw);
   delete item.body;
   const isEdit = Boolean(payload.slug);
@@ -63,8 +65,14 @@ export async function saveItem(env, payload) {
   }
   if (item.coverAspect == null) delete item.coverAspect;
 
+  // Expansions live inside the base game's entry (board games only).
+  item.expansions = item.type === 'boardgame' ? cleanExpansions(raw.expansions) : [];
+  const unusedExpansionCovers = await storeExpansionCovers(env, slug, item.expansions, previous?.expansions);
+  if (!item.expansions.length) delete item.expansions;
+
   await putItem(env, slug, item, payload.body);
   if (removeOld) await deleteCover(env, oldStored).catch(() => {});
+  await deleteExpansionCovers(env, unusedExpansionCovers);
   return { slug, item };
 }
 
@@ -74,5 +82,6 @@ export async function deleteItem(env, slug) {
   if (!row) throw new HttpError(404, 'Item not found');
   await removeItem(env, slug);
   await deleteCover(env, row.item.cover).catch(() => {});
+  await deleteExpansionCovers(env, (row.item.expansions || []).map((x) => x.cover));
   return { slug };
 }

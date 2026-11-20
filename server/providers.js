@@ -343,6 +343,9 @@ export function parseBggThings(xml) {
     const num = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : undefined; };
     return {
       id: attrs(a).id,
+      kind: attrs(a).type || 'boardgame',
+      // On a base game, these links are its expansions (on an expansion, inbound="true" links point to the base game).
+      expansionLinks: links.filter((l) => l.type === 'boardgameexpansion' && l.inbound !== 'true').map((l) => ({ id: l.id, title: l.value })),
       title: (names.find((n) => n.type === 'primary') || names[0] || {}).value || '',
       year: val('yearpublished'),
       image: text('image'),
@@ -445,7 +448,7 @@ async function searchBgg(q, env) {
       cover: t.image || t.thumbnail || '',
       description: truncate(t.description),
       genres: t.categories || [],
-      details: bggDetails(t),
+      details: { ...bggDetails(t), ...(t.kind === 'boardgameexpansion' ? { kind: 'Expansion' } : {}) },
       url: `https://boardgamegeek.com/boardgame/${h.id}`,
     });
   });
@@ -475,6 +478,45 @@ export async function details(type, source, id, env) {
     return { genres: t.categories, details: bggDetails(t), creator: (t.designers || []).filter((d) => d !== '(Uncredited)').slice(0, 3).join(', ') };
   }
   return {};
+}
+
+/** A BGG thing → what we keep for an attached expansion. */
+function expansionOf(t, fallback = {}) {
+  const id = String(t?.id || fallback.id || '');
+  return {
+    id,
+    title: t?.title || fallback.title || '',
+    year: t?.year || '',
+    cover: t?.thumbnail || t?.image || '',
+    url: id ? `https://boardgamegeek.com/boardgameexpansion/${id}` : '',
+  };
+}
+
+/** Search BGG for expansions only. */
+export async function searchBggExpansions(q, env) {
+  const hits = parseBggSearch(await bgg(env, `search?query=${encodeURIComponent(q)}&type=boardgameexpansion`));
+  const ql = q.trim().toLowerCase();
+  const score = (h) => (h.name.toLowerCase() === ql ? 0 : h.name.toLowerCase().includes(ql) ? 1 : 2);
+  const seen = new Set();
+  const top = hits
+    .map((h, i) => ({ ...h, i }))
+    .sort((a, b) => score(a) - score(b) || a.i - b.i)
+    .filter((h) => !seen.has(h.id) && seen.add(h.id))
+    .slice(0, 15);
+  if (!top.length) return [];
+  const byId = Object.fromEntries((await bggThings(env, top.map((h) => h.id))).map((t) => [t.id, t]));
+  return top.map((h) => ({ ...expansionOf(byId[h.id], { id: h.id, title: h.name }), year: byId[h.id]?.year || h.year || '' }));
+}
+
+/** Every expansion BGG lists for a base game (newest first, up to 60). */
+export async function bggExpansionsFor(env, baseId) {
+  const [base] = await bggThings(env, [baseId]);
+  if (!base) throw new HttpError(404, 'Game not found on BoardGameGeek');
+  const links = base.expansionLinks.slice(0, 60);
+  const byId = links.length ? Object.fromEntries((await bggThings(env, links.map((l) => l.id))).map((t) => [t.id, t])) : {};
+  return links
+    .map((l) => expansionOf(byId[l.id], l))
+    .sort((a, b) => (parseInt(b.year, 10) || 0) - (parseInt(a.year, 10) || 0) || a.title.localeCompare(b.title));
 }
 
 /** Fetch up to 20 games per request from BGG (with stats). */

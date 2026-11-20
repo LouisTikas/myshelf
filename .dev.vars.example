@@ -1,8 +1,5 @@
 # Copy to .dev.vars for local testing with `npm run preview`. Never commit .dev.vars.
 ADMIN_TOKEN=change-me
-GITHUB_TOKEN=
-GITHUB_REPO=your-username/myshelf
-GITHUB_BRANCH=main
 TMDB_TOKEN=
 TWITCH_CLIENT_ID=
 TWITCH_CLIENT_SECRET=

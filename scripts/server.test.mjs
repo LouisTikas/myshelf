@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import { buildMarkdown, parseMarkdown, normalizeItem } from '../server/markdown.js';
 import { parseBggSearch, parseBggThings, search, details, igdbScore } from '../server/providers.js';
 import { saveItem, deleteItem } from '../server/save.js';
-import { onRequest as authMiddleware } from '../functions/api/_middleware.js';
-import { onRequestGet as searchHandler } from '../functions/api/search.js';
+import { checkAuth } from '../server/auth.js';
+import { GET as searchHandler } from '../src/pages/api/search.js';
+import { fakeEnv } from './fake-cloudflare.mjs';
 
 // ── tiny fetch mock ──
 function mockFetch(routes) {
@@ -169,70 +170,65 @@ test('Books merge Open Library + Google Books even if one fails', async () => {
 });
 
 // ── GitHub commit flow ──
-function githubMock({ existing = {} } = {}) {
-  const state = { blobs: [], tree: null, commitMsg: null, refPatched: false };
-  const calls = mockFetch([
-    [/\/contents\/(.+)\?ref=/, (url) => {
-      const path = decodeURI(url.match(/\/contents\/(.+)\?ref=/)[1]);
-      return path in existing ? new Response(existing[path], { status: 200 }) : new Response('{}', { status: 404 });
-    }],
-    ['/git/ref/heads/main', () => ({ object: { sha: 'parent' } })],
-    ['/git/commits/parent', () => ({ tree: { sha: 'basetree' } })],
-    ['/git/blobs', (_, init) => { const b = JSON.parse(init.body); state.blobs.push(b); return { sha: 'blob' + state.blobs.length }; }],
-    ['/git/trees', (_, init) => { state.tree = JSON.parse(init.body); return { sha: 'newtree' }; }],
-    [/\/git\/commits$/, (_, init) => { state.commitMsg = JSON.parse(init.body).message; return { sha: 'newcommit' }; }],
-    ['/git/refs/heads/main', (_, init) => { state.refPatched = JSON.parse(init.body).sha === 'newcommit'; return {}; }],
-    ['example.com/cover.jpg', () => new Response(new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]), { headers: { 'content-type': 'image/jpeg' } })],
-  ]);
-  return { state, calls };
-}
-const GH_ENV = { GITHUB_TOKEN: 'ghp', GITHUB_REPO: 'lex/shelf' };
 
-test('saveItem: new item downloads cover and commits md + image in one commit', async () => {
-  const { state } = githubMock({ existing: { 'src/content/items/book-dune-1965.md': '---\ntitle: x\n---\n' } });
-  const res = await saveItem(GH_ENV, {
-    item: { title: 'Dune', type: 'book', year: '1965', status: 'finished', cover: 'https://example.com/cover.jpg', collections: ['favorites'] },
-    body: 'Great.',
+const astro = (url, env, init) => ({ request: new Request(url, init), url: new URL(url), locals: { runtime: { env } }, params: {} });
+const PNG_1x2 = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAEUlEQVR4nGP4z8DAwMDAAAAMBgEAqqqdNwAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0));
+
+test('saveItem: new item goes to D1, cover is copied into KV with its proportions', async () => {
+  const env = fakeEnv();
+  await saveItem(env, { item: { title: 'Dune', type: 'book', year: 1965, status: 'finished' }, body: '' }); // takes the slug
+  mockFetch([['covers.openlibrary.org', () => new Response(PNG_1x2, { headers: { 'content-type': 'image/png' } })]]);
+  const res = await saveItem(env, {
+    item: { title: 'Dune', type: 'book', year: 1965, status: 'finished', cover: 'https://covers.openlibrary.org/b/id/1-L.jpg', collections: 'favorites, 2026' },
+    body: 'Spice.',
   });
-  assert.equal(res.slug, 'book-dune-1965-2'); // first slug was taken
-  assert.equal(res.item.cover, '/covers/book-dune-1965-2.jpg');
-  assert.equal(state.tree.base_tree, 'basetree');
-  const paths = state.tree.tree.map((t) => t.path).sort();
-  assert.deepEqual(paths, ['public/covers/book-dune-1965-2.jpg', 'src/content/items/book-dune-1965-2.md']);
-  assert.equal(state.blobs[0].encoding, 'base64');
-  assert.equal(state.blobs[0].content, Buffer.from([0xff, 0xd8, 0xff, 1, 2, 3]).toString('base64'));
-  assert.match(state.blobs[1].content, /cover: \/covers\/book-dune-1965-2\.jpg/);
-  assert.match(state.blobs[1].content, /dateAdded: \d{4}-\d{2}-\d{2}/);
-  assert.equal(state.commitMsg, '[CI Skip] Add book: Dune'); // saves skip the build by default
-  assert.ok(state.refPatched);
+  assert.equal(res.slug, 'book-dune-1965-2');
+  assert.match(res.item.cover, /^\/img\/book-dune-1965-2-[a-z0-9]+\.png$/);
+  assert.equal(res.item.coverAspect, 0.5);
+  assert.deepEqual(res.item.collections, ['favorites', '2026']);
+  assert.ok(res.item.dateAdded);
+  const name = res.item.cover.slice(5);
+  assert.ok(env.COVERS._store.has(name));
+  const img = await (await import('../server/covers.js')).serveCover(env, name);
+  assert.equal(img.headers.get('content-type'), 'image/png');
+  const { getItem } = await import('../server/db.js');
+  assert.equal((await getItem(env, 'book-dune-1965-2')).body, 'Spice.');
 });
 
-test('saveItem: editing keeps slug; deleteItem removes md + local cover', async () => {
-  const md = '---\ntitle: Dune\ntype: book\ncover: /covers/book-dune-1965.jpg\nstatus: finished\n---\n\nOld.';
-  let { state } = githubMock({ existing: { 'src/content/items/book-dune-1965.md': md } });
-  await saveItem(GH_ENV, { slug: 'book-dune-1965', item: { title: 'Dune', type: 'book', status: 'finished', cover: '/covers/book-dune-1965.jpg', rating: 5 }, body: 'New.' });
-  assert.deepEqual(state.tree.tree.map((t) => t.path), ['src/content/items/book-dune-1965.md']);
-  assert.equal(state.commitMsg, '[CI Skip] Update book: Dune');
-
-  ({ state } = githubMock({ existing: { 'src/content/items/book-dune-1965.md': md } }));
-  await deleteItem(GH_ENV, 'book-dune-1965');
-  assert.deepEqual(state.tree.tree, [
-    { path: 'src/content/items/book-dune-1965.md', mode: '100644', type: 'blob', sha: null },
-    { path: 'public/covers/book-dune-1965.jpg', mode: '100644', type: 'blob', sha: null },
-  ]);
-  await assert.rejects(() => deleteItem(GH_ENV, '../etc/passwd'), /Invalid slug/);
+test('saveItem: editing keeps slug, date added and cover; replacing/deleting cleans up KV', async () => {
+  const env = fakeEnv();
+  mockFetch([['example.com', () => new Response(PNG_1x2, { headers: { 'content-type': 'image/png' } })]]);
+  const first = await saveItem(env, { item: { title: 'Dune', type: 'book', year: 1965, cover: 'https://example.com/a.png' }, body: 'Old.' });
+  const edit = await saveItem(env, { slug: first.slug, item: { ...first.item, rating: 5 }, body: 'New.' });
+  assert.equal(edit.slug, first.slug);
+  assert.equal(edit.item.cover, first.item.cover);
+  assert.equal(edit.item.coverAspect, 0.5);
+  assert.equal(edit.item.dateAdded, first.item.dateAdded);
+  await new Promise((r) => setTimeout(r, 2));
+  const swapped = await saveItem(env, { slug: first.slug, item: { ...edit.item, cover: 'https://example.com/b.png' }, body: 'New.' });
+  assert.notEqual(swapped.item.cover, first.item.cover);
+  assert.equal(env.COVERS._store.size, 1, 'old cover removed');
+  await deleteItem(env, first.slug);
+  assert.equal(env.COVERS._store.size, 0);
+  await assert.rejects(() => deleteItem(env, first.slug), /not found/);
+  await assert.rejects(() => deleteItem(env, '../etc/passwd'), /Invalid slug/);
+  await assert.rejects(() => saveItem(env, { slug: 'nope', item: { title: 'X', type: 'book' } }), /not found/);
 });
 
-test('auth middleware + search handler', async () => {
+test('missing bindings give a clear error', async () => {
+  await assert.rejects(() => saveItem({}, { item: { title: 'X', type: 'book' } }), /binding named DB/);
+});
+
+test('auth check + search handler', async () => {
   const env = { ADMIN_TOKEN: 's3cret' };
-  const next = () => new Response('ok');
-  const req = (h) => new Request('https://x/api/ping', { headers: h });
-  assert.equal((await authMiddleware({ request: req({}), env, next })).status, 401);
-  assert.equal((await authMiddleware({ request: req({ authorization: 'Bearer nope' }), env, next })).status, 401);
-  assert.equal((await authMiddleware({ request: req({ authorization: 'Bearer s3cret' }), env, next })).status, 200);
-  const bad = await searchHandler({ request: new Request('https://x/api/search?type=nope&q=hi'), env });
+  const req = (headers) => new Request('https://x/api/ping', { headers });
+  assert.equal((await checkAuth(req({}), env)).status, 401);
+  assert.equal((await checkAuth(req({ authorization: 'Bearer nope' }), env)).status, 401);
+  assert.equal(await checkAuth(req({ authorization: 'Bearer s3cret' }), env), null);
+  assert.equal((await checkAuth(req({ authorization: 'Bearer s3cret' }), {})).status, 500);
+  const bad = await searchHandler(astro('https://x/api/search?type=nope&q=hi', env));
   assert.equal(bad.status, 400);
-  const noKey = await searchHandler({ request: new Request('https://x/api/search?type=movie&q=hello'), env: {} });
+  const noKey = await searchHandler(astro('https://x/api/search?type=movie&q=hello', {}));
   assert.equal(noKey.status, 400);
   assert.match((await noKey.json()).error, /TMDB_TOKEN/);
 });
@@ -294,95 +290,90 @@ test('automatic collections include items by status', async () => {
   assert.ok(inShelf({ status: 'want', collections: ['favorites'] }, { slug: 'favorites' }));
 });
 
-test('arrangements API saves per-type shelf orders', async () => {
-  const { onRequestPost } = await import('../functions/api/arrangements.js');
-  const { state } = githubMock({ existing: { 'src/data/arrangements.json': '{"music:finished":["x"]}' } });
-  const req = (body) => new Request('https://x/api/arrangements', { method: 'POST', body: JSON.stringify(body) });
-  const res = await onRequestPost({ request: req({ key: 'book:finished', order: ['b', 'a', 'b', '../bad'] }), env: GH_ENV });
-  assert.equal(res.status, 200);
-  const saved = JSON.parse(state.blobs[0].content);
+
+test('arrangements are stored per type shelf', async () => {
+  const { saveArrangement, getArrangements } = await import('../server/settings.js');
+  const env = fakeEnv();
+  await saveArrangement(env, 'music:finished', ['x']);
+  const saved = await saveArrangement(env, 'book:finished', ['b', 'a', 'b', '../bad']);
   assert.deepEqual(saved, { 'book:finished': ['b', 'a'], 'music:finished': ['x'] });
-  assert.equal(state.commitMsg, '[CI Skip] Arrange book:finished');
-  const bad = await onRequestPost({ request: req({ key: 'book:nope', order: [] }), env: GH_ENV });
-  assert.equal(bad.status, 400);
+  assert.deepEqual(await getArrangements(env), saved);
+  await saveArrangement(env, 'music:finished', []);
+  assert.deepEqual(Object.keys(await getArrangements(env)), ['book:finished']);
+  await assert.rejects(() => saveArrangement(env, 'book:nope', []), /Invalid shelf/);
 });
 
-test('refresh board games: links manual entries, keeps notes, one commit', async () => {
-  const { refreshBoardgames } = await import('../server/refresh.js');
-  const manual = '---\ntitle: Wingspan\ntype: boardgame\nyear: "2019"\nstatus: finished\nrating: 4.5\ncover: /covers/boardgame-wingspan-2019.jpg\ndetails:\n  players: 1–5\nsource:\n  name: Manual\n---\n\nMy notes stay.';
-  const state = { blobs: [], commitMsg: null };
-  mockFetch([
-    [/\/contents\/src\/content\/items\?ref=/, () => [{ type: 'file', name: 'boardgame-wingspan-2019.md' }, { type: 'file', name: 'book-x.md' }]],
-    [/\/contents\/src\/content\/items\/boardgame-wingspan-2019\.md/, () => new Response(manual)],
-    ['xmlapi2/search', () => BGG_SEARCH],
-    ['xmlapi2/thing', () => BGG_THING],
-    ['/git/ref/heads/main', () => ({ object: { sha: 'p' } })],
-    ['/git/commits/p', () => ({ tree: { sha: 't' } })],
-    ['/git/blobs', (_, init) => { state.blobs.push(JSON.parse(init.body)); return { sha: 'b' }; }],
-    ['/git/trees', () => ({ sha: 'nt' })],
-    [/\/git\/commits$/, (_, init) => { state.commitMsg = JSON.parse(init.body).message; return { sha: 'c' }; }],
-    ['/git/refs/heads/main', () => ({})],
-  ]);
-  const { sha, report } = await refreshBoardgames({ ...GH_ENV, BGG_TOKEN: 'tok' });
-  assert.equal(sha, 'c');
-  assert.equal(state.blobs.length, 1);
-  assert.equal(state.commitMsg, '[CI Skip] Refresh 1 board game from BGG');
-  assert.match(report[0].status, /linked to “Wingspan \(2019\)”/);
-  const md = state.blobs[0].content;
-  assert.match(md, /My notes stay\./);
-  assert.match(md, /rating: 4\.5/);
-  assert.match(md, /cover: \/covers\/boardgame-wingspan-2019\.jpg/);
-  assert.match(md, /minPlayers: 1/);
-  assert.match(md, /bestPlayers:\n\s+- 2\n\s+- 3/);
-  assert.match(md, /weight: 2\.44/);
-  assert.match(md, /id: "266192"/);
-  assert.match(md, /- Engine Building/);
-});
-
-test('collections API keeps the "show on" setting', async () => {
-  const { onRequestPost } = await import('../functions/api/collections.js');
-  const { state } = githubMock();
-  const req = new Request('https://x/api/collections', { method: 'POST', body: JSON.stringify({ collections: [
+test('collections keep the "show on" setting', async () => {
+  const { POST, GET } = await import('../src/pages/api/collections.js');
+  const env = fakeEnv();
+  const body = JSON.stringify({ collections: [
     { slug: 'a', name: 'A', show: 'type' }, { slug: 'b', name: 'B', show: 'both' }, { slug: 'c', name: 'C', show: 'shelves' }, { slug: 'd', name: 'D', show: 'bogus' },
-  ] }) });
-  const res = await onRequestPost({ request: req, env: GH_ENV });
+  ] });
+  const res = await POST(astro('https://x/api/collections', env, { method: 'POST', body }));
   assert.equal(res.status, 200);
-  const saved = JSON.parse(state.blobs[0].content);
-  assert.deepEqual(saved.map((c) => c.show), ['type', 'both', undefined, undefined]);
+  const { collections } = await (await GET(astro('https://x/api/collections', env))).json();
+  assert.deepEqual(collections.map((c) => c.show), ['type', 'both', undefined, undefined]);
 });
 
-test('save now, publish once', async () => {
-  const save = await import('../functions/api/save.js');
-  const pub = await import('../functions/api/publish.js');
-  const body = JSON.stringify({ item: { title: 'Catan', type: 'boardgame', status: 'want' }, body: '' });
+test('refresh board games: links manual entries, keeps notes and rating', async () => {
+  const { refreshBoardgames } = await import('../server/refresh.js');
+  const { putItem, getItem } = await import('../server/db.js');
+  const env = { ...fakeEnv(), BGG_TOKEN: 'tok' };
+  await putItem(env, 'boardgame-wingspan-2019', { title: 'Wingspan', type: 'boardgame', year: '2019', status: 'finished', rating: 4.5, cover: '/img/w.jpg', coverAspect: 1.2, details: { players: '1–5' }, source: { name: 'Manual' } }, 'My notes stay.');
+  await putItem(env, 'book-x', { title: 'X', type: 'book' }, '');
+  mockFetch([['xmlapi2/search', () => BGG_SEARCH], ['xmlapi2/thing', () => BGG_THING]]);
+  const { updated, report } = await refreshBoardgames(env);
+  assert.equal(updated, 1);
+  assert.match(report[0].status, /linked to “Wingspan \(2019\)”/);
+  const { item, body } = await getItem(env, 'boardgame-wingspan-2019');
+  assert.equal(body, 'My notes stay.');
+  assert.equal(item.rating, 4.5);
+  assert.equal(item.cover, '/img/w.jpg');
+  assert.equal(item.coverAspect, 1.2);
+  assert.equal(item.details.minPlayers, 1);
+  assert.deepEqual(item.details.bestPlayers, [2, 3]);
+  assert.equal(item.details.weight, 2.44);
+  assert.equal(item.source.id, '266192');
+  assert.ok(item.details.mechanics.includes('Engine Building'));
+});
 
-  let { state } = githubMock();
-  let res = await save.onRequestPost({ request: new Request('https://x/api/save', { method: 'POST', body }), env: GH_ENV });
-  assert.equal((await res.json()).published, false);
-  assert.match(state.commitMsg, /^\[CI Skip\] Add boardgame: Catan$/);
+test('import copies old Markdown entries + covers once, in batches', async () => {
+  const { importBatch, pendingImports } = await import('../server/import.js');
+  const { getItem, countItems } = await import('../server/db.js');
+  const { getCollections } = await import('../server/settings.js');
+  const env = fakeEnv();
+  const files = {};
+  for (let i = 0; i < 20; i++) files[`../content/items/book-n${i}.md`] = `---\ntitle: Book ${i}\ntype: book\nyear: "2020"\nstatus: finished\nrating: 4\ndateFinished: 2026-01-0${(i % 9) + 1}\ncover: /covers/book-n${i}.png\ncollections: [favorites]\n---\n\nNotes ${i}.`;
+  const seed = { files, collections: [{ slug: 'favorites', name: 'Favorites', description: '' }], arrangements: {} };
+  const fetched = [];
+  const fetchAsset = async (path) => { fetched.push(path); return new Response(PNG_1x2, { headers: { 'content-type': 'image/png' } }); };
+  const a = await importBatch(env, seed, fetchAsset);
+  assert.equal(a.imported.length, 15);
+  assert.equal(a.remaining, 5);
+  assert.deepEqual(a.settings, ['collections', 'arrangements']);
+  const b = await importBatch(env, seed, fetchAsset);
+  assert.equal(b.remaining, 0);
+  assert.deepEqual(b.settings, []);
+  assert.equal(await countItems(env), 20);
+  assert.equal((await pendingImports(env, seed)).length, 0);
+  const { item, body } = await getItem(env, 'book-n3');
+  assert.equal(body, 'Notes 3.');
+  assert.match(item.cover, /^\/img\/book-n3-/);
+  assert.equal(item.coverAspect, 0.5);
+  assert.equal(item.dateFinished, '2026-01-04');
+  assert.equal(env.COVERS._store.size, 20);
+  assert.equal((await getCollections(env))[0].name, 'Favorites');
+  const c = await importBatch(env, seed, fetchAsset); // nothing left: no-op
+  assert.equal(c.imported.length, 0);
+});
 
-  ({ state } = githubMock());
-  res = await save.onRequestPost({ request: new Request('https://x/api/save', { method: 'POST', body, headers: { 'x-myshelf-publish': '1' } }), env: GH_ENV });
-  assert.equal((await res.json()).published, true);
-  assert.equal(state.commitMsg, 'Add boardgame: Catan'); // "Publish immediately" → builds
-
-  ({ state } = githubMock());
-  res = await pub.onRequestPost({ request: new Request('https://x/api/publish', { method: 'POST' }), env: GH_ENV });
-  assert.equal(res.status, 200);
-  assert.equal(state.commitMsg, 'Publish site');
-  assert.equal(state.tree.tree[0].path, 'src/data/published.json');
-
-  mockFetch([[/\/compare\/abc1234\.\.\.main/, () => ({ ahead_by: 5, commits: [
-    { commit: { message: '[CI Skip] Add boardgame: Catan\n\nbody' } },
-    { commit: { message: 'Blu-ray cases taller (a code update that deploys itself)' } },
-    { commit: { message: '[CI Skip] Update collections' } },
-    { commit: { message: 'Publish site' } },
-    { commit: { message: '[CI Skip] Remove book: X' } },
-  ] })]]);
-  res = await pub.onRequestGet({ request: new Request('https://x/api/publish?since=abc1234'), env: GH_ENV });
-  const pending = await res.json();
-  assert.equal(pending.pending, 3);
-  assert.deepEqual(pending.changes, ['Add boardgame: Catan', 'Update collections', 'Remove book: X']);
-  res = await pub.onRequestGet({ request: new Request('https://x/api/publish?since='), env: GH_ENV });
-  assert.equal((await res.json()).pending, null);
+test('pages get entries in the old content-collection shape', async () => {
+  const { toEntry } = await import('../src/lib/items.js').catch(() => ({}));
+  if (!toEntry) return; // items.js imports `marked`; skip if unavailable
+  const e = toEntry({ slug: 's', item: { title: 'T', type: 'movie', year: 2024, rating: null, dateStarted: null }, body: 'b' });
+  assert.equal(e.id, 's');
+  assert.equal(e.data.year, '2024');
+  assert.equal(e.data.status, 'finished');
+  assert.deepEqual(e.data.collections, []);
+  assert.equal(e.data.rating, null);
 });

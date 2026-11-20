@@ -85,12 +85,14 @@ export function truncate(str, n = 1200) {
   return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s;
 }
 
-export function arrayBufferToBase64(buf) {
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
+
+/** Cloudflare bindings + secrets for an Astro request (D1, KV, API keys). */
+export function envOf(locals) {
+  return locals?.runtime?.env || {};
+}
+
+/** Astro endpoint wrapper: fn({ request, env, url }) with thrown errors turned into JSON. */
+export function route(fn) {
+  const h = handler(fn);
+  return (ctx) => h({ request: ctx.request, env: envOf(ctx.locals), url: ctx.url, params: ctx.params });
 }

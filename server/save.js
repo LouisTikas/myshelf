@@ -1,29 +1,13 @@
 import { HttpError, slugify, TYPE_KEYS } from './util.js';
-import { readFile, fileExists, commitFiles } from './github.js';
-import { buildMarkdown, normalizeItem, parseMarkdown } from './markdown.js';
-import { itemPath, assertSlug, localCoverRepoPath, COVERS_DIR } from './paths.js';
-
-const EXT = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' };
-const MAX_COVER_BYTES = 5 * 1024 * 1024;
-
-async function downloadCover(url) {
-  try {
-    const res = await fetch(url, { headers: { 'user-agent': 'MyShelf' }, redirect: 'follow' });
-    if (!res.ok) return null;
-    const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-    if (!EXT[type]) return null;
-    const buf = await res.arrayBuffer();
-    if (!buf.byteLength || buf.byteLength > MAX_COVER_BYTES) return null;
-    return { buf, ext: EXT[type] };
-  } catch {
-    return null;
-  }
-}
+import { normalizeItem } from './markdown.js';
+import { assertSlug } from './paths.js';
+import { getItem, itemExists, putItem, removeItem } from './db.js';
+import { downloadImage, storeCover, deleteCover, storedCoverName, aspectOf } from './covers.js';
 
 async function uniqueSlug(env, base) {
   let slug = base;
   for (let n = 2; n < 50; n++) {
-    if (!(await fileExists(env, itemPath(slug)))) return slug;
+    if (!(await itemExists(env, slug))) return slug;
     slug = `${base}-${n}`;
   }
   throw new HttpError(409, 'Could not find a free slug');
@@ -31,57 +15,64 @@ async function uniqueSlug(env, base) {
 
 /**
  * Create or update an item.
- * payload: { slug?: string (existing item), item: {...frontmatter}, body: string }
- * If item.cover is a remote URL, the image is downloaded and stored in the repo.
+ * payload: { slug?: string (existing item), item: {...fields}, body: string }
+ * If item.cover is a remote URL, the image is downloaded into cover storage.
+ * Saves go live immediately.
  */
-export async function saveItem(env, payload, opts = {}) {
+export async function saveItem(env, payload) {
   const raw = payload?.item;
   if (!raw || !raw.title || !TYPE_KEYS.includes(raw.type)) throw new HttpError(400, 'Item needs a title and a valid type');
   const item = normalizeItem(raw);
+  delete item.body;
   const isEdit = Boolean(payload.slug);
 
   let previous = null;
   let slug;
   if (isEdit) {
     slug = assertSlug(payload.slug);
-    const text = await readFile(env, itemPath(slug));
-    if (text == null) throw new HttpError(404, 'Item to update was not found');
-    previous = parseMarkdown(text).data;
+    const row = await getItem(env, slug);
+    if (!row) throw new HttpError(404, 'Item to update was not found');
+    previous = row.item;
+    item.dateAdded = item.dateAdded || previous.dateAdded || null;
   } else {
     slug = await uniqueSlug(env, slugify(`${item.type} ${item.title} ${item.year || ''}`));
     item.dateAdded = item.dateAdded || new Date().toISOString().slice(0, 10);
   }
+  for (const [k, v] of Object.entries(item)) if (v == null) delete item[k];
 
-  const changes = [];
-  const oldLocal = localCoverRepoPath(previous?.cover);
+  const oldStored = storedCoverName(previous?.cover) ? previous.cover : null;
+  let removeOld = false;
 
   if (/^https?:\/\//i.test(item.cover || '')) {
-    const img = await downloadCover(item.cover);
+    const img = await downloadImage(item.cover);
     if (img) {
-      const path = `${COVERS_DIR}/${slug}.${img.ext}`;
-      changes.push({ path, binary: img.buf });
-      if (oldLocal && oldLocal !== path) changes.push({ path: oldLocal, delete: true });
-      item.cover = `/covers/${slug}.${img.ext}`;
+      item.cover = await storeCover(env, slug, img);
+      item.coverAspect = aspectOf(img.buf);
+      removeOld = Boolean(oldStored);
+    } else {
+      // Download failed: keep the remote URL (hotlinked) rather than losing the cover.
+      delete item.coverAspect;
     }
-    // If the download failed we keep the remote URL (hotlinked) rather than losing the cover.
-  } else if (!item.cover && oldLocal) {
-    changes.push({ path: oldLocal, delete: true });
+  } else if (!item.cover) {
+    delete item.coverAspect;
+    removeOld = Boolean(oldStored);
+  } else if (previous && item.cover === previous.cover) {
+    if (previous.coverAspect) item.coverAspect = previous.coverAspect;
+  } else {
+    delete item.coverAspect;
   }
+  if (item.coverAspect == null) delete item.coverAspect;
 
-  changes.push({ path: itemPath(slug), text: buildMarkdown(item, payload.body) });
-  const verb = isEdit ? 'Update' : 'Add';
-  const sha = await commitFiles(env, `${verb} ${item.type}: ${item.title}`, changes, opts);
-  return { slug, sha, item };
+  await putItem(env, slug, item, payload.body);
+  if (removeOld) await deleteCover(env, oldStored).catch(() => {});
+  return { slug, item };
 }
 
-export async function deleteItem(env, slug, opts = {}) {
+export async function deleteItem(env, slug) {
   assertSlug(slug);
-  const text = await readFile(env, itemPath(slug));
-  if (text == null) throw new HttpError(404, 'Item not found');
-  const { data } = parseMarkdown(text);
-  const changes = [{ path: itemPath(slug), delete: true }];
-  const cover = localCoverRepoPath(data.cover);
-  if (cover) changes.push({ path: cover, delete: true });
-  const sha = await commitFiles(env, `Remove ${data.type || 'item'}: ${data.title || slug}`, changes, opts);
-  return { slug, sha };
+  const row = await getItem(env, slug);
+  if (!row) throw new HttpError(404, 'Item not found');
+  await removeItem(env, slug);
+  await deleteCover(env, row.item.cover).catch(() => {});
+  return { slug };
 }

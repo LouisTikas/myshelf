@@ -1,6 +1,5 @@
 // Every /api/* request must carry `Authorization: Bearer <ADMIN_TOKEN>`.
-// (Optional extra layer: put /admin* and /api/* behind Cloudflare Access.)
-import { json } from '../../server/util.js';
+import { json } from './util.js';
 
 async function sha256(str) {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)));
@@ -13,14 +12,11 @@ async function safeEqual(a, b) {
   return diff === 0;
 }
 
-export async function onRequest({ request, env, next }) {
-  if (!env.ADMIN_TOKEN) {
-    return json({ error: 'ADMIN_TOKEN is not set in Cloudflare Pages environment variables.' }, 500);
-  }
+/** Returns an error Response if the request isn't authorized, otherwise null. */
+export async function checkAuth(request, env) {
+  if (!env.ADMIN_TOKEN) return json({ error: 'ADMIN_TOKEN is not set in Cloudflare Pages environment variables.' }, 500);
   const auth = request.headers.get('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token || !(await safeEqual(token, env.ADMIN_TOKEN))) {
-    return json({ error: 'Unauthorized' }, 401);
-  }
-  return next();
+  if (!token || !(await safeEqual(token, env.ADMIN_TOKEN))) return json({ error: 'Unauthorized' }, 401);
+  return null;
 }

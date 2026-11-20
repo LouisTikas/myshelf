@@ -1,0 +1,15 @@
+# Only needed for LOCAL development (`npm run preview`). Copy to wrangler.toml.
+# On Cloudflare, bindings are set in the dashboard: Pages project → Settings → Bindings.
+# (Don't commit a wrangler.toml: Cloudflare would then ignore the dashboard bindings.)
+name = "myshelf"
+pages_build_output_dir = "./dist"
+compatibility_date = "2025-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "myshelf"
+database_id = "local"
+
+[[kv_namespaces]]
+binding = "COVERS"
+id = "local"

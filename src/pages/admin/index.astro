@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import { TYPES, TYPE_KEYS } from '../../lib/types.js';
 import '../../styles/admin.css';
+export const prerender = true;
 const typesJson = JSON.stringify(TYPES);
 ---
 <Base title="Manage" noindex>
@@ -31,15 +32,7 @@ const typesJson = JSON.stringify(TYPES);
         </div>
       </div>
 
-      <div id="publish-bar" class="publish-bar">
-        <span class="publish-dot" aria-hidden="true"></span>
-        <span id="publish-count" class="publish-count">Checking…</span>
-        <span class="spacer"></span>
-        <label class="publish-toggle" title="Each change builds the site on its own (uses a build every time)">
-          <input type="checkbox" id="publish-immediately" /> Publish immediately
-        </label>
-        <button type="button" class="btn primary small" id="publish-btn" disabled>Publish now</button>
-      </div>
+      <div id="storage-banner" class="storage-banner" hidden></div>
 
       <!-- Add / search -->
       <div class="tabpanel" data-panel="add">
@@ -69,9 +62,9 @@ const typesJson = JSON.stringify(TYPES);
               {TYPE_KEYS.map((t) => <option value={t}>{TYPES[t].plural}</option>)}
             </select>
           </div>
-          <p class="muted small">Changes take about a minute to appear on the public site while Cloudflare rebuilds it.</p>
           <div class="row">
             <button id="refresh-bgg" class="btn ghost small" type="button">↻ Refresh board games from BGG</button>
+            <button id="export-btn" class="btn ghost small" type="button" title="Download everything (items, notes, collections) as a JSON file">⤓ Download backup</button>
             <span id="refresh-bgg-msg" class="muted small"></span>
           </div>
           <ul id="lib-list" class="lib-list"></ul>
@@ -105,7 +98,7 @@ const typesJson = JSON.stringify(TYPES);
             <label>Cover image URL
               <input name="cover" type="text" placeholder="https://…" />
             </label>
-            <p class="muted small">Remote images are downloaded into your repo when you save.</p>
+            <p class="muted small">Remote images are copied into your shelf’s storage when you save.</p>
           </div>
           <div class="editor-fields">
             <label class="span2">Title <input name="title" required /></label>
@@ -172,7 +165,6 @@ const typesJson = JSON.stringify(TYPES);
       <div id="preview-body"></div>
     </dialog>
 
-    <div id="publish-pill" class="publish-pill" hidden></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </div>
   <script>

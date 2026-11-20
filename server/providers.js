@@ -498,7 +498,6 @@ export async function bggFind(env, title, year) {
 
 export function configured(env) {
   return {
-    github: Boolean(env.GITHUB_TOKEN && env.GITHUB_REPO),
     books: true,
     tmdb: Boolean(env.TMDB_TOKEN),
     spotify: Boolean(env.SPOTIFY_CLIENT_ID && env.SPOTIFY_CLIENT_SECRET),

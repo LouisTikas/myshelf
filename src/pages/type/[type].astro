@@ -3,19 +3,17 @@ import Base from '../../layouts/Base.astro';
 import Shelf from '../../components/Shelf.astro';
 import BoardgameFilters from '../../components/BoardgameFilters.astro';
 import '../../styles/filters.css';
-import { getItems } from '../../lib/items.js';
+import { getItems, getShelves, getArrangements } from '../../lib/items.js';
 import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../lib/types.js';
 import { sortShelf, inShelf, showsOnType } from '../../lib/sorting.js';
-import { getShelves } from '../../lib/items.js';
-import arrangements from '../../data/arrangements.json';
 
-export function getStaticPaths() {
-  return TYPE_KEYS.map((type) => ({ params: { type } }));
-}
 const { type } = Astro.params;
+if (!TYPE_KEYS.includes(type)) return new Response(null, { status: 404, statusText: 'Not found' });
+const env = Astro.locals.runtime.env;
 const t = TYPES[type];
-const all = (await getItems()).filter((e) => e.data.type === type);
-const typeCollections = getShelves()
+const [items, shelves, arrangements] = await Promise.all([getItems(env), getShelves(env), getArrangements(env)]);
+const all = items.filter((e) => e.data.type === type);
+const typeCollections = shelves
   .filter(showsOnType)
   .map((c) => ({ c, items: sortShelf(all.filter((e) => inShelf(e.data, c)), c) }))
   .filter((x) => x.items.length);

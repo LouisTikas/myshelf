@@ -14,8 +14,7 @@ const state = {
   library: [],
   collections: [],
   editing: null, // { slug?, source? }
-  pending: { saved: {}, deleted: new Set() }, // changes not yet in the built site
-  lastSha: null,      // most recent commit we made; the site is up to date once it's built
+  saved: {},          // items saved in this session (for the preview dialog)
   previewSlug: null,
 };
 
@@ -26,15 +25,12 @@ function getToken() {
 function setToken(t) {
   try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {}
 }
-const PUBLISH_KEY = 'myshelf_publish_now';
-const publishNowOn = () => { try { return localStorage.getItem(PUBLISH_KEY) === '1'; } catch { return false; } };
 async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(`/api/${path}`, {
     method,
     headers: {
       authorization: `Bearer ${getToken()}`,
       ...(body ? { 'content-type': 'application/json' } : {}),
-      ...(method !== 'GET' && path !== 'publish' && publishNowOn() ? { 'x-myshelf-publish': '1' } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -74,12 +70,12 @@ function showLogin(error) {
 async function boot() {
   if (!getToken()) return showLogin();
   try {
-    const { configured } = await api('ping');
+    const ping = await api('ping');
     $('#login').hidden = true;
     $('#app').hidden = false;
-    renderConfig(configured);
+    renderConfig(ping.configured);
+    renderStorage(ping);
     await Promise.all([loadLibrary(), loadCollections()]);
-    refreshPending();
     handleHash();
   } catch (e) {
     if (e.message !== 'Unauthorized') showLogin(e.message.includes('Failed to fetch') ? 'Could not reach the API.' : e.message);
@@ -87,7 +83,6 @@ async function boot() {
 }
 function renderConfig(c) {
   const missing = [];
-  if (!c.github) missing.push('GitHub');
   if (!c.tmdb) missing.push('TMDB');
   if (!c.igdb) missing.push('IGDB');
   if (!c.bgg) missing.push('BGG');
@@ -96,6 +91,47 @@ function renderConfig(c) {
     ? `<span class="warn" title="Set these in Cloudflare Pages → Settings → Variables">Missing keys: ${esc(missing.join(', '))}</span>`
     : '<span class="okay">All sources connected</span>';
 }
+// Storage status + one-time import of the old Git-based entries.
+function renderStorage(ping) {
+  const el = $('#storage-banner');
+  const s = ping.storage || {};
+  const missing = [!s.db && 'a D1 database binding named <code>DB</code>', !s.covers && 'a KV namespace binding named <code>COVERS</code>'].filter(Boolean);
+  if (missing.length) {
+    el.innerHTML = `<strong>Storage isn’t connected yet.</strong> In Cloudflare Pages → Settings → Bindings, add ${missing.join(' and ')}, then redeploy.`;
+    el.className = 'storage-banner warn';
+    el.hidden = false;
+    return;
+  }
+  if (ping.toImport > 0) {
+    el.innerHTML = `<span><strong>${ping.toImport} entr${ping.toImport === 1 ? 'y' : 'ies'}</strong> from your old Git-based shelf ${ping.toImport === 1 ? 'isn’t' : 'aren’t'} in the database yet.</span>
+      <button type="button" class="btn primary small" id="import-btn">Import now</button> <span id="import-msg" class="muted small"></span>`;
+    el.className = 'storage-banner';
+    el.hidden = false;
+    return;
+  }
+  el.hidden = true;
+}
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('#import-btn');
+  if (!btn) return;
+  btn.disabled = true;
+  let total = 0;
+  try {
+    for (let i = 0; i < 100; i++) {
+      const res = await api('import', { method: 'POST', body: {} });
+      total += res.imported.length;
+      $('#import-msg').textContent = `Imported ${total}… ${res.remaining ? `${res.remaining} to go` : ''}`;
+      if (!res.remaining || !res.imported.length) break;
+    }
+    await Promise.all([loadLibrary(), loadCollections()]);
+    renderStorage(await api('ping'));
+    toast(`Imported ${total} entr${total === 1 ? 'y' : 'ies'}. Your shelves are live.`);
+  } catch (err) {
+    btn.disabled = false;
+    toast(err.message, 'error');
+  }
+});
+
 $('#login-form').addEventListener('submit', (e) => {
   e.preventDefault();
   setToken($('#login-token').value.trim());
@@ -319,12 +355,10 @@ form.addEventListener('submit', async (e) => {
   saveBtn.textContent = 'Saving…';
   try {
     const res = await api('save', { method: 'POST', body: { slug, item, body: form.body.value } });
-    state.pending.saved[res.slug] = { slug: res.slug, ...res.item, body: form.body.value, built: false };
-    state.pending.deleted.delete(res.slug);
-    renderLibrary();
+    state.saved[res.slug] = { slug: res.slug, ...res.item, body: form.body.value };
     editor.close();
-    afterWrite(res);
     showPreview(res.slug);
+    loadLibrary();
     if (location.hash) history.replaceState(null, '', location.pathname);
   } catch (err) {
     toast(err.message, 'error');
@@ -343,9 +377,9 @@ $('#refresh-bgg').addEventListener('click', async (e) => {
   btn.disabled = true;
   $('#refresh-bgg-msg').textContent = 'Fetching the latest from BoardGameGeek…';
   try {
-    const { sha, report, published } = await api('refresh-boardgames', { method: 'POST', body: {} });
+    const { updated, report } = await api('refresh-boardgames', { method: 'POST', body: {} });
     $('#refresh-bgg-msg').textContent = report.length ? refreshSummary(report) : 'No board games to refresh.';
-    if (sha) { afterWrite({ sha, published }); toast(`Refreshed ${report.filter((r) => r.bggUrl).length} board game(s).${published ? ' Your site is updating.' : ' Publish when you’re ready.'}`); }
+    if (updated) { loadLibrary(); toast(`Refreshed ${updated} board game${updated === 1 ? '' : 's'}.`); }
   } catch (err) {
     $('#refresh-bgg-msg').textContent = '';
     toast(err.message, 'error');
@@ -360,10 +394,9 @@ $('#editor-refresh-bgg').addEventListener('click', async (e) => {
   btn.disabled = true;
   btn.textContent = 'Refreshing…';
   try {
-    const { sha, report, published } = await api('refresh-boardgames', { method: 'POST', body: { slugs: [slug] } });
+    const { report } = await api('refresh-boardgames', { method: 'POST', body: { slugs: [slug] } });
     const { item, body } = await api(`item?slug=${encodeURIComponent(slug)}`);
     openEditor({ ...item, body }, slug);
-    if (sha) afterWrite({ sha, published });
     toast(report[0] ? `${report[0].title}: ${report[0].status}` : 'Nothing to refresh.');
   } catch (err) {
     toast(err.message, 'error');
@@ -379,17 +412,13 @@ async function loadLibrary() {
     const res = await fetch('/library.json', { cache: 'no-store' });
     const data = await res.json();
     state.library = data.items || [];
-    state.builtCommit = data.commit || '';
   } catch {
     state.library = [];
   }
   renderLibrary();
 }
 function libraryItems() {
-  const map = new Map(state.library.map((i) => [i.slug, i]));
-  for (const [slug, it] of Object.entries(state.pending.saved)) if (!it.built) map.set(slug, { ...it, pending: true });
-  for (const slug of state.pending.deleted) map.delete(slug);
-  return [...map.values()];
+  return state.library;
 }
 function renderLibrary() {
   const q = $('#lib-filter').value.trim().toLowerCase();
@@ -404,12 +433,10 @@ function renderLibrary() {
         ${coverThumb(i, 56)}
         <span class="lib-text">
           <strong>${esc(i.title)}</strong>
-          <span class="muted small">${esc(TYPES[i.type]?.label)} · ${esc(i.creator || '')} ${i.pending ? '<span class="pill">pending rebuild</span>' : ''}</span>
+          <span class="muted small">${esc(TYPES[i.type]?.label)} · ${esc(i.creator || '')}</span>
         </span>
         <span class="lib-actions">
-          ${i.pending
-            ? `<button class="btn ghost small" data-preview="${esc(i.slug)}">Preview</button>`
-            : `<a class="btn ghost small" href="/item/${esc(i.slug)}/" target="_blank">View</a>`}
+          <a class="btn ghost small" href="/item/${esc(i.slug)}/" target="_blank">View</a>
           <button class="btn ghost small" data-edit="${esc(i.slug)}">Edit</button>
           <button class="btn ghost small danger" data-del="${esc(i.slug)}">Delete</button>
         </span>
@@ -429,8 +456,6 @@ async function editSlug(slug) {
   }
 }
 $('#lib-list').addEventListener('click', async (e) => {
-  const prev = e.target.closest('[data-preview]');
-  if (prev) return showPreview(prev.dataset.preview);
   const edit = e.target.closest('[data-edit]');
   if (edit) return editSlug(edit.dataset.edit);
   const del = e.target.closest('[data-del]');
@@ -443,12 +468,11 @@ $('#lib-list').addEventListener('click', async (e) => {
   }
   del.disabled = true;
   try {
-    const res = await api('delete', { method: 'POST', body: { slug: del.dataset.del } });
-    state.pending.deleted.add(del.dataset.del);
-    delete state.pending.saved[del.dataset.del];
+    await api('delete', { method: 'POST', body: { slug: del.dataset.del } });
+    state.library = state.library.filter((i) => i.slug !== del.dataset.del);
+    delete state.saved[del.dataset.del];
     renderLibrary();
-    afterWrite(res);
-    toast(res.published ? 'Deleted. Your site is updating.' : 'Deleted. Publish when you’re ready.');
+    toast('Deleted.');
   } catch (err) {
     del.disabled = false;
     toast(err.message, 'error');
@@ -461,8 +485,6 @@ async function loadCollections() {
     const { collections } = await api('collections');
     state.collections = collections;
   } catch (err) {
-    // Fall back to the built copy if GitHub isn't configured yet.
-    try { state.collections = (await (await fetch('/library.json')).json()).collections || []; } catch {}
     toast(err.message, 'error');
   }
   renderCollections();
@@ -532,14 +554,13 @@ $('#col-save').addEventListener('click', async () => {
   const btn = $('#col-save');
   btn.disabled = true;
   try {
-    const { collections, sha, published } = await api('collections', {
+    const { collections } = await api('collections', {
       method: 'POST',
       body: { collections: state.collections.filter((c) => c.name.trim()) },
     });
     state.collections = collections;
     renderCollections();
-    afterWrite({ sha, published });
-    toast(published ? 'Collections saved. Your shelves are updating.' : 'Collections saved. Publish when you’re ready.');
+    toast('Collections saved.');
   } catch (err) {
     toast(err.message, 'error');
   } finally {
@@ -558,11 +579,10 @@ function openArrangeFor(index) {
     onSave: async (order) => {
       c.sort = 'custom';
       c.order = order;
-      const { collections, sha, published } = await api('collections', { method: 'POST', body: { collections: state.collections.filter((x) => x.name.trim()) } });
+      const { collections } = await api('collections', { method: 'POST', body: { collections: state.collections.filter((x) => x.name.trim()) } });
       state.collections = collections;
       renderCollections();
-      afterWrite({ sha, published });
-      toast(`Saved the order for “${c.name}”.${published ? ' Your shelf is updating.' : ' Publish when you’re ready.'}`);
+      toast(`Saved the order for “${c.name}”.`);
     },
   });
 }
@@ -588,7 +608,7 @@ function coverMarkup(item, height) {
 }
 
 function showPreview(slug) {
-  const it = state.pending.saved[slug];
+  const it = state.saved[slug];
   if (!it) return;
   state.previewSlug = slug;
   const t = TYPES[it.type] || TYPES.book;
@@ -622,7 +642,8 @@ function showPreview(slug) {
         ${it.description ? `<section class="synopsis"><h2>About</h2><p>${esc(it.description)}</p></section>` : ''}
       </div>
     </article>`;
-  renderPublishStatus();
+  $('#publish-status').innerHTML = `✓ Live on your site — <a href="/item/${esc(slug)}/" target="_blank">view page</a>`;
+  $('#publish-status').className = 'publish-status live';
   const dlg = $('#preview');
   if (!dlg.open) dlg.showModal();
 }
@@ -641,125 +662,18 @@ $('#preview-another').addEventListener('click', () => {
   $('#search-q').focus();
 });
 
-// ───────── publish watcher: polls the built site until our latest commit is live ─────────
-let publishTimer = null;
-let publishStarted = 0;
-const PUBLISH_TIMEOUT = 6 * 60 * 1000;
-
-function publishState() {
-  if (!state.lastSha) return 'idle';
-  if (state.builtCommit && state.builtCommit === state.lastSha) return 'live';
-  if (Date.now() - publishStarted > PUBLISH_TIMEOUT) return 'slow';
-  return 'building';
-}
-
-function renderPublishStatus() {
-  const st = publishState();
-  const secs = Math.round((Date.now() - publishStarted) / 1000);
-  const slug = state.previewSlug;
-  const live = slug && !state.pending.deleted.has(slug);
-  const n = state.pendingCount || 0;
-  const text = {
-    idle: n ? `Saved · ${n} change${n === 1 ? '' : 's'} waiting to publish <button type="button" class="btn primary small" data-publish-now>Publish now</button>` : '',
-    building: `<span class="spinner"></span> Publishing to your site… ${secs}s`,
-    live: `✓ Live on your site${live ? ` — <a href="/item/${esc(slug)}/" target="_blank">view page</a>` : ''}`,
-    slow: 'Still publishing — this is taking longer than usual. Check Deployments in Cloudflare if it doesn’t appear soon.',
-  }[st];
-  const status = $('#publish-status');
-  status.innerHTML = text;
-  status.className = `publish-status ${st}`;
-  const pill = $('#publish-pill');
-  pill.hidden = st === 'idle' || $('#preview').open;
-  renderPublishBar();
-  pill.className = `publish-pill ${st}`;
-  pill.innerHTML = st === 'live' ? '✓ Site updated' : st === 'slow' ? 'Still publishing…' : `<span class="spinner"></span> Publishing… ${secs}s`;
-}
-
-async function checkPublished() {
+// ───────── backup ─────────
+$('#export-btn').addEventListener('click', async () => {
   try {
-    const data = await (await fetch('/library.json', { cache: 'no-store' })).json();
-    state.builtCommit = data.commit || '';
-    if (state.builtCommit === state.lastSha) {
-      refreshPending();
-      state.library = data.items || [];
-      // Everything we saved is now in the built site. Keep saved copies only for previews.
-      for (const k of Object.keys(state.pending.saved)) state.pending.saved[k].built = true;
-      state.pending.deleted = new Set();
-      renderLibrary();
-    }
-  } catch {}
-  renderPublishStatus();
-  const st = publishState();
-  if (st === 'building') publishTimer = setTimeout(checkPublished, 8000);
-  else if (st === 'live') setTimeout(() => { if (publishState() === 'live') $('#publish-pill').hidden = true; }, 6000);
-}
-
-function watchPublish(sha) {
-  if (!sha) return;
-  state.lastSha = sha;
-  publishStarted = Date.now();
-  clearTimeout(publishTimer);
-  renderPublishStatus();
-  publishTimer = setTimeout(checkPublished, 15000);
-}
-// keep the seconds counter ticking
-setInterval(() => { if (publishState() === 'building') renderPublishStatus(); }, 1000);
-$('#preview').addEventListener('close', renderPublishStatus);
-
-// ───────── save now, publish once ─────────
-// Saves are committed with a skip-build tag; "Publish now" makes one commit that builds once.
-state.pendingCount = 0;
-state.pendingChanges = [];
-
-function afterWrite(res) {
-  if (!res?.sha) return;
-  if (res.published) watchPublish(res.sha);
-  else refreshPending();
-}
-
-async function refreshPending() {
-  if (!state.builtCommit) { state.pendingCount = 0; renderPublishBar(); return; }
-  try {
-    const { pending, changes } = await api(`publish?since=${encodeURIComponent(state.builtCommit)}`);
-    state.pendingCount = pending || 0;
-    state.pendingChanges = changes || [];
-  } catch { /* leave as is */ }
-  renderPublishBar();
-  renderPublishStatus();
-}
-
-function renderPublishBar() {
-  const bar = $('#publish-bar');
-  if (!bar) return;
-  const n = state.pendingCount || 0;
-  const building = publishState() === 'building';
-  bar.classList.toggle('has-pending', n > 0 && !building);
-  $('#publish-count').textContent = building
-    ? 'Publishing…'
-    : n ? `${n} unpublished change${n === 1 ? '' : 's'}` : 'Everything is live';
-  $('#publish-count').title = state.pendingChanges.slice(0, 25).join('\n');
-  $('#publish-btn').disabled = !n || building;
-  $('#publish-immediately').checked = publishNowOn();
-}
-
-async function publishNow() {
-  const btn = $('#publish-btn');
-  btn.disabled = true;
-  try {
-    const { sha } = await api('publish', { method: 'POST', body: {} });
-    watchPublish(sha);
-    toast('Publishing. Your site will update in about a minute.');
+    const res = await fetch('/api/export', { headers: { authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) throw new Error(`Backup failed (${res.status})`);
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: `myshelf-backup-${new Date().toISOString().slice(0, 10)}.json` });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   } catch (err) {
     toast(err.message, 'error');
-    btn.disabled = false;
   }
-}
-
-$('#publish-btn').addEventListener('click', publishNow);
-document.addEventListener('click', (e) => { if (e.target.closest('[data-publish-now]')) publishNow(); });
-$('#publish-immediately').addEventListener('change', (e) => {
-  try { localStorage.setItem(PUBLISH_KEY, e.target.checked ? '1' : '0'); } catch {}
-  toast(e.target.checked ? 'Changes will go live right away (one build each).' : 'Changes will wait until you click Publish.');
 });
 
 // ───────── deep links: /admin/#edit=slug ─────────

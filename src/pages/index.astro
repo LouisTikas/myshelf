@@ -6,8 +6,8 @@ import { getItems, getShelves } from '../lib/items.js';
 import { sortShelf, inShelf, showsOnHome } from '../lib/sorting.js';
 import { TYPES, TYPE_KEYS } from '../lib/types.js';
 
-const items = await getItems();
-const shelves = getShelves();
+const env = Astro.locals.runtime.env;
+const [items, shelves] = await Promise.all([getItems(env), getShelves(env)]);
 ---
 <Base>
   <section class="hero">

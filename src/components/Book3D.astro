@@ -3,7 +3,6 @@
 // books, game cartridges, CD jewel cases, VHS boxes and board game boxes.
 // Front face = cover art; side face = spine/edge with the title.
 import { TYPES } from '../lib/types.js';
-import { coverAspect } from '../lib/image-aspect.js';
 interface Props { item: any; height?: number; href: string; front?: boolean }
 const { item, height: h = 180, href, front = false } = Astro.props;
 const t = TYPES[item.type] || TYPES.book;
@@ -23,7 +22,7 @@ let w = Math.round(h * s.w);
 // Board game boxes come in all shapes: size the box to the cover's real proportions,
 // fitting inside a max height/width so huge boxes don't take over the shelf.
 if (s.kind === 'box') {
-  const a = coverAspect(item.cover);
+  const a = Number(item.coverAspect) || null; // saved with the cover
   if (a) {
     const maxH = h * 0.95, maxW = h * 1.2;
     let bw = maxH * a, bHt = maxH;

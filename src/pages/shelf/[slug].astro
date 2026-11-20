@@ -4,11 +4,10 @@ import Shelf from '../../components/Shelf.astro';
 import { getItems, getShelves } from '../../lib/items.js';
 import { sortShelf, inShelf } from '../../lib/sorting.js';
 
-export async function getStaticPaths() {
-  return getShelves().map((s) => ({ params: { slug: s.slug }, props: { shelf: s } }));
-}
-const { shelf } = Astro.props;
-const items = sortShelf((await getItems()).filter((e) => inShelf(e.data, shelf)), shelf);
+const env = Astro.locals.runtime.env;
+const shelf = (await getShelves(env)).find((s) => s.slug === Astro.params.slug);
+if (!shelf) return new Response(null, { status: 404, statusText: 'Not found' });
+const items = sortShelf((await getItems(env)).filter((e) => inShelf(e.data, shelf)), shelf);
 ---
 <Base title={shelf.name} description={shelf.description}>
   <section class="page-head">

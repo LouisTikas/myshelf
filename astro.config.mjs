@@ -1,8 +1,14 @@
 import { defineConfig } from 'astro/config';
+import cloudflare from '@astrojs/cloudflare';
 
-// Fully static output. Cloudflare Pages serves dist/ and runs /functions for the API.
+// Pages render on request from the D1 database, so saves show up immediately (no rebuilds).
+// Static files (CSS, JS, fonts, old covers) are still served straight from Cloudflare Pages.
 export default defineConfig({
-  output: 'static',
+  output: 'server',
+  adapter: cloudflare({
+    imageService: 'passthrough',
+    platformProxy: { enabled: true },
+  }),
   trailingSlash: 'ignore',
   build: { format: 'directory' },
 });

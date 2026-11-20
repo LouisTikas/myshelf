@@ -1,18 +1,16 @@
 // Pencil buttons on collection shelves: only visible in a browser that's signed in to the admin.
-// Clicking opens the arrange dialog; saving updates the shelf instantly and commits the new order.
+// Clicking opens the arrange dialog; saving updates the shelf instantly and stores the new order.
 import { sortShelf, inShelf } from '../lib/sorting.js';
 
 const TOKEN_KEY = 'myshelf_token';
 const token = (() => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } })();
 
-const publishNowOn = () => { try { return localStorage.getItem('myshelf_publish_now') === '1'; } catch { return false; } };
 async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(`/api/${path}`, {
     method,
     headers: {
       authorization: `Bearer ${token}`,
       ...(body ? { 'content-type': 'application/json' } : {}),
-      ...(method !== 'GET' && path !== 'publish' && publishNowOn() ? { 'x-myshelf-publish': '1' } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -23,7 +21,7 @@ async function api(path, { method = 'GET', body } = {}) {
   return data;
 }
 
-// Put the shelf's covers in the new order right away (the rebuilt site follows in ~1 minute).
+// Put the shelf's covers in the new order right away (no reload needed).
 function reorderOnPage(selector, order) {
   const pos = new Map(order.map((s, i) => [s, i]));
   document.querySelectorAll(selector).forEach((shelf) => {
@@ -39,8 +37,8 @@ function reorderOnPage(selector, order) {
   });
 }
 
-function savedToast(mod, name, published) {
-  mod.toast(published ? `Saved “${name}”. Your public shelf updates in about a minute.` : `Saved “${name}”. Publish from the Manage page when you’re ready.`);
+function savedToast(mod, name) {
+  mod.toast(`Saved “${name}”.`);
 }
 
 // Open the editor for a collection shelf.
@@ -57,9 +55,9 @@ async function editCollection(mod, lib, slug) {
     onSave: async (order) => {
       c.sort = 'custom';
       c.order = order;
-      const res = await api('collections', { method: 'POST', body: { collections } });
+      await api('collections', { method: 'POST', body: { collections } });
       reorderOnPage(`.shelf[data-collection="${slug}"]`, order);
-      savedToast(mod, c.name, res.published);
+      savedToast(mod, c.name);
     },
   });
 }
@@ -74,9 +72,9 @@ async function editTypeShelf(mod, lib, key, title) {
     title,
     items: sortShelf(entries, shelf).map((e) => e.data),
     onSave: async (order) => {
-      const res = await api('arrangements', { method: 'POST', body: { key, order } });
+      await api('arrangements', { method: 'POST', body: { key, order } });
       reorderOnPage(`.shelf[data-arrange-key="${key}"]`, order);
-      savedToast(mod, title, res.published);
+      savedToast(mod, title);
     },
   });
 }

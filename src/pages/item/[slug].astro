@@ -1,25 +1,23 @@
 ---
-import { render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Cover from '../../components/Cover.astro';
-import { getItems, getShelves, fmtDate } from '../../lib/items.js';
+import { getEntry, getShelves, fmtDate, renderBody } from '../../lib/items.js';
 import { inShelf } from '../../lib/sorting.js';
 import { TYPES, STATUS_LABEL, DETAIL_LABELS, HIDDEN_DETAILS, formatDetail, stars } from '../../lib/types.js';
 
-export async function getStaticPaths() {
-  const items = await getItems();
-  return items.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
-}
-const { entry } = Astro.props;
+const env = Astro.locals.runtime.env;
+const slug = Astro.params.slug || '';
+const entry = /^[a-z0-9][a-z0-9-]{0,120}$/.test(slug) ? await getEntry(env, slug) : null;
+if (!entry) return new Response(null, { status: 404, statusText: 'Not found' });
 const d = entry.data;
-const t = TYPES[d.type];
-const { Content } = await render(entry);
-const shelves = getShelves().filter((s) => inShelf(d, s));
+const t = TYPES[d.type] || TYPES.book;
+const bodyHtml = renderBody(entry.body);
+const shelves = (await getShelves(env)).filter((s) => inShelf(d, s));
 const details = Object.entries(d.details || {})
   .filter(([k]) => !HIDDEN_DETAILS.has(k))
   .map(([k, v]) => [DETAIL_LABELS[k] || k, formatDetail(k, v, d.details)])
   .filter(([, v]) => v);
-const hasBody = Boolean(entry.body && entry.body.trim());
+const hasBody = Boolean(bodyHtml);
 ---
 <Base title={d.title} description={d.description}>
   <article class="item-page">
@@ -53,7 +51,7 @@ const hasBody = Boolean(entry.body && entry.body.trim());
       {hasBody && (
         <section class="journal-body prose">
           <h2>My notes</h2>
-          <Content />
+          <Fragment set:html={bodyHtml} />
         </section>
       )}
 

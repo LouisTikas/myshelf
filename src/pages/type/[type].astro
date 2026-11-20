@@ -36,7 +36,7 @@ const groups = ['in-progress', 'finished', 'want', 'abandoned']
   <div class="bookcase">
     {groups.length === 0 && <Shelf items={[]} empty={`No ${t.plural.toLowerCase()} yet.`} />}
     {typeCollections.map(({ c, items }) => (
-      <Shelf title={c.name} description={c.description} items={items} href={`/shelf/${c.slug}/`} scroll collection={c.slug}
+      <Shelf title={c.name} description={c.description} items={items} href={`/shelf/${c.slug}/`} seeAll scroll collection={c.slug}
         height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />
     ))}
     {groups.map((g) => <Shelf title={g.label} items={g.items} arrangeKey={g.key} height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />)}

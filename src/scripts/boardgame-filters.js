@@ -92,7 +92,7 @@ function init() {
     for (const section of document.querySelectorAll('.bookcase .shelf-section')) {
       const shelf = section.querySelector('.shelf');
       const visible = shelf.querySelectorAll('.shelf-slot:not([hidden])').length;
-      const count = section.querySelector('.count');
+      const count = section.querySelector('.count-n') || section.querySelector('.count');
       if (count) count.textContent = visible;
       section.hidden = visible === 0;
       shelf.dispatchEvent(new CustomEvent('shelf:reorder'));

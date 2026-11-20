@@ -3,10 +3,9 @@ title: Wingspan
 type: boardgame
 creator: Elizabeth Hargrave
 year: "2019"
-cover: ""
+cover: /covers/boardgame-wingspan-2019.jpg
 status: want
 dateAdded: 2026-11-18
-collections: []
 description: A competitive engine-building game about attracting birds to your wildlife preserves.
 details:
   players: 1–5

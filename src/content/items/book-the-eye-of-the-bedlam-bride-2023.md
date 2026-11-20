@@ -3,7 +3,7 @@ title: The Eye of the Bedlam Bride
 type: book
 creator: Matt Dinniman
 year: "2023"
-cover: /covers/book-the-eye-of-the-bedlam-bride-2023.jpg
+cover: /covers/book-the-eye-of-the-bedlam-bride-2023.webp
 status: finished
 dateAdded: 2026-11-20
 dateFinished: 2026-11-20

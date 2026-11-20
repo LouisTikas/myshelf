@@ -250,7 +250,14 @@
   text-shadow: 0 1px 2px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.45);
 }
 /* a touch more contrast behind the name */
-.kind-box.has-cover .b3-spine::before { filter: blur(2px) saturate(1.1) brightness(0.75); }
+.kind-box.has-cover .b3-spine::before {
+  /* the box art turned a quarter turn: its bottom edge runs down the side of the box */
+  inset: auto; left: 50%; top: 50%;
+  width: var(--bh); height: var(--d);
+  transform: translate(-50%, -50%) rotate(90deg);
+  background: var(--spine-img) center bottom / 100% auto no-repeat;
+  filter: blur(0.6px) brightness(0.72);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .book3d, .b3-box { transition: none; }

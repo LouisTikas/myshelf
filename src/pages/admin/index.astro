@@ -31,6 +31,16 @@ const typesJson = JSON.stringify(TYPES);
         </div>
       </div>
 
+      <div id="publish-bar" class="publish-bar">
+        <span class="publish-dot" aria-hidden="true"></span>
+        <span id="publish-count" class="publish-count">Checking…</span>
+        <span class="spacer"></span>
+        <label class="publish-toggle" title="Each change builds the site on its own (uses a build every time)">
+          <input type="checkbox" id="publish-immediately" /> Publish immediately
+        </label>
+        <button type="button" class="btn primary small" id="publish-btn" disabled>Publish now</button>
+      </div>
+
       <!-- Add / search -->
       <div class="tabpanel" data-panel="add">
         <div class="panel">

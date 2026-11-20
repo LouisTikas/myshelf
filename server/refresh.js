@@ -9,7 +9,7 @@ import { bggThings, bggFind, bggDetails } from './providers.js';
 const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v != null && v !== '' && !(Array.isArray(v) && !v.length)));
 const bggIdOf = (src = {}) => (/boardgamegeek|bgg/i.test(`${src.name} ${src.url}`) && src.id ? String(src.id) : null);
 
-export async function refreshBoardgames(env, onlySlugs) {
+export async function refreshBoardgames(env, onlySlugs, opts = {}) {
   if (!env.BGG_TOKEN) throw new HttpError(400, 'BGG_TOKEN is not set.');
   const names = (await listDir(env, ITEMS_DIR)).filter((n) => n.endsWith('.md'));
   const games = [];
@@ -48,6 +48,6 @@ export async function refreshBoardgames(env, onlySlugs) {
     changes.push({ path: itemPath(g.slug), text: buildMarkdown(normalizeItem(item), g.body) });
     report.push({ slug: g.slug, title: g.data.title, status: g.linkedNow ? `linked to “${g.linkedNow}” and updated` : 'updated', bggUrl: item.source.url });
   }
-  const sha = changes.length ? await commitFiles(env, `Refresh ${changes.length} board game${changes.length === 1 ? '' : 's'} from BGG`, changes) : null;
+  const sha = changes.length ? await commitFiles(env, `Refresh ${changes.length} board game${changes.length === 1 ? '' : 's'} from BGG`, changes, opts) : null;
   return { sha, report };
 }

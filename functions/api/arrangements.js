@@ -1,5 +1,5 @@
 import { json, handler, HttpError } from '../../server/util.js';
-import { readFile, commitFiles } from '../../server/github.js';
+import { readFile, commitFiles, wantsPublish } from '../../server/github.js';
 
 // Custom orders for the per-type shelves (e.g. "book:finished" → [slugs]).
 const FILE = 'src/data/arrangements.json';
@@ -23,6 +23,6 @@ export const onRequestPost = handler(async ({ request, env }) => {
   const all = await load(env);
   if (clean.length) all[key] = clean; else delete all[key];
   const sorted = Object.fromEntries(Object.keys(all).sort().map((k) => [k, all[k]]));
-  const sha = await commitFiles(env, `Arrange ${key}`, [{ path: FILE, text: JSON.stringify(sorted, null, 2) + '\n' }]);
-  return json({ arrangements: sorted, sha });
+  const sha = await commitFiles(env, `Arrange ${key}`, [{ path: FILE, text: JSON.stringify(sorted, null, 2) + '\n' }], { publish: wantsPublish(request) });
+  return json({ arrangements: sorted, sha, published: wantsPublish(request) });
 });

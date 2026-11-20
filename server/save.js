@@ -34,7 +34,7 @@ async function uniqueSlug(env, base) {
  * payload: { slug?: string (existing item), item: {...frontmatter}, body: string }
  * If item.cover is a remote URL, the image is downloaded and stored in the repo.
  */
-export async function saveItem(env, payload) {
+export async function saveItem(env, payload, opts = {}) {
   const raw = payload?.item;
   if (!raw || !raw.title || !TYPE_KEYS.includes(raw.type)) throw new HttpError(400, 'Item needs a title and a valid type');
   const item = normalizeItem(raw);
@@ -70,11 +70,11 @@ export async function saveItem(env, payload) {
 
   changes.push({ path: itemPath(slug), text: buildMarkdown(item, payload.body) });
   const verb = isEdit ? 'Update' : 'Add';
-  const sha = await commitFiles(env, `${verb} ${item.type}: ${item.title}`, changes);
+  const sha = await commitFiles(env, `${verb} ${item.type}: ${item.title}`, changes, opts);
   return { slug, sha, item };
 }
 
-export async function deleteItem(env, slug) {
+export async function deleteItem(env, slug, opts = {}) {
   assertSlug(slug);
   const text = await readFile(env, itemPath(slug));
   if (text == null) throw new HttpError(404, 'Item not found');
@@ -82,6 +82,6 @@ export async function deleteItem(env, slug) {
   const changes = [{ path: itemPath(slug), delete: true }];
   const cover = localCoverRepoPath(data.cover);
   if (cover) changes.push({ path: cover, delete: true });
-  const sha = await commitFiles(env, `Remove ${data.type || 'item'}: ${data.title || slug}`, changes);
+  const sha = await commitFiles(env, `Remove ${data.type || 'item'}: ${data.title || slug}`, changes, opts);
   return { slug, sha };
 }

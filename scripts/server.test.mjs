@@ -203,7 +203,7 @@ test('saveItem: new item downloads cover and commits md + image in one commit', 
   assert.equal(state.blobs[0].content, Buffer.from([0xff, 0xd8, 0xff, 1, 2, 3]).toString('base64'));
   assert.match(state.blobs[1].content, /cover: \/covers\/book-dune-1965-2\.jpg/);
   assert.match(state.blobs[1].content, /dateAdded: \d{4}-\d{2}-\d{2}/);
-  assert.equal(state.commitMsg, 'Add book: Dune');
+  assert.equal(state.commitMsg, '[CI Skip] Add book: Dune'); // saves skip the build by default
   assert.ok(state.refPatched);
 });
 
@@ -212,7 +212,7 @@ test('saveItem: editing keeps slug; deleteItem removes md + local cover', async 
   let { state } = githubMock({ existing: { 'src/content/items/book-dune-1965.md': md } });
   await saveItem(GH_ENV, { slug: 'book-dune-1965', item: { title: 'Dune', type: 'book', status: 'finished', cover: '/covers/book-dune-1965.jpg', rating: 5 }, body: 'New.' });
   assert.deepEqual(state.tree.tree.map((t) => t.path), ['src/content/items/book-dune-1965.md']);
-  assert.equal(state.commitMsg, 'Update book: Dune');
+  assert.equal(state.commitMsg, '[CI Skip] Update book: Dune');
 
   ({ state } = githubMock({ existing: { 'src/content/items/book-dune-1965.md': md } }));
   await deleteItem(GH_ENV, 'book-dune-1965');
@@ -302,7 +302,7 @@ test('arrangements API saves per-type shelf orders', async () => {
   assert.equal(res.status, 200);
   const saved = JSON.parse(state.blobs[0].content);
   assert.deepEqual(saved, { 'book:finished': ['b', 'a'], 'music:finished': ['x'] });
-  assert.equal(state.commitMsg, 'Arrange book:finished');
+  assert.equal(state.commitMsg, '[CI Skip] Arrange book:finished');
   const bad = await onRequestPost({ request: req({ key: 'book:nope', order: [] }), env: GH_ENV });
   assert.equal(bad.status, 400);
 });
@@ -326,7 +326,7 @@ test('refresh board games: links manual entries, keeps notes, one commit', async
   const { sha, report } = await refreshBoardgames({ ...GH_ENV, BGG_TOKEN: 'tok' });
   assert.equal(sha, 'c');
   assert.equal(state.blobs.length, 1);
-  assert.equal(state.commitMsg, 'Refresh 1 board game from BGG');
+  assert.equal(state.commitMsg, '[CI Skip] Refresh 1 board game from BGG');
   assert.match(report[0].status, /linked to “Wingspan \(2019\)”/);
   const md = state.blobs[0].content;
   assert.match(md, /My notes stay\./);
@@ -349,4 +349,38 @@ test('collections API keeps the "show on" setting', async () => {
   assert.equal(res.status, 200);
   const saved = JSON.parse(state.blobs[0].content);
   assert.deepEqual(saved.map((c) => c.show), ['type', 'both', undefined, undefined]);
+});
+
+test('save now, publish once', async () => {
+  const save = await import('../functions/api/save.js');
+  const pub = await import('../functions/api/publish.js');
+  const body = JSON.stringify({ item: { title: 'Catan', type: 'boardgame', status: 'want' }, body: '' });
+
+  let { state } = githubMock();
+  let res = await save.onRequestPost({ request: new Request('https://x/api/save', { method: 'POST', body }), env: GH_ENV });
+  assert.equal((await res.json()).published, false);
+  assert.match(state.commitMsg, /^\[CI Skip\] Add boardgame: Catan$/);
+
+  ({ state } = githubMock());
+  res = await save.onRequestPost({ request: new Request('https://x/api/save', { method: 'POST', body, headers: { 'x-myshelf-publish': '1' } }), env: GH_ENV });
+  assert.equal((await res.json()).published, true);
+  assert.equal(state.commitMsg, 'Add boardgame: Catan'); // "Publish immediately" → builds
+
+  ({ state } = githubMock());
+  res = await pub.onRequestPost({ request: new Request('https://x/api/publish', { method: 'POST' }), env: GH_ENV });
+  assert.equal(res.status, 200);
+  assert.equal(state.commitMsg, 'Publish site');
+  assert.equal(state.tree.tree[0].path, 'src/data/published.json');
+
+  mockFetch([[/\/compare\/abc1234\.\.\.main/, () => ({ ahead_by: 3, commits: [
+    { commit: { message: '[CI Skip] Add boardgame: Catan\n\nbody' } },
+    { commit: { message: '[CI Skip] Update collections' } },
+    { commit: { message: '[CI Skip] Remove book: X' } },
+  ] })]]);
+  res = await pub.onRequestGet({ request: new Request('https://x/api/publish?since=abc1234'), env: GH_ENV });
+  const pending = await res.json();
+  assert.equal(pending.pending, 3);
+  assert.deepEqual(pending.changes, ['Add boardgame: Catan', 'Update collections', 'Remove book: X']);
+  res = await pub.onRequestGet({ request: new Request('https://x/api/publish?since='), env: GH_ENV });
+  assert.equal((await res.json()).pending, null);
 });

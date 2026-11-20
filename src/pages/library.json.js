@@ -18,7 +18,7 @@ export async function GET() {
     dateFinished: e.data.dateFinished ? new Date(e.data.dateFinished).toISOString().slice(0, 10) : null,
   }));
     // Cloudflare Pages sets this during builds; the admin uses it to know when a save is live.
-  const commit = process.env.CF_PAGES_COMMIT_SHA || '';
+  const commit = process.env.CF_PAGES_COMMIT_SHA || "";
   return new Response(JSON.stringify({ commit, items, collections: getShelves() }), {
     headers: { 'content-type': 'application/json' },
   });

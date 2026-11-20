@@ -1,5 +1,5 @@
 import { json, handler, HttpError, slugify } from '../../server/util.js';
-import { readFile, commitFiles } from '../../server/github.js';
+import { readFile, commitFiles, wantsPublish } from '../../server/github.js';
 import { COLLECTIONS_FILE } from '../../server/paths.js';
 
 const SORTS = ['newest', 'oldest', 'title', 'creator', 'rating', 'year-new', 'year-old', 'custom'];
@@ -34,6 +34,6 @@ export const onRequestPost = handler(async ({ request, env }) => {
   });
   const sha = await commitFiles(env, 'Update collections', [
     { path: COLLECTIONS_FILE, text: JSON.stringify(clean, null, 2) + '\n' },
-  ]);
-  return json({ collections: clean, sha });
+  ], { publish: wantsPublish(request) });
+  return json({ collections: clean, sha, published: wantsPublish(request) });
 });

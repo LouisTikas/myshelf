@@ -5,10 +5,15 @@ import { sortShelf, inShelf } from '../lib/sorting.js';
 const TOKEN_KEY = 'myshelf_token';
 const token = (() => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } })();
 
+const publishNowOn = () => { try { return localStorage.getItem('myshelf_publish_now') === '1'; } catch { return false; } };
 async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(`/api/${path}`, {
     method,
-    headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
+    headers: {
+      authorization: `Bearer ${token}`,
+      ...(body ? { 'content-type': 'application/json' } : {}),
+      ...(method !== 'GET' && path !== 'publish' && publishNowOn() ? { 'x-myshelf-publish': '1' } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   let data = {};
@@ -34,6 +39,40 @@ function reorderOnPage(selector, order) {
   });
 }
 
+function savedToast(mod, name, published) {
+  mod.toast(published ? `Saved “${name}”. Your public shelf updates in about a minute.` : `Saved “${name}”. Publish when you’re ready to update the public site.`);
+  if (!published) updatePublishPill();
+}
+
+// Small floating "N unpublished · Publish" pill on public pages, only when signed in.
+let pill;
+async function updatePublishPill() {
+  try {
+    const lib = await fetch('/library.json', { cache: 'no-store' }).then((r) => r.json());
+    if (!lib.commit) return;
+    const { pending } = await api(`publish?since=${encodeURIComponent(lib.commit)}`);
+    if (!pill) {
+      pill = document.createElement('div');
+      pill.className = 'pub-pill';
+      pill.innerHTML = '<span class="pub-text"></span><button type="button">Publish</button>';
+      document.body.appendChild(pill);
+      pill.querySelector('button').addEventListener('click', async (e) => {
+        e.currentTarget.disabled = true;
+        try {
+          await api('publish', { method: 'POST', body: {} });
+          pill.querySelector('.pub-text').textContent = 'Publishing — live in about a minute';
+          pill.querySelector('button').hidden = true;
+        } catch (err) {
+          e.currentTarget.disabled = false;
+          (await import('./arrange.js')).toast(err.message, 'error');
+        }
+      });
+    }
+    pill.hidden = !pending;
+    pill.querySelector('.pub-text').textContent = `${pending} unpublished change${pending === 1 ? '' : 's'}`;
+  } catch { /* not important */ }
+}
+
 // Open the editor for a collection shelf.
 async function editCollection(mod, lib, slug) {
   const live = await api('collections');
@@ -48,9 +87,9 @@ async function editCollection(mod, lib, slug) {
     onSave: async (order) => {
       c.sort = 'custom';
       c.order = order;
-      await api('collections', { method: 'POST', body: { collections } });
+      const res = await api('collections', { method: 'POST', body: { collections } });
       reorderOnPage(`.shelf[data-collection="${slug}"]`, order);
-      mod.toast(`Saved “${c.name}”. Your public shelf updates in about a minute.`);
+      savedToast(mod, c.name, res.published);
     },
   });
 }
@@ -65,14 +104,15 @@ async function editTypeShelf(mod, lib, key, title) {
     title,
     items: sortShelf(entries, shelf).map((e) => e.data),
     onSave: async (order) => {
-      await api('arrangements', { method: 'POST', body: { key, order } });
+      const res = await api('arrangements', { method: 'POST', body: { key, order } });
       reorderOnPage(`.shelf[data-arrange-key="${key}"]`, order);
-      mod.toast(`Saved “${title}”. Your public shelf updates in about a minute.`);
+      savedToast(mod, title, res.published);
     },
   });
 }
 
 if (token) {
+  updatePublishPill();
   document.querySelectorAll('.shelf-edit').forEach((btn) => {
     btn.hidden = false;
     btn.addEventListener('click', async (e) => {

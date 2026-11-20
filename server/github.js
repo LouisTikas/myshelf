@@ -59,7 +59,15 @@ export async function fileExists(env, path) {
  * Commit changes in a single commit.
  * changes: [{ path, text }] | [{ path, binary: ArrayBuffer }] | [{ path, delete: true }]
  */
-export async function commitFiles(env, message, changes) {
+export const SKIP_PREFIX = '[CI Skip] ';
+
+/** Did the request ask to go live right away? (admin "Publish immediately" toggle) */
+export const wantsPublish = (request) => request?.headers?.get('x-myshelf-publish') === '1';
+
+export async function commitFiles(env, message, changes, { publish = false } = {}) {
+  // Unless publishing, tag the commit so Cloudflare Pages skips the build (saves builds;
+  // everything goes live together with the next publish).
+  if (!publish) message = SKIP_PREFIX + message;
   const { repo, branch } = cfg(env);
   const ref = await ghJson(env, `/repos/${repo}/git/ref/heads/${encodeURIComponent(branch)}`);
   const parentSha = ref.object.sha;
@@ -101,4 +109,11 @@ export async function listDir(env, path) {
   if (!res.ok) throw new HttpError(502, `GitHub list ${path} failed (${res.status})`);
   const data = await res.json();
   return Array.isArray(data) ? data.filter((f) => f.type === 'file').map((f) => f.name) : [];
+}
+
+/** Commits on the branch since `base` (the commit the live site was built from). */
+export async function commitsSince(env, base) {
+  const { repo, branch } = cfg(env);
+  const data = await ghJson(env, `/repos/${repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(branch)}`);
+  return { aheadBy: data.ahead_by || 0, commits: (data.commits || []).map((c) => c.commit?.message?.split('\n')[0] || '') };
 }

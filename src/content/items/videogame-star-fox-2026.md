@@ -5,6 +5,7 @@ creator: Velan Studios
 year: "2026"
 cover: /covers/videogame-star-fox-2026.jpg
 status: finished
+rating: 4
 dateAdded: 2026-11-20
 dateFinished: 2026-11-20
 collections:
@@ -24,4 +25,4 @@ source:
   url: https://www.igdb.com/games/star-fox--5
 ---
 
-
+Another great implementation of a childhood favorite. Controls didn't feel quite as snappy as I remembered, but the visuals made up for it.

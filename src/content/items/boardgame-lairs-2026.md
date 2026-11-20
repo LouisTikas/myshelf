@@ -21,13 +21,32 @@ genres:
   - Maze
   - Puzzle
 details:
-  players: 2
+  players: "2"
   playtime: 60
-  weight: 2.20 / 5
-  bggRank: 2273
+  weight: 2.2
+  bggRank: "2273"
   publishers:
     - KTBG
     - Cranio Creations
+  minPlayers: 2
+  maxPlayers: 2
+  bestPlayers:
+    - 2
+  recPlayers:
+    - 2
+  minPlaytime: 30
+  maxPlaytime: 60
+  minAge: 10
+  mechanics:
+    - Action Points
+    - Deduction
+    - Dice Rolling
+    - Grid Movement
+    - Modular Board
+    - Paper-and-Pencil
+  designers:
+    - Josh Cappel
+    - Christopher Westmaas
 source:
   name: BoardGameGeek
   id: "404883"

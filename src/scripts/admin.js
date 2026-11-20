@@ -1,5 +1,7 @@
 // Admin UI: search external databases, add/edit/delete items, manage collections.
 import { marked } from 'marked';
+import Sortable from 'sortablejs';
+import { SORTS } from '../lib/sorting.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const root = $('#admin');
@@ -418,6 +420,12 @@ function renderCollections() {
       </span>
       <input class="col-name" value="${esc(c.name)}" placeholder="Collection name" />
       <input class="col-desc" value="${esc(c.description)}" placeholder="Description (optional)" />
+      <span class="col-sort">
+        <select class="col-sort-select" aria-label="Sort order">
+          ${Object.entries(SORTS).map(([k, label]) => `<option value="${k}" ${(c.sort || 'newest') === k ? 'selected' : ''}>${esc(label)}</option>`).join('')}
+        </select>
+        ${(c.sort || 'newest') === 'custom' ? `<button class="btn ghost small" data-arrange ${c.slug ? '' : 'disabled title="Save the collection first"'}>Arrange</button>` : ''}
+      </span>
       <span class="muted small col-slug">${c.slug ? '/shelf/' + esc(c.slug) : 'new'}</span>
       <button class="btn ghost small danger" data-remove aria-label="Remove">✕</button>
     </li>`)
@@ -428,12 +436,19 @@ function syncCollectionsFromInputs() {
     const c = state.collections[Number(row.dataset.i)];
     c.name = $('.col-name', row).value;
     c.description = $('.col-desc', row).value;
+    c.sort = $('.col-sort-select', row).value;
   });
 }
+$('#col-list').addEventListener('change', (e) => {
+  if (!e.target.matches('.col-sort-select')) return;
+  syncCollectionsFromInputs();
+  renderCollections(); // show/hide the Arrange button
+});
 $('#col-list').addEventListener('click', (e) => {
   const row = e.target.closest('.col-row');
   if (!row) return;
   syncCollectionsFromInputs();
+  if (e.target.closest('[data-arrange]')) return openArrange(Number(row.dataset.i));
   const i = Number(row.dataset.i);
   const list = state.collections;
   if (e.target.closest('[data-up]') && i > 0) [list[i - 1], list[i]] = [list[i], list[i - 1]];
@@ -461,6 +476,74 @@ $('#col-save').addEventListener('click', async () => {
     renderCollections();
     watchPublish(sha);
     toast('Collections saved. Your shelves are updating.');
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ───────── arrange a collection (drag & drop) ─────────
+let arrangeIndex = -1;
+let sortable = null;
+const addedTime = (i) => (i.dateAdded ? new Date(i.dateAdded).getTime() : 0);
+
+function itemsInCollection(c) {
+  const list = libraryItems().filter((i) => (i.collections || []).includes(c.slug));
+  const pos = new Map((c.order || []).map((s, n) => [s, n]));
+  return list.sort((a, b) => (pos.has(a.slug) ? pos.get(a.slug) : Infinity) - (pos.has(b.slug) ? pos.get(b.slug) : Infinity) || addedTime(a) - addedTime(b));
+}
+
+function renderArrange(items) {
+  $('#arrange-list').innerHTML = items.length
+    ? items.map((i, n) => `
+      <li class="arrange-item" data-slug="${esc(i.slug)}">
+        <span class="arrange-num">${n + 1}</span>
+        ${coverThumb(i, 110)}
+        <span class="arrange-title">${esc(i.title)}</span>
+      </li>`).join('')
+    : '<li class="muted">This collection is empty. Add items to it from the editor.</li>';
+}
+function renumber() {
+  $$('#arrange-list .arrange-num').forEach((el, n) => (el.textContent = n + 1));
+}
+
+function openArrange(index) {
+  arrangeIndex = index;
+  const c = state.collections[index];
+  $('#arrange-title').textContent = `Arrange “${c.name}”`;
+  renderArrange(itemsInCollection(c));
+  sortable?.destroy();
+  sortable = Sortable.create($('#arrange-list'), {
+    animation: 180,
+    ghostClass: 'arrange-ghost',
+    chosenClass: 'arrange-chosen',
+    delay: 120, delayOnTouchOnly: true, // lets you scroll the list on phones without grabbing a cover
+    onSort: renumber,
+  });
+  $('#arrange').showModal();
+}
+
+$$('[data-close-arrange]').forEach((b) => b.addEventListener('click', () => $('#arrange').close()));
+$('#arrange-reset').addEventListener('click', () => {
+  const c = state.collections[arrangeIndex];
+  const items = libraryItems().filter((i) => (i.collections || []).includes(c.slug));
+  const when = (i) => new Date(i.dateFinished || i.dateStarted || i.dateAdded || 0).getTime();
+  renderArrange(items.sort((a, b) => when(b) - when(a)));
+});
+$('#arrange-save').addEventListener('click', async () => {
+  const c = state.collections[arrangeIndex];
+  c.sort = 'custom';
+  c.order = $$('#arrange-list .arrange-item').map((li) => li.dataset.slug);
+  const btn = $('#arrange-save');
+  btn.disabled = true;
+  try {
+    const { collections, sha } = await api('collections', { method: 'POST', body: { collections: state.collections.filter((x) => x.name.trim()) } });
+    state.collections = collections;
+    renderCollections();
+    $('#arrange').close();
+    watchPublish(sha);
+    toast(`Saved the order for “${c.name}”. Your shelf is updating.`);
   } catch (err) {
     toast(err.message, 'error');
   } finally {

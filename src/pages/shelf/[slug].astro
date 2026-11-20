@@ -2,12 +2,13 @@
 import Base from '../../layouts/Base.astro';
 import Shelf from '../../components/Shelf.astro';
 import { getItems, getShelves } from '../../lib/items.js';
+import { sortShelf } from '../../lib/sorting.js';
 
 export async function getStaticPaths() {
   return getShelves().map((s) => ({ params: { slug: s.slug }, props: { shelf: s } }));
 }
 const { shelf } = Astro.props;
-const items = (await getItems()).filter((e) => e.data.collections?.includes(shelf.slug));
+const items = sortShelf((await getItems()).filter((e) => e.data.collections?.includes(shelf.slug)), shelf);
 ---
 <Base title={shelf.name} description={shelf.description}>
   <section class="page-head">

@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import Shelf from '../components/Shelf.astro';
 import site from '../data/site.json';
 import { getItems, getShelves } from '../lib/items.js';
+import { sortShelf } from '../lib/sorting.js';
 import { TYPES, TYPE_KEYS } from '../lib/types.js';
 
 const items = await getItems();
@@ -27,7 +28,7 @@ const counts = Object.fromEntries(TYPE_KEYS.map((t) => [t, items.filter((e) => e
   <div class="bookcase">
     {current.length > 0 && <Shelf title="Currently" items={current} scroll />}
     {shelves.map((s) => {
-      const list = items.filter((e) => e.data.collections?.includes(s.slug));
+      const list = sortShelf(items.filter((e) => e.data.collections?.includes(s.slug)), s);
       return <Shelf title={s.name} description={s.description} items={list} href={`/shelf/${s.slug}/`} scroll limit={24} empty="No items on this shelf yet." />;
     })}
     <Shelf title="Recently finished" items={recent} scroll />

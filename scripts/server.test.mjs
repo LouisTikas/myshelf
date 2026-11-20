@@ -251,3 +251,23 @@ test('IGDB re-ranking puts real releases above mods and caps at 26', async () =>
   assert.match(calls.find((c) => c.url.includes('api.igdb.com')).init.body, /limit 50;/);
   assert.ok(igdbScore({ name: 'Wingspan Redux', cover }, 'wingspan redux') > igdbScore({ name: 'Wingspan Redux', cover }, 'wingspan') );
 });
+
+test('shelf sort orders', async () => {
+  const { sortShelf } = await import('../src/lib/sorting.js');
+  const e = (id, data) => ({ id, data });
+  const items = [
+    e('a', { title: 'The Zebra', creator: 'Bo', year: '1999', rating: 3, dateAdded: '2026-01-01', dateFinished: '2026-03-01' }),
+    e('b', { title: 'Apple', creator: 'Al', year: '2020', rating: null, dateAdded: '2026-02-01', dateFinished: '2026-01-15' }),
+    e('c', { title: 'Mango', creator: '', year: '', rating: 5, dateAdded: '2026-03-05' }),
+  ];
+  const ids = (sort, extra = {}) => sortShelf(items, { sort, ...extra }).map((x) => x.id).join('');
+  assert.equal(ids('newest'), 'cab');
+  assert.equal(ids('oldest'), 'bac');
+  assert.equal(ids('title'), 'bca');      // "The Zebra" sorts as "Zebra"
+  assert.equal(ids('creator'), 'bac');    // missing creator last
+  assert.equal(ids('rating'), 'cab');     // unrated last
+  assert.equal(ids('year-new'), 'bac');
+  assert.equal(ids('year-old'), 'abc');
+  assert.equal(ids('custom', { order: ['c', 'a'] }), 'cab'); // unarranged 'b' goes after
+  assert.equal(ids(undefined), 'cab');
+});

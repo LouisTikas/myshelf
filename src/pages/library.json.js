@@ -13,6 +13,9 @@ export async function GET() {
     rating: e.data.rating ?? null,
     collections: e.data.collections,
     source: e.data.source || {},
+    dateAdded: e.data.dateAdded ? new Date(e.data.dateAdded).toISOString().slice(0, 10) : null,
+    dateStarted: e.data.dateStarted ? new Date(e.data.dateStarted).toISOString().slice(0, 10) : null,
+    dateFinished: e.data.dateFinished ? new Date(e.data.dateFinished).toISOString().slice(0, 10) : null,
   }));
     // Cloudflare Pages sets this during builds; the admin uses it to know when a save is live.
   const commit = process.env.CF_PAGES_COMMIT_SHA || '';

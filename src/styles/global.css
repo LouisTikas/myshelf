@@ -340,20 +340,22 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
     .bookcase > .shelf-section {
-      animation: shelf-rise linear both, shelf-fade linear forwards;
+      /* eased and spread over a longer stretch of scrolling, so the motion reads as smooth */
+      animation: shelf-rise cubic-bezier(0.22, 0.61, 0.36, 1) both, shelf-fade cubic-bezier(0.55, 0, 0.75, 0.4) forwards;
       animation-timeline: view(), view();
-      animation-range: entry 0% entry 90%, exit 15% exit 100%;
+      animation-range: entry 0% cover 35%, exit 0% exit 100%;
+      will-change: transform, opacity;
       transform-origin: 50% 100%;
     }
   }
 }
 @keyframes shelf-rise {
-  from { opacity: 0.1;  transform: translateY(120px) scale(0.94); }
+  from { opacity: 0;    transform: translateY(80px) scale(0.96); }
   to   { opacity: 1;    transform: none; }
 }
 @keyframes shelf-fade {
   from { opacity: 1;    transform: none; filter: none; }
-  to   { opacity: 0.04; transform: translateY(-44px) scale(0.94); filter: blur(3px); }
+  to   { opacity: 0;    transform: translateY(-28px) scale(0.96); filter: blur(3px); }
 }
 
 /* Covers fade out at the right edge of a scrolling shelf while there's more to see.

@@ -1,0 +1,79 @@
+---
+// Filter bar for the Board Games page. All filtering happens in the browser (see boardgame-filters.js).
+interface Props { items: any[] }
+const { items } = Astro.props;
+const count = (key) => {
+  const m = new Map();
+  for (const e of items) for (const v of (key === 'categories' ? e.data.genres : e.data.details?.[key]) || []) m.set(v, (m.get(v) || 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([v]) => v);
+};
+const mechanics = count('mechanics');
+const categories = count('categories');
+const chips = (name, options) => options.map(([value, label]) => (
+  { name, value, label }
+));
+---
+<section class="bg-filters" id="bg-filters" aria-label="Filter board games">
+  <div class="bgf-head">
+    <button type="button" class="bgf-toggle" aria-expanded="true" aria-controls="bgf-body">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+      Filters
+    </button>
+    <span class="bgf-summary" id="bgf-summary"></span>
+    <button type="button" class="bgf-clear" id="bgf-clear" hidden>Clear all</button>
+  </div>
+  <div class="bgf-body" id="bgf-body">
+    <div class="bgf-group">
+      <span class="bgf-label">Players</span>
+      <div class="bgf-chips" data-filter="players">
+        {[['', 'Any'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6+']].map(([v, l]) => <button type="button" class="bgf-chip" data-value={v}>{l}</button>)}
+      </div>
+      <label class="bgf-check"><input type="checkbox" id="bgf-best" /> Best at this count</label>
+    </div>
+    <div class="bgf-group">
+      <span class="bgf-label">Play time</span>
+      <div class="bgf-chips" data-filter="time">
+        {[['', 'Any'], ['30', 'Under 30 min'], ['60', '30–60 min'], ['120', '1–2 hrs'], ['long', '2+ hrs']].map(([v, l]) => <button type="button" class="bgf-chip" data-value={v}>{l}</button>)}
+      </div>
+    </div>
+    <div class="bgf-group">
+      <span class="bgf-label">Complexity</span>
+      <div class="bgf-chips" data-filter="weight">
+        {[['', 'Any'], ['light', 'Light'], ['medium', 'Medium'], ['heavy', 'Heavy']].map(([v, l]) => <button type="button" class="bgf-chip" data-value={v}>{l}</button>)}
+      </div>
+    </div>
+    <div class="bgf-group">
+      <span class="bgf-label">My rating</span>
+      <div class="bgf-chips" data-filter="rating">
+        {[['', 'Any'], ['3', '★3+'], ['4', '★4+'], ['4.5', '★4½+'], ['none', 'Unrated']].map(([v, l]) => <button type="button" class="bgf-chip" data-value={v}>{l}</button>)}
+      </div>
+    </div>
+    <div class="bgf-group">
+      <span class="bgf-label">Status</span>
+      <div class="bgf-chips" data-filter="status">
+        {[['', 'Any'], ['finished', 'Played'], ['in-progress', 'Playing'], ['want', 'Want to play'], ['abandoned', 'Not for me']].map(([v, l]) => <button type="button" class="bgf-chip" data-value={v}>{l}</button>)}
+      </div>
+    </div>
+    {mechanics.length > 0 && (
+      <div class="bgf-group bgf-tags">
+        <span class="bgf-label">Mechanics</span>
+        <div class="bgf-chips" data-filter="mech" data-multi>
+          {mechanics.map((m) => <button type="button" class="bgf-chip" data-value={m}>{m}</button>)}
+        </div>
+      </div>
+    )}
+    {categories.length > 0 && (
+      <div class="bgf-group bgf-tags">
+        <span class="bgf-label">Categories</span>
+        <div class="bgf-chips" data-filter="cat" data-multi>
+          {categories.map((c) => <button type="button" class="bgf-chip" data-value={c}>{c}</button>)}
+        </div>
+      </div>
+    )}
+  </div>
+  <p class="bgf-empty" id="bgf-empty" hidden>No games match these filters. <button type="button" class="bgf-linkbtn" data-clear>Clear filters</button></p>
+</section>
+
+<script>
+  import '../scripts/boardgame-filters.js';
+</script>

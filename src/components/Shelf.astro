@@ -2,8 +2,18 @@
 import Book3D from './Book3D.astro';
 import '../styles/shelf3d.css';
 import '../styles/arrange.css';
-interface Props { items: any[]; title?: string; href?: string; description?: string; scroll?: boolean; limit?: number; height?: number; empty?: string; collection?: string; arrangeKey?: string }
-const { items, title, href, description, scroll = false, limit, height = 180, empty = 'Nothing here yet.', collection, arrangeKey } = Astro.props;
+interface Props { items: any[]; title?: string; href?: string; description?: string; scroll?: boolean; limit?: number; height?: number; empty?: string; collection?: string; arrangeKey?: string; filterable?: boolean }
+const { items, title, href, description, scroll = false, limit, height = 180, empty = 'Nothing here yet.', collection, arrangeKey, filterable = false } = Astro.props;
+// Compact per-item data for client-side filters (board games page).
+const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+function filterData(d) {
+  const det = d.details || {};
+  let min = num(det.minPlayers), max = num(det.maxPlayers);
+  if (min == null && det.players != null) { const m = String(det.players).match(/(\d+)\D*(\d+)?/); if (m) { min = Number(m[1]); max = Number(m[2] || m[1]); } }
+  const pt = num(det.playtime);
+  const tlo = num(det.minPlaytime) ?? pt, thi = num(det.maxPlaytime) ?? pt;
+  return JSON.stringify({ p: [min, max], best: det.bestPlayers || [], t: [tlo, thi], w: num(det.weight), r: d.rating ?? null, s: d.status, m: det.mechanics || [], c: d.genres || [] });
+}
 const editable = Boolean(collection || arrangeKey);
 const shown = limit ? items.slice(0, limit) : items;
 ---
@@ -24,7 +34,7 @@ const shown = limit ? items.slice(0, limit) : items;
   <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${height}px`} data-collection={collection} data-arrange-key={arrangeKey}>
     {shown.length === 0 && <p class="shelf-empty">{empty}</p>}
     {shown.map((e, i) => (
-      <div class="shelf-slot">
+      <div class="shelf-slot" data-f={filterable ? filterData(e.data) : undefined}>
         <Book3D item={e.data} height={height} href={`/item/${e.id}/`} front={i === 0} />
       </div>
     ))}

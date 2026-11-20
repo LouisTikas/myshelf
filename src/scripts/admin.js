@@ -192,8 +192,11 @@ function textToDetails(text) {
     const m = line.match(/^\s*([\w-]+)\s*:\s*(.+)$/);
     if (!m) continue;
     const [, k, v] = m;
-    const listy = ['platforms', 'cast', 'developers', 'publishers'].includes(k);
-    out[k] = listy ? v.split(',').map((s) => s.trim()).filter(Boolean) : /^\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : v.trim();
+    const listy = ['platforms', 'cast', 'developers', 'publishers', 'designers', 'mechanics', 'bestPlayers', 'recPlayers'].includes(k);
+    const numList = ['bestPlayers', 'recPlayers'].includes(k);
+    out[k] = listy
+      ? v.split(',').map((s) => s.trim()).filter(Boolean).map((x) => (numList ? Number(x) : x)).filter((x) => !numList || Number.isFinite(x))
+      : /^\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : v.trim();
   }
   return out;
 }
@@ -242,6 +245,7 @@ function openEditor(item, slug = null) {
   const src = item.source || {};
   $('#editor-source').innerHTML = src.url ? `From <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.name)}</a>` : esc(src.name || '');
   renderCollectionChecks(item.collections || []);
+  $('#editor-refresh-bgg').hidden = !(slug && (item.type || 'book') === 'boardgame');
   updateCreatorLabel();
   renderCoverPreview();
   editor.showModal();
@@ -320,6 +324,45 @@ form.addEventListener('submit', async (e) => {
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = 'Save to shelf';
+  }
+});
+
+// ───────── refresh board games from BGG ─────────
+function refreshSummary(report) {
+  return report.map((r) => `${r.title}: ${r.status}`).join(' · ');
+}
+$('#refresh-bgg').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  $('#refresh-bgg-msg').textContent = 'Fetching the latest from BoardGameGeek…';
+  try {
+    const { sha, report } = await api('refresh-boardgames', { method: 'POST', body: {} });
+    $('#refresh-bgg-msg').textContent = report.length ? refreshSummary(report) : 'No board games to refresh.';
+    if (sha) { watchPublish(sha); toast(`Refreshed ${report.filter((r) => r.bggUrl).length} board game(s). Your site is updating.`); }
+  } catch (err) {
+    $('#refresh-bgg-msg').textContent = '';
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+});
+$('#editor-refresh-bgg').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const slug = state.editing?.slug;
+  if (!slug) return;
+  btn.disabled = true;
+  btn.textContent = 'Refreshing…';
+  try {
+    const { sha, report } = await api('refresh-boardgames', { method: 'POST', body: { slugs: [slug] } });
+    const { item, body } = await api(`item?slug=${encodeURIComponent(slug)}`);
+    openEditor({ ...item, body }, slug);
+    if (sha) watchPublish(sha);
+    toast(report[0] ? `${report[0].title}: ${report[0].status}` : 'Nothing to refresh.');
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↻ Refresh from BGG';
   }
 });
 

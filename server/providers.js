@@ -339,6 +339,8 @@ export function parseBggThings(xml) {
     const rank = tags('rank').find((r) => r.name === 'boardgame')?.value;
     const minP = val('minplayers'), maxP = val('maxplayers');
     const weight = parseFloat(val('averageweight'));
+    const poll = parseBggPlayerPoll(inner);
+    const num = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : undefined; };
     return {
       id: attrs(a).id,
       title: (names.find((n) => n.type === 'primary') || names[0] || {}).value || '',
@@ -351,10 +353,56 @@ export function parseBggThings(xml) {
       designers: linkVals('boardgamedesigner'),
       publishers: linkVals('boardgamepublisher'),
       categories: linkVals('boardgamecategory'),
-      weight: Number.isFinite(weight) && weight > 0 ? weight.toFixed(2) + ' / 5' : '',
+      mechanics: linkVals('boardgamemechanic'),
+      weight: Number.isFinite(weight) && weight > 0 ? Math.round(weight * 100) / 100 : undefined,
       rank: rank && rank !== 'Not Ranked' ? rank : '',
+      minPlayers: num(minP),
+      maxPlayers: num(maxP),
+      minPlaytime: num(val('minplaytime')),
+      maxPlaytime: num(val('maxplaytime')),
+      minAge: num(val('minage')),
+      bestPlayers: poll.best,
+      recPlayers: poll.recommended,
     };
   });
+}
+
+/**
+ * Community "suggested number of players" poll → which counts are Best / Recommended.
+ * Best: "Best" got the most votes. Recommended: Best + Recommended outvote Not Recommended.
+ */
+export function parseBggPlayerPoll(inner) {
+  const pollXml = (inner.match(/<poll\b[^>]*name="suggested_numplayers"[^>]*>([\s\S]*?)<\/poll>/) || [])[1];
+  const best = [], recommended = [];
+  if (!pollXml) return { best, recommended };
+  for (const [, n, body] of pollXml.matchAll(/<results\b[^>]*numplayers="(\d+)"[^>]*>([\s\S]*?)<\/results>/g)) {
+    const votes = (v) => parseInt((body.match(new RegExp(`value="${v}"[^>]*numvotes="(\\d+)"`)) || [])[1] || '0', 10);
+    const b = votes('Best'), r = votes('Recommended'), no = votes('Not Recommended');
+    if (b + r + no === 0) continue;
+    if (b > 0 && b >= r && b >= no) best.push(Number(n));
+    if (b + r > no) recommended.push(Number(n));
+  }
+  return { best, recommended };
+}
+
+/** Everything we save about a board game, from a parsed BGG "thing". */
+export function bggDetails(t) {
+  return {
+    players: t.players || undefined,
+    minPlayers: t.minPlayers,
+    maxPlayers: t.maxPlayers,
+    bestPlayers: t.bestPlayers?.length ? t.bestPlayers : undefined,
+    recPlayers: t.recPlayers?.length ? t.recPlayers : undefined,
+    playtime: t.playtime && t.playtime !== '0' ? Number(t.playtime) : undefined,
+    minPlaytime: t.minPlaytime,
+    maxPlaytime: t.maxPlaytime,
+    minAge: t.minAge,
+    weight: t.weight,
+    bggRank: t.rank || undefined,
+    mechanics: t.mechanics?.length ? t.mechanics : undefined,
+    designers: (t.designers || []).filter((d) => d !== '(Uncredited)'),
+    publishers: (t.publishers || []).slice(0, 2),
+  };
 }
 
 async function bgg(env, path) {
@@ -396,14 +444,8 @@ async function searchBgg(q, env) {
       year: t.year || h.year,
       cover: t.image || t.thumbnail || '',
       description: truncate(t.description),
-      genres: (t.categories || []).slice(0, 4),
-      details: {
-        players: t.players,
-        playtime: t.playtime && t.playtime !== '0' ? t.playtime : undefined,
-        weight: t.weight,
-        bggRank: t.rank,
-        publishers: (t.publishers || []).slice(0, 2),
-      },
+      genres: t.categories || [],
+      details: bggDetails(t),
       url: `https://boardgamegeek.com/boardgame/${h.id}`,
     });
   });
@@ -427,7 +469,31 @@ export async function search(type, q, env) {
 export async function details(type, source, id, env) {
   if (source === 'tmdb') return tmdbDetails(type, id, env);
   if (source === 'openlibrary') return openLibraryDetails(id, env);
+  if (source === 'bgg') {
+    const [t] = await bggThings(env, [id]);
+    if (!t) throw new HttpError(404, 'Game not found on BoardGameGeek');
+    return { genres: t.categories, details: bggDetails(t), creator: (t.designers || []).filter((d) => d !== '(Uncredited)').slice(0, 3).join(', ') };
+  }
   return {};
+}
+
+/** Fetch up to 20 games per request from BGG (with stats). */
+export async function bggThings(env, ids) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += 20) {
+    out.push(...parseBggThings(await bgg(env, `thing?id=${ids.slice(i, i + 20).join(',')}&stats=1`)));
+  }
+  return out;
+}
+
+/** Find the most likely BGG id for a title (+ optional year). */
+export async function bggFind(env, title, year) {
+  const hits = parseBggSearch(await bgg(env, `search?query=${encodeURIComponent(title)}&type=boardgame`));
+  if (!hits.length) return null;
+  const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const t = norm(title);
+  const score = (h) => (norm(h.name) === t ? 4 : norm(h.name).startsWith(t) ? 2 : 0) + (year && String(h.year) === String(year) ? 3 : 0);
+  return hits.map((h, i) => ({ ...h, s: score(h) - i * 0.01 })).sort((a, b) => b.s - a.s)[0];
 }
 
 export function configured(env) {

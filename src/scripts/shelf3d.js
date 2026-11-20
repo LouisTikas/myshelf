@@ -22,8 +22,11 @@ function initShelf(shelf) {
   };
 
   // Shelf was rearranged on the page (pencil → Arrange → Save): first item faces front again.
+  // Also fired by the board game filters: only visible items take part.
   shelf.addEventListener('shelf:reorder', () => {
-    books = [...shelf.querySelectorAll('.book3d')];
+    books = [...shelf.querySelectorAll('.book3d')].filter((b) => !b.closest('.shelf-slot')?.hidden);
+    if (!books.length) return;
+    if (books.includes(active) && books[0] === active) return;
     active.classList.remove('is-front');
     active = books[0];
     active.classList.add('is-front');

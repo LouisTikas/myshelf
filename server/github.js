@@ -92,3 +92,13 @@ export async function commitFiles(env, message, changes) {
   });
   return commit.sha;
 }
+
+/** List file names in a repo directory. */
+export async function listDir(env, path) {
+  const { repo, branch } = cfg(env);
+  const res = await gh(env, `/repos/${repo}/contents/${encodeURI(path)}?ref=${encodeURIComponent(branch)}`);
+  if (res.status === 404) return [];
+  if (!res.ok) throw new HttpError(502, `GitHub list ${path} failed (${res.status})`);
+  const data = await res.json();
+  return Array.isArray(data) ? data.filter((f) => f.type === 'file').map((f) => f.name) : [];
+}

@@ -1,6 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Shelf from '../../components/Shelf.astro';
+import BoardgameFilters from '../../components/BoardgameFilters.astro';
+import '../../styles/filters.css';
 import { getItems } from '../../lib/items.js';
 import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../lib/types.js';
 import { sortShelf } from '../../lib/sorting.js';
@@ -27,8 +29,9 @@ const groups = ['in-progress', 'finished', 'want', 'abandoned']
     <p class="eyebrow">{all.length} {all.length === 1 ? t.label : t.plural}</p>
     <h1>{t.plural}</h1>
   </section>
+  {type === 'boardgame' && all.length > 0 && <BoardgameFilters items={all} />}
   <div class="bookcase">
     {groups.length === 0 && <Shelf items={[]} empty={`No ${t.plural.toLowerCase()} yet.`} />}
-    {groups.map((g) => <Shelf title={g.label} items={g.items} arrangeKey={g.key} height={type === 'music' ? 160 : 180} />)}
+    {groups.map((g) => <Shelf title={g.label} items={g.items} arrangeKey={g.key} height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />)}
   </div>
 </Base>

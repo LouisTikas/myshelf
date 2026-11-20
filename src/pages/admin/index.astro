@@ -60,6 +60,10 @@ const typesJson = JSON.stringify(TYPES);
             </select>
           </div>
           <p class="muted small">Changes take about a minute to appear on the public site while Cloudflare rebuilds it.</p>
+          <div class="row">
+            <button id="refresh-bgg" class="btn ghost small" type="button">↻ Refresh board games from BGG</button>
+            <span id="refresh-bgg-msg" class="muted small"></span>
+          </div>
           <ul id="lib-list" class="lib-list"></ul>
         </div>
       </div>
@@ -138,6 +142,7 @@ const typesJson = JSON.stringify(TYPES);
         </div>
         <footer class="editor-foot">
           <span id="editor-source" class="muted small"></span>
+          <button type="button" class="btn ghost small" id="editor-refresh-bgg" hidden>↻ Refresh from BGG</button>
           <span class="spacer"></span>
           <button type="button" class="btn ghost" data-close>Cancel</button>
           <button type="submit" class="btn primary" id="editor-save" value="save">Save to shelf</button>

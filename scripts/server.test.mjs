@@ -58,7 +58,16 @@ const BGG_THING = `<?xml version="1.0" encoding="utf-8"?><items termsofuse="x">
   <name type="primary" sortindex="1" value="Wingspan" />
   <name type="alternate" sortindex="1" value="Flügelschlag" />
   <description>Attract birds &amp;amp; build engines.&amp;#10;&amp;#10;Second line &amp;mdash; ok.</description>
-  <yearpublished value="2019" /><minplayers value="1" /><maxplayers value="5" /><playingtime value="70" />
+  <yearpublished value="2019" /><minplayers value="1" /><maxplayers value="5" /><playingtime value="70" /><minplaytime value="40" /><maxplaytime value="70" /><minage value="10" />
+  <poll name="suggested_numplayers" title="User Suggested Number of Players" totalvotes="100">
+    <results numplayers="1"><result value="Best" numvotes="5"/><result value="Recommended" numvotes="30"/><result value="Not Recommended" numvotes="20"/></results>
+    <results numplayers="2"><result value="Best" numvotes="40"/><result value="Recommended" numvotes="30"/><result value="Not Recommended" numvotes="5"/></results>
+    <results numplayers="3"><result value="Best" numvotes="60"/><result value="Recommended" numvotes="20"/><result value="Not Recommended" numvotes="2"/></results>
+    <results numplayers="5"><result value="Best" numvotes="2"/><result value="Recommended" numvotes="10"/><result value="Not Recommended" numvotes="40"/></results>
+    <results numplayers="5+"><result value="Best" numvotes="0"/><result value="Recommended" numvotes="0"/><result value="Not Recommended" numvotes="30"/></results>
+  </poll>
+  <link type="boardgamemechanic" id="9" value="Engine Building" />
+  <link type="boardgamemechanic" id="10" value="Hand Management" />
   <link type="boardgamecategory" id="1089" value="Animals" />
   <link type="boardgamedesigner" id="1" value="Elizabeth Hargrave" />
   <link type="boardgamepublisher" id="2" value="Stonemaier Games" />
@@ -74,7 +83,11 @@ test('BGG XML parsing', () => {
   assert.equal(t.image, 'https://cf.geekdo-images.com/big.jpg');
   assert.equal(t.players, '1–5');
   assert.equal(t.rank, '31');
-  assert.equal(t.weight, '2.44 / 5');
+  assert.equal(t.weight, 2.44);
+  assert.deepEqual(t.bestPlayers, [2, 3]);
+  assert.deepEqual(t.recPlayers, [1, 2, 3]);
+  assert.equal(t.minPlaytime, 40); assert.equal(t.maxPlaytime, 70); assert.equal(t.minAge, 10);
+  assert.deepEqual(t.mechanics, ['Engine Building', 'Hand Management']);
   assert.deepEqual(t.designers, ['Elizabeth Hargrave']);
   assert.equal(t.description, 'Attract birds & build engines.\n\nSecond line — ok.');
 });
@@ -292,4 +305,36 @@ test('arrangements API saves per-type shelf orders', async () => {
   assert.equal(state.commitMsg, 'Arrange book:finished');
   const bad = await onRequestPost({ request: req({ key: 'book:nope', order: [] }), env: GH_ENV });
   assert.equal(bad.status, 400);
+});
+
+test('refresh board games: links manual entries, keeps notes, one commit', async () => {
+  const { refreshBoardgames } = await import('../server/refresh.js');
+  const manual = '---\ntitle: Wingspan\ntype: boardgame\nyear: "2019"\nstatus: finished\nrating: 4.5\ncover: /covers/boardgame-wingspan-2019.jpg\ndetails:\n  players: 1–5\nsource:\n  name: Manual\n---\n\nMy notes stay.';
+  const state = { blobs: [], commitMsg: null };
+  mockFetch([
+    [/\/contents\/src\/content\/items\?ref=/, () => [{ type: 'file', name: 'boardgame-wingspan-2019.md' }, { type: 'file', name: 'book-x.md' }]],
+    [/\/contents\/src\/content\/items\/boardgame-wingspan-2019\.md/, () => new Response(manual)],
+    ['xmlapi2/search', () => BGG_SEARCH],
+    ['xmlapi2/thing', () => BGG_THING],
+    ['/git/ref/heads/main', () => ({ object: { sha: 'p' } })],
+    ['/git/commits/p', () => ({ tree: { sha: 't' } })],
+    ['/git/blobs', (_, init) => { state.blobs.push(JSON.parse(init.body)); return { sha: 'b' }; }],
+    ['/git/trees', () => ({ sha: 'nt' })],
+    [/\/git\/commits$/, (_, init) => { state.commitMsg = JSON.parse(init.body).message; return { sha: 'c' }; }],
+    ['/git/refs/heads/main', () => ({})],
+  ]);
+  const { sha, report } = await refreshBoardgames({ ...GH_ENV, BGG_TOKEN: 'tok' });
+  assert.equal(sha, 'c');
+  assert.equal(state.blobs.length, 1);
+  assert.equal(state.commitMsg, 'Refresh 1 board game from BGG');
+  assert.match(report[0].status, /linked to “Wingspan \(2019\)”/);
+  const md = state.blobs[0].content;
+  assert.match(md, /My notes stay\./);
+  assert.match(md, /rating: 4\.5/);
+  assert.match(md, /cover: \/covers\/boardgame-wingspan-2019\.jpg/);
+  assert.match(md, /minPlayers: 1/);
+  assert.match(md, /bestPlayers:\n\s+- 2\n\s+- 3/);
+  assert.match(md, /weight: 2\.44/);
+  assert.match(md, /id: "266192"/);
+  assert.match(md, /- Engine Building/);
 });

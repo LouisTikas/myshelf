@@ -4,7 +4,7 @@ import Base from '../../layouts/Base.astro';
 import Cover from '../../components/Cover.astro';
 import { getItems, getShelves, fmtDate } from '../../lib/items.js';
 import { inShelf } from '../../lib/sorting.js';
-import { TYPES, STATUS_LABEL, DETAIL_LABELS, formatDetail, stars } from '../../lib/types.js';
+import { TYPES, STATUS_LABEL, DETAIL_LABELS, HIDDEN_DETAILS, formatDetail, stars } from '../../lib/types.js';
 
 export async function getStaticPaths() {
   const items = await getItems();
@@ -16,7 +16,8 @@ const t = TYPES[d.type];
 const { Content } = await render(entry);
 const shelves = getShelves().filter((s) => inShelf(d, s));
 const details = Object.entries(d.details || {})
-  .map(([k, v]) => [DETAIL_LABELS[k] || k, formatDetail(k, v)])
+  .filter(([k]) => !HIDDEN_DETAILS.has(k))
+  .map(([k, v]) => [DETAIL_LABELS[k] || k, formatDetail(k, v, d.details)])
   .filter(([, v]) => v);
 const hasBody = Boolean(entry.body && entry.body.trim());
 ---

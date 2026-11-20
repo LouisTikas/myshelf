@@ -21,12 +21,26 @@ export const DETAIL_LABELS = {
   runtime: 'Runtime', seasons: 'Seasons', episodes: 'Episodes', network: 'Network',
   tracks: 'Tracks', kind: 'Format', label: 'Label',
   platforms: 'Platforms', developers: 'Developers', publishers: 'Publishers',
-  players: 'Players', playtime: 'Play time', weight: 'Complexity', bggRank: 'BGG rank',
+  players: 'Players', bestPlayers: 'Best with', playtime: 'Play time', minAge: 'Age', weight: 'Complexity', bggRank: 'BGG rank',
+  mechanics: 'Mechanics', designers: 'Designers',
   cast: 'Cast',
 };
 
-export function formatDetail(key, value) {
+// Internal values used for filtering; not shown as their own rows on item pages.
+export const HIDDEN_DETAILS = new Set(['minPlayers', 'maxPlayers', 'recPlayers', 'minPlaytime', 'maxPlaytime']);
+
+export function complexityLabel(w) {
+  const n = parseFloat(w);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return n < 2 ? 'Light' : n <= 3 ? 'Medium' : 'Heavy';
+}
+
+export function formatDetail(key, value, details = {}) {
   if (value == null || value === '') return '';
+  if (key === 'weight') { const n = parseFloat(value); return Number.isFinite(n) ? `${complexityLabel(n)} (${n.toFixed(2)} / 5)` : String(value); }
+  if (key === 'bestPlayers') return (Array.isArray(value) ? value : [value]).join(', ') + ' players';
+  if (key === 'minAge') return `${value}+`;
+  if (key === 'playtime' && details.minPlaytime && details.maxPlaytime && details.minPlaytime !== details.maxPlaytime) return `${details.minPlaytime}–${details.maxPlaytime} min`;
   if (Array.isArray(value)) return value.join(', ');
   if (key === 'runtime') return `${value} min`;
   if (key === 'playtime') return `${value} min`;

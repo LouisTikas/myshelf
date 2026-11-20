@@ -2,11 +2,21 @@
   {
     "slug": "favorites",
     "name": "All-Time Favorites",
-    "description": "The ones I keep coming back to."
+    "description": "The ones I keep coming back to.",
+    "sort": "custom"
   },
   {
     "slug": "2026",
     "name": "2026",
-    "description": "Everything I finished this year."
+    "description": "Everything I finished this year.",
+    "sort": "custom",
+    "order": [
+      "book-dungeon-crawler-carl-2020",
+      "movie-godzilla-minus-zero-2026",
+      "videogame-the-legend-of-zelda-ocarina-of-time-2026-2",
+      "book-books-of-blood-volume-one-1985",
+      "videogame-star-fox-2026",
+      "videogame-pokemon-pokopia-2026"
+    ]
   }
 ]

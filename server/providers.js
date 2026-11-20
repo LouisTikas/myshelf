@@ -225,17 +225,70 @@ async function getTwitchToken(env) {
   return twitchToken.token;
 }
 
-async function searchIgdb(q, env) {
-  const token = await getTwitchToken(env);
-  const safe = q.replace(/["\\]/g, ' ');
-  const body = `search "${safe}"; fields name,first_release_date,cover.image_id,summary,genres.name,platforms.abbreviation,platforms.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,url; limit 12;`;
-  const res = await fetch('https://api.igdb.com/v4/games', {
+const IGDB_POOL = 50;   // candidates fetched from IGDB
+const IGDB_RESULTS = 26; // results shown after re-ranking
+
+// IGDB game_type ids → how much we trust it as "the real game".
+const IGDB_TYPE_WEIGHT = {
+  0: 2,    // main game
+  8: 2,    // remake
+  9: 1.5,  // remaster
+  10: 1.5, // expanded game
+  4: 1.5,  // standalone expansion
+  2: 1,    // expansion
+  11: 1,   // port
+  3: 0.5,  // bundle
+  1: 0,    // DLC
+  6: 0, 7: 0, 13: 0, 14: -0.5, // episode, season, pack, update
+  5: -3,   // mod
+  12: -2,  // fork
+};
+const FAN_WORDS = /\b(randomi[sz]er|rom ?hack|hack|redux|mod|fan ?game|demake|unreal engine|crossover|online|2d)\b/i;
+
+const norm = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+
+/** Higher = better. Exported for tests. */
+export function igdbScore(game, q) {
+  const name = norm(game.name);
+  const query = norm(q);
+  // Compare against the full name and against the part after a series prefix ("The Legend of Zelda: Ocarina of Time").
+  const parts = [name, ...String(game.name || '').split(/[:\-–—]/).slice(1).map(norm)].filter(Boolean);
+  let title = 0;
+  if (parts.some((p) => p === query)) title = 3;
+  else if (name.startsWith(query) || parts.some((p) => p.startsWith(query))) title = 2;
+  else if (name.includes(query)) title = 1;
+
+  const typeId = game.game_type ?? game.category;
+  let type = typeId in IGDB_TYPE_WEIGHT ? IGDB_TYPE_WEIGHT[typeId] : 0;
+  // Unofficial stuff that isn't tagged as a mod still tends to say so in its name.
+  if (type >= 0 && FAN_WORDS.test(game.name) && !FAN_WORDS.test(q)) type -= 2;
+
+  const popularity = Math.log10(1 + (game.total_rating_count || 0) + (game.hypes || 0) + (game.follows || 0));
+  const cover = game.cover?.image_id ? 0 : -2;
+  return title * 2 + type * 1.5 + popularity + cover;
+}
+
+async function igdbQuery(env, token, body) {
+  return fetch('https://api.igdb.com/v4/games', {
     method: 'POST',
     headers: { 'client-id': env.TWITCH_CLIENT_ID, authorization: `Bearer ${token}`, accept: 'application/json', 'content-type': 'text/plain' },
     body,
   });
+}
+
+async function searchIgdb(q, env) {
+  const token = await getTwitchToken(env);
+  const safe = q.replace(/["\\]/g, ' ');
+  const base = 'name,first_release_date,cover.image_id,summary,genres.name,platforms.abbreviation,platforms.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,url,total_rating_count,hypes';
+  let res = await igdbQuery(env, token, `search "${safe}"; fields ${base},game_type; limit ${IGDB_POOL};`);
+  // If IGDB ever rejects the game_type field, retry without it rather than failing the search.
+  if (res.status === 400) res = await igdbQuery(env, token, `search "${safe}"; fields ${base}; limit ${IGDB_POOL};`);
   if (!res.ok) throw new HttpError(502, `IGDB failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
-  const games = await res.json();
+  const games = (await res.json())
+    .map((g, i) => ({ g, i, s: igdbScore(g, q) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .slice(0, IGDB_RESULTS)
+    .map(({ g }) => g);
   return games.map((g) => {
     const companies = g.involved_companies || [];
     const developers = companies.filter((c) => c.developer).map((c) => c.company?.name).filter(Boolean);

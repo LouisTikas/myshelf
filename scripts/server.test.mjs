@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMarkdown, parseMarkdown, normalizeItem } from '../server/markdown.js';
-import { parseBggSearch, parseBggThings, search, details } from '../server/providers.js';
+import { parseBggSearch, parseBggThings, search, details, igdbScore } from '../server/providers.js';
 import { saveItem, deleteItem } from '../server/save.js';
 import { onRequest as authMiddleware } from '../functions/api/_middleware.js';
 import { onRequestGet as searchHandler } from '../functions/api/search.js';
@@ -222,4 +222,32 @@ test('auth middleware + search handler', async () => {
   const noKey = await searchHandler({ request: new Request('https://x/api/search?type=movie&q=hello'), env: {} });
   assert.equal(noKey.status, 400);
   assert.match((await noKey.json()).error, /TMDB_TOKEN/);
+});
+
+test('IGDB re-ranking puts real releases above mods and caps at 26', async () => {
+  const cover = { image_id: 'x' };
+  const pool = [
+    { id: 1, name: "Ocarina of Time: Spaceworld '97 Experience", game_type: 5, cover },
+    { id: 2, name: 'Ocarina of Time: Chaos Edition', game_type: 5, cover },
+    { id: 3, name: 'Unreal Engine The Legend of Zelda: Ocarina of Time' },
+    { id: 4, name: 'Ocarina of Time Redux', cover },
+    { id: 5, name: 'The Legend of Zelda: Ocarina of Time 3D', game_type: 8, cover, total_rating_count: 400 },
+    { id: 6, name: 'The Legend of Zelda: Ocarina of Time', game_type: 0, cover, total_rating_count: 900 },
+    { id: 7, name: 'The Legend of Zelda: Ocarina of Time', game_type: 8, cover, hypes: 120 },
+    { id: 8, name: 'Ocarina of Time + Majora\'s Mask Crossover Randomizer', cover },
+    ...Array.from({ length: 40 }, (_, i) => ({ id: 100 + i, name: `Filler ${i}` })),
+  ];
+  const calls = mockFetch([
+    ['id.twitch.tv', () => ({ access_token: 'tw2', expires_in: 5000000 })],
+    ['api.igdb.com', () => pool],
+  ]);
+  const res = await search('videogame', 'ocarina of time', { TWITCH_CLIENT_ID: 'c', TWITCH_CLIENT_SECRET: 's' });
+  assert.equal(res.length, 26);
+  assert.deepEqual(res.slice(0, 3).map((r) => r.sourceId).sort(), ['5', '6', '7']);
+  const top3 = res.slice(0, 3).map((r) => r.sourceId);
+  assert.ok(top3.indexOf('6') < top3.indexOf('5'), 'exact title beats "3D"');
+  const pos = (id) => res.findIndex((r) => r.sourceId === id);
+  assert.ok(pos('1') > pos('5') && pos('3') > pos('5') && pos('4') > pos('5'));
+  assert.match(calls.find((c) => c.url.includes('api.igdb.com')).init.body, /limit 50;/);
+  assert.ok(igdbScore({ name: 'Wingspan Redux', cover }, 'wingspan redux') > igdbScore({ name: 'Wingspan Redux', cover }, 'wingspan') );
 });

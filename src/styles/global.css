@@ -1,11 +1,11 @@
 /* ───────── MyShelf — global styles ───────── */
 :root {
-  --wall: #231710;
-  --wall-2: #2e1f16;
-  --panel: #1a110b;
-  --wood-hi: #b07a45;
-  --wood: #8a5a30;
-  --wood-lo: #5e3a1c;
+  --wall: #1b120c;     /* slightly darker background */
+  --wall-2: #25190f;
+  --panel: #150d08;
+  --wood-hi: #97683b;  /* shelving ~15% less bright */
+  --wood: #77502c;
+  --wood-lo: #523319;
   --wood-shadow: rgba(0, 0, 0, 0.55);
   --paper: #f5eedf;
   --paper-2: #ebe1cc;
@@ -30,7 +30,7 @@ body {
   font-family: var(--sans);
   color: var(--cream);
   background:
-    radial-gradient(1200px 600px at 50% -200px, #3d2a1d 0%, transparent 70%),
+    radial-gradient(1200px 600px at 50% -200px, #312116 0%, transparent 70%),
     repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 9px),
     var(--wall);
   min-height: 100vh;
@@ -208,7 +208,7 @@ a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
 @media (max-width: 760px) {
   main { padding: 0 12px 40px; }
   .item-page { grid-template-columns: 1fr; padding: 24px; gap: 24px; }
-  .journal-entry { grid-template-columns: 1fr; }
+  .journal-entry { grid-template-columns: 1fr; gap: 16px; }
   .bookcase { border-width: 8px; }
   .shelf { padding: 0 14px; column-gap: 12px; }
   .shelf-head, .shelf-desc { padding: 0 14px; }
@@ -217,3 +217,6 @@ a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
 /* "MyShelf | Lex Judge" */
 .hero-owner { font-weight: 500; color: var(--cream-soft); letter-spacing: -0.01em; }
 .hero-owner .sep { color: var(--accent); margin: 0 0.25em; font-weight: 400; }
+
+/* Journal thumbnails keep their own size instead of stretching across the card (was broken on phones). */
+.journal-entry > .cover { justify-self: start; align-self: start; width: max-content; }

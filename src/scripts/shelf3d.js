@@ -5,7 +5,7 @@ const SWIPE_STEP = 34;      // px of finger travel per item while swiping
 const SWIPE_LOCK = 10;      // px before we decide the gesture is horizontal
 
 function initShelf(shelf) {
-  const books = [...shelf.querySelectorAll('.book3d')];
+  let books = [...shelf.querySelectorAll('.book3d')];
   if (!books.length) return;
   let active = books.find((b) => b.classList.contains('is-front')) || books[0];
   active.classList.add('is-front');
@@ -20,6 +20,14 @@ function initShelf(shelf) {
       requestAnimationFrame(() => b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }));
     }
   };
+
+  // Shelf was rearranged on the page (pencil → Arrange → Save): first item faces front again.
+  shelf.addEventListener('shelf:reorder', () => {
+    books = [...shelf.querySelectorAll('.book3d')];
+    active.classList.remove('is-front');
+    active = books[0];
+    active.classList.add('is-front');
+  });
 
   // ── Mouse: real movement only (layout shifts under a still cursor shouldn't turn things).
   let mouse = null;

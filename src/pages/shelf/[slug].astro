@@ -13,10 +13,10 @@ const items = sortShelf((await getItems()).filter((e) => e.data.collections?.inc
 <Base title={shelf.name} description={shelf.description}>
   <section class="page-head">
     <p class="eyebrow">Collection</p>
-    <h1>{shelf.name}</h1>
+    <h1>{shelf.name}<button type="button" class="shelf-edit" data-collection={shelf.slug} hidden aria-label={`Arrange ${shelf.name}`} title="Arrange this shelf"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></h1>
     {shelf.description && <p class="lede">{shelf.description}</p>}
   </section>
   <div class="bookcase">
-    <Shelf items={items} empty="No items on this shelf yet." />
+    <Shelf items={items} empty="No items on this shelf yet." collection={shelf.slug} />
   </div>
 </Base>

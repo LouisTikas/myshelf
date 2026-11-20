@@ -268,6 +268,6 @@ test('shelf sort orders', async () => {
   assert.equal(ids('rating'), 'cab');     // unrated last
   assert.equal(ids('year-new'), 'bac');
   assert.equal(ids('year-old'), 'abc');
-  assert.equal(ids('custom', { order: ['c', 'a'] }), 'cab'); // unarranged 'b' goes after
+  assert.equal(ids('custom', { order: ['c', 'a'] }), 'bca'); // unarranged (new) 'b' goes first
   assert.equal(ids(undefined), 'cab');
 });

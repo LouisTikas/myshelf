@@ -157,24 +157,6 @@ const typesJson = JSON.stringify(TYPES);
       <div id="preview-body"></div>
     </dialog>
 
-    <!-- Drag-to-arrange a collection -->
-    <dialog id="arrange" class="arrange">
-      <header class="editor-head">
-        <div>
-          <h2 id="arrange-title">Arrange</h2>
-          <p class="muted small">Drag covers into the order you want on the shelf. New items go at the end until you move them.</p>
-        </div>
-        <button type="button" class="btn ghost small" data-close-arrange>✕</button>
-      </header>
-      <ol id="arrange-list" class="arrange-list"></ol>
-      <footer class="editor-foot">
-        <button type="button" class="btn ghost small" id="arrange-reset">Reset to newest first</button>
-        <span class="spacer"></span>
-        <button type="button" class="btn ghost" data-close-arrange>Cancel</button>
-        <button type="button" class="btn primary" id="arrange-save">Save order</button>
-      </footer>
-    </dialog>
-
     <div id="publish-pill" class="publish-pill" hidden></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </div>

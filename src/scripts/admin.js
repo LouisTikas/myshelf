@@ -1,7 +1,7 @@
 // Admin UI: search external databases, add/edit/delete items, manage collections.
 import { marked } from 'marked';
-import Sortable from 'sortablejs';
-import { SORTS } from '../lib/sorting.js';
+import { SORTS, sortShelf } from '../lib/sorting.js';
+import { openArrange } from './arrange.js';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const root = $('#admin');
@@ -452,7 +452,7 @@ $('#col-list').addEventListener('click', (e) => {
   const row = e.target.closest('.col-row');
   if (!row) return;
   syncCollectionsFromInputs();
-  if (e.target.closest('[data-arrange]')) return openArrange(Number(row.dataset.i));
+  if (e.target.closest('[data-arrange]')) return openArrangeFor(Number(row.dataset.i));
   const i = Number(row.dataset.i);
   const list = state.collections;
   if (e.target.closest('[data-up]') && i > 0) [list[i - 1], list[i]] = [list[i], list[i - 1]];
@@ -487,73 +487,25 @@ $('#col-save').addEventListener('click', async () => {
   }
 });
 
-// ───────── arrange a collection (drag & drop) ─────────
-let arrangeIndex = -1;
-let sortable = null;
-const addedTime = (i) => (i.dateAdded ? new Date(i.dateAdded).getTime() : 0);
-
-function itemsInCollection(c) {
-  const list = libraryItems().filter((i) => (i.collections || []).includes(c.slug));
-  const pos = new Map((c.order || []).map((s, n) => [s, n]));
-  return list.sort((a, b) => (pos.has(a.slug) ? pos.get(a.slug) : Infinity) - (pos.has(b.slug) ? pos.get(b.slug) : Infinity) || addedTime(a) - addedTime(b));
-}
-
-function renderArrange(items) {
-  $('#arrange-list').innerHTML = items.length
-    ? items.map((i, n) => `
-      <li class="arrange-item" data-slug="${esc(i.slug)}">
-        <span class="arrange-num">${n + 1}</span>
-        ${coverThumb(i, 110)}
-        <span class="arrange-title">${esc(i.title)}</span>
-      </li>`).join('')
-    : '<li class="muted">This collection is empty. Add items to it from the editor.</li>';
-}
-function renumber() {
-  $$('#arrange-list .arrange-num').forEach((el, n) => (el.textContent = n + 1));
-}
-
-function openArrange(index) {
-  arrangeIndex = index;
+// ───────── arrange a collection (shared drag & drop dialog) ─────────
+function openArrangeFor(index) {
   const c = state.collections[index];
-  $('#arrange-title').textContent = `Arrange “${c.name}”`;
-  renderArrange(itemsInCollection(c));
-  sortable?.destroy();
-  sortable = Sortable.create($('#arrange-list'), {
-    animation: 180,
-    ghostClass: 'arrange-ghost',
-    chosenClass: 'arrange-chosen',
-    delay: 120, delayOnTouchOnly: true, // lets you scroll the list on phones without grabbing a cover
-    onSort: renumber,
+  // Start from what the shelf shows now; new items (not yet arranged) come first.
+  const entries = libraryItems().filter((i) => (i.collections || []).includes(c.slug)).map((i) => ({ id: i.slug, data: i }));
+  openArrange({
+    title: c.name,
+    items: sortShelf(entries, c).map((e) => e.data),
+    onSave: async (order) => {
+      c.sort = 'custom';
+      c.order = order;
+      const { collections, sha } = await api('collections', { method: 'POST', body: { collections: state.collections.filter((x) => x.name.trim()) } });
+      state.collections = collections;
+      renderCollections();
+      watchPublish(sha);
+      toast(`Saved the order for “${c.name}”. Your shelf is updating.`);
+    },
   });
-  $('#arrange').showModal();
 }
-
-$$('[data-close-arrange]').forEach((b) => b.addEventListener('click', () => $('#arrange').close()));
-$('#arrange-reset').addEventListener('click', () => {
-  const c = state.collections[arrangeIndex];
-  const items = libraryItems().filter((i) => (i.collections || []).includes(c.slug));
-  const when = (i) => new Date(i.dateFinished || i.dateStarted || i.dateAdded || 0).getTime();
-  renderArrange(items.sort((a, b) => when(b) - when(a)));
-});
-$('#arrange-save').addEventListener('click', async () => {
-  const c = state.collections[arrangeIndex];
-  c.sort = 'custom';
-  c.order = $$('#arrange-list .arrange-item').map((li) => li.dataset.slug);
-  const btn = $('#arrange-save');
-  btn.disabled = true;
-  try {
-    const { collections, sha } = await api('collections', { method: 'POST', body: { collections: state.collections.filter((x) => x.name.trim()) } });
-    state.collections = collections;
-    renderCollections();
-    $('#arrange').close();
-    watchPublish(sha);
-    toast(`Saved the order for “${c.name}”. Your shelf is updating.`);
-  } catch (err) {
-    toast(err.message, 'error');
-  } finally {
-    btn.disabled = false;
-  }
-});
 
 // ───────── live preview ─────────
 const STATUS_WORDS = (type, status) => {

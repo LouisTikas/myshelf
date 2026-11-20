@@ -32,14 +32,24 @@ export function sortShelf(entries, shelf = {}) {
     case 'year-new': return list.sort((a, b) => (year(b.data) ?? -Infinity) - (year(a.data) ?? -Infinity) || recent(a, b));
     case 'year-old': return list.sort((a, b) => (year(a.data) ?? Infinity) - (year(b.data) ?? Infinity) || recent(a, b));
     case 'custom': {
-      const pos = new Map((shelf.order || []).map((slug, i) => [slug, i]));
-      // Arranged items first in your order; anything not arranged yet goes at the end, oldest added first.
-      return list.sort((a, b) => {
-        const pa = pos.has(a.id) ? pos.get(a.id) : Infinity;
-        const pb = pos.has(b.id) ? pos.get(b.id) : Infinity;
-        return pa - pb || added(a.data) - added(b.data);
-      });
+      const ordered = arrangeOrder(list.map((e) => ({ slug: e.id, dateAdded: e.data.dateAdded, e })), shelf.order);
+      return ordered.map((x) => x.e);
     }
     default: return list.sort(recent);
   }
+}
+
+/**
+ * Custom order: items you haven't arranged yet (i.e. newly added) come FIRST, newest added first;
+ * then everything you arranged, in your order. Works on plain objects with { slug, dateAdded }.
+ */
+export function arrangeOrder(items, order = []) {
+  const pos = new Map((order || []).map((slug, i) => [slug, i]));
+  const t = (i) => (i.dateAdded ? new Date(i.dateAdded).getTime() : 0);
+  return [...items].sort((a, b) => {
+    const ia = pos.has(a.slug), ib = pos.has(b.slug);
+    if (ia && ib) return pos.get(a.slug) - pos.get(b.slug);
+    if (!ia && !ib) return t(b) - t(a);
+    return ia ? 1 : -1;
+  });
 }

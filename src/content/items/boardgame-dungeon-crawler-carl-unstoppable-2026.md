@@ -9,6 +9,7 @@ rating: 4.5
 dateAdded: 2026-11-20
 collections:
   - "2026"
+  - my-board-game-collection
 genres:
   - Novel-based
 details:
@@ -21,10 +22,12 @@ details:
     - 1
     - 2
   weight: 2.89
-  bggRank: "8591"
+  bggRank: 8591
   mechanics:
     - Cooperative Game
-    - Deck, Bag, and Pool Building
+    - Deck
+    - Bag
+    - and Pool Building
     - Solo / Solitaire Game
   designers:
     - John D. Clair

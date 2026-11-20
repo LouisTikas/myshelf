@@ -91,9 +91,11 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
     inset 0 0 60px rgba(0,0,0,0.85),
     0 0 0 1px rgba(0,0,0,0.6),
     0 24px 44px rgba(0,0,0,0.5);
-  padding: 18px 0 6px;
+  padding: 18px 0 0;
+  border-bottom-width: 6px; /* the last shelf board + this thin edge form the base */
   overflow: hidden;
 }
+.bookcase > .shelf-section:last-of-type { padding-bottom: 0; }
 .shelf-section { padding: 6px 0 14px; }
 .shelf-head { display: flex; align-items: baseline; gap: 10px; padding: 0 22px; }
 .shelf-head h2 { font-size: 1.25rem; font-weight: 600; margin: 0; }
@@ -220,7 +222,7 @@ a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
   main { padding: 0 12px 40px; }
   .item-page { grid-template-columns: 1fr; padding: 24px; gap: 24px; }
   .journal-entry { grid-template-columns: 1fr; gap: 16px; }
-  .bookcase { border-width: 8px; border-radius: 14px; }
+  .bookcase { border-width: 8px; border-bottom-width: 4px; border-radius: 14px; }
   .shelf { padding: 0 14px; column-gap: 12px; }
   .shelf-head, .shelf-desc { padding: 0 14px; }
 }

@@ -7,6 +7,8 @@ cover: /covers/book-dungeon-crawler-carl-2020.jpg
 status: finished
 dateAdded: 2026-11-20
 dateFinished: 2026-11-20
+collections:
+  - "2026"
 description: |-
   **The apocalypse will be televised!**
 

@@ -10,6 +10,7 @@ dateAdded: 2026-11-20
 dateFinished: 2026-11-20
 collections:
   - favorites
+  - my-board-game-collection
 description: |-
   An asymmetric, cooperative dungeon defense game where you play as the monsters protecting their hard earned treasures against invading hordes of looters (so-called heroes) trying to steal it.
 

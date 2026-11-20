@@ -145,6 +145,19 @@ const typesJson = JSON.stringify(TYPES);
       </form>
     </dialog>
 
+    <!-- Live preview shown right after saving -->
+    <dialog id="preview" class="preview">
+      <div class="preview-bar">
+        <span id="publish-status" class="publish-status"></span>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost small" id="preview-edit">Edit</button>
+        <button type="button" class="btn ghost small" id="preview-another">＋ Add another</button>
+        <button type="button" class="btn ghost small" data-close-preview>✕</button>
+      </div>
+      <div id="preview-body"></div>
+    </dialog>
+
+    <div id="publish-pill" class="publish-pill" hidden></div>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </div>
   <script>

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "astro": "^5.18.2",
+    "marked": "^18.2.1",
     "yaml": "^2.9.1"
   }
 }

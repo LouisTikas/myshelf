@@ -1,4 +1,5 @@
 // Admin UI: search external databases, add/edit/delete items, manage collections.
+import { marked } from 'marked';
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const root = $('#admin');
@@ -12,6 +13,8 @@ const state = {
   collections: [],
   editing: null, // { slug?, source? }
   pending: { saved: {}, deleted: new Set() }, // changes not yet in the built site
+  lastSha: null,      // most recent commit we made; the site is up to date once it's built
+  previewSlug: null,
 };
 
 // ───────── helpers ─────────
@@ -209,6 +212,10 @@ function updateCreatorLabel() {
 
 function openEditor(item, slug = null) {
   state.editing = { slug, source: item.source || {}, extra: item };
+  const sb = $('#editor-save');
+  delete sb.dataset.confirmDup;
+  sb.classList.remove('warn-btn');
+  sb.textContent = 'Save to shelf';
   $('#editor-title').textContent = slug ? `Edit: ${item.title}` : `Add ${TYPES[item.type]?.label || 'item'}`;
   form.title.value = item.title || '';
   form.creator.value = item.creator || '';
@@ -272,15 +279,32 @@ form.addEventListener('submit', async (e) => {
     source,
   };
   delete item.body;
+  if (!slug && !saveBtn.dataset.confirmDup) {
+    const norm = (x) => String(x || '').trim().toLowerCase();
+    const dup = libraryItems().find((i) =>
+      i.type === item.type && (
+        (source?.id && i.source?.id && String(i.source.id) === String(source.id) && i.source?.name === source.name) ||
+        (norm(i.title) === norm(item.title) && norm(i.year) === norm(item.year))
+      ));
+    if (dup) {
+      saveBtn.dataset.confirmDup = '1';
+      saveBtn.textContent = 'Already on your shelf — save anyway?';
+      saveBtn.classList.add('warn-btn');
+      return;
+    }
+  }
+  delete saveBtn.dataset.confirmDup;
+  saveBtn.classList.remove('warn-btn');
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving…';
   try {
     const res = await api('save', { method: 'POST', body: { slug, item, body: form.body.value } });
-    state.pending.saved[res.slug] = { slug: res.slug, ...res.item };
+    state.pending.saved[res.slug] = { slug: res.slug, ...res.item, body: form.body.value, built: false };
     state.pending.deleted.delete(res.slug);
     renderLibrary();
     editor.close();
-    toast(`Saved “${item.title}”. It'll show up on your shelf in about a minute.`);
+    watchPublish(res.sha);
+    showPreview(res.slug);
     if (location.hash) history.replaceState(null, '', location.pathname);
   } catch (err) {
     toast(err.message, 'error');
@@ -296,6 +320,7 @@ async function loadLibrary() {
     const res = await fetch('/library.json', { cache: 'no-store' });
     const data = await res.json();
     state.library = data.items || [];
+    state.builtCommit = data.commit || '';
   } catch {
     state.library = [];
   }
@@ -303,7 +328,7 @@ async function loadLibrary() {
 }
 function libraryItems() {
   const map = new Map(state.library.map((i) => [i.slug, i]));
-  for (const [slug, it] of Object.entries(state.pending.saved)) map.set(slug, { ...it, pending: true });
+  for (const [slug, it] of Object.entries(state.pending.saved)) if (!it.built) map.set(slug, { ...it, pending: true });
   for (const slug of state.pending.deleted) map.delete(slug);
   return [...map.values()];
 }
@@ -323,7 +348,9 @@ function renderLibrary() {
           <span class="muted small">${esc(TYPES[i.type]?.label)} · ${esc(i.creator || '')} ${i.pending ? '<span class="pill">pending rebuild</span>' : ''}</span>
         </span>
         <span class="lib-actions">
-          <a class="btn ghost small" href="/item/${esc(i.slug)}/" target="_blank">View</a>
+          ${i.pending
+            ? `<button class="btn ghost small" data-preview="${esc(i.slug)}">Preview</button>`
+            : `<a class="btn ghost small" href="/item/${esc(i.slug)}/" target="_blank">View</a>`}
           <button class="btn ghost small" data-edit="${esc(i.slug)}">Edit</button>
           <button class="btn ghost small danger" data-del="${esc(i.slug)}">Delete</button>
         </span>
@@ -343,6 +370,8 @@ async function editSlug(slug) {
   }
 }
 $('#lib-list').addEventListener('click', async (e) => {
+  const prev = e.target.closest('[data-preview]');
+  if (prev) return showPreview(prev.dataset.preview);
   const edit = e.target.closest('[data-edit]');
   if (edit) return editSlug(edit.dataset.edit);
   const del = e.target.closest('[data-del]');
@@ -355,11 +384,12 @@ $('#lib-list').addEventListener('click', async (e) => {
   }
   del.disabled = true;
   try {
-    await api('delete', { method: 'POST', body: { slug: del.dataset.del } });
+    const res = await api('delete', { method: 'POST', body: { slug: del.dataset.del } });
     state.pending.deleted.add(del.dataset.del);
     delete state.pending.saved[del.dataset.del];
     renderLibrary();
-    toast('Deleted. The site will update in about a minute.');
+    watchPublish(res.sha);
+    toast('Deleted. Your site is updating.');
   } catch (err) {
     del.disabled = false;
     toast(err.message, 'error');
@@ -423,19 +453,156 @@ $('#col-save').addEventListener('click', async () => {
   const btn = $('#col-save');
   btn.disabled = true;
   try {
-    const { collections } = await api('collections', {
+    const { collections, sha } = await api('collections', {
       method: 'POST',
       body: { collections: state.collections.filter((c) => c.name.trim()) },
     });
     state.collections = collections;
     renderCollections();
-    toast('Collections saved. Your shelves will update in about a minute.');
+    watchPublish(sha);
+    toast('Collections saved. Your shelves are updating.');
   } catch (err) {
     toast(err.message, 'error');
   } finally {
     btn.disabled = false;
   }
 });
+
+// ───────── live preview ─────────
+const STATUS_WORDS = (type, status) => {
+  const t = TYPES[type] || TYPES.book;
+  return { want: t.want, 'in-progress': t.doing, finished: t.verb, abandoned: 'Abandoned' }[status] || status;
+};
+const DETAIL_NAMES = {
+  pages: 'Pages', isbn: 'ISBN', publisher: 'Publisher', runtime: 'Runtime', seasons: 'Seasons', episodes: 'Episodes',
+  network: 'Network', tracks: 'Tracks', kind: 'Format', platforms: 'Platforms', developers: 'Developers',
+  publishers: 'Publishers', players: 'Players', playtime: 'Play time', weight: 'Complexity', bggRank: 'BGG rank', cast: 'Cast',
+};
+const fmtDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '');
+const starText = (r) => (r == null ? '' : '★'.repeat(Math.floor(r)) + (r % 1 >= 0.5 ? '½' : ''));
+
+function coverMarkup(item, height) {
+  const t = TYPES[item.type] || TYPES.book;
+  const ph = `<span class="placeholder"><span class="ph-title">${esc(item.title)}</span>${item.creator ? `<span class="ph-creator">${esc(item.creator)}</span>` : ''}</span>`;
+  const img = item.cover ? `<img src="${esc(item.cover)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+  return `<div class="cover" data-type="${esc(item.type)}" style="--h:${height}px;--pw:${Math.round(height * t.aspect)}px;--tc:${t.color}">${img}${ph}</div>`;
+}
+
+function showPreview(slug) {
+  const it = state.pending.saved[slug];
+  if (!it) return;
+  state.previewSlug = slug;
+  const t = TYPES[it.type] || TYPES.book;
+  const shelves = state.collections.filter((c) => (it.collections || []).includes(c.slug));
+  const details = Object.entries(it.details || {})
+    .map(([k, v]) => [DETAIL_NAMES[k] || k, Array.isArray(v) ? v.join(', ') : k === 'runtime' || k === 'playtime' ? `${v} min` : v])
+    .filter(([, v]) => v !== '' && v != null);
+  const body = (it.body || '').trim();
+  $('#preview-body').innerHTML = `
+    <article class="item-page preview-page">
+      <div class="item-cover">${coverMarkup(it, it.type === 'music' || it.type === 'boardgame' ? 280 : 340)}</div>
+      <div class="item-info">
+        <p class="eyebrow">${esc(t.label)}${it.year ? ' · ' + esc(it.year) : ''}</p>
+        <h1>${esc(it.title)}</h1>
+        ${it.creator ? `<p class="creator">${esc(t.creator)}: ${esc(it.creator)}</p>` : ''}
+        <div class="item-meta">
+          <span class="status status-${esc(it.status)}">${esc(STATUS_WORDS(it.type, it.status))}</span>
+          ${it.rating != null ? `<span class="rating">${starText(it.rating)}</span>` : ''}
+        </div>
+        <dl class="facts">
+          ${it.dateStarted ? `<dt>Started</dt><dd>${fmtDate(it.dateStarted)}</dd>` : ''}
+          ${it.dateFinished ? `<dt>Finished</dt><dd>${fmtDate(it.dateFinished)}</dd>` : ''}
+          ${details.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+          ${(it.genres || []).length ? `<dt>Genres</dt><dd>${esc(it.genres.join(', '))}</dd>` : ''}
+        </dl>
+        ${shelves.length || (it.tags || []).length ? `<div class="chips">
+          ${shelves.map((s) => `<span class="chip">${esc(s.name)}</span>`).join('')}
+          ${(it.tags || []).map((g) => `<span class="chip chip-tag">#${esc(g)}</span>`).join('')}
+        </div>` : ''}
+        ${body ? `<section class="journal-body prose"><h2>My notes</h2>${marked.parse(body)}</section>` : ''}
+        ${it.description ? `<section class="synopsis"><h2>About</h2><p>${esc(it.description)}</p></section>` : ''}
+      </div>
+    </article>`;
+  renderPublishStatus();
+  const dlg = $('#preview');
+  if (!dlg.open) dlg.showModal();
+}
+
+$('[data-close-preview]').addEventListener('click', () => $('#preview').close());
+$('#preview-edit').addEventListener('click', () => {
+  $('#preview').close();
+  if (state.previewSlug) editSlug(state.previewSlug);
+});
+$('#preview-another').addEventListener('click', () => {
+  $('#preview').close();
+  showTab('add');
+  $('#search-q').value = '';
+  $('#results').innerHTML = '';
+  $('#search-msg').textContent = '';
+  $('#search-q').focus();
+});
+
+// ───────── publish watcher: polls the built site until our latest commit is live ─────────
+let publishTimer = null;
+let publishStarted = 0;
+const PUBLISH_TIMEOUT = 6 * 60 * 1000;
+
+function publishState() {
+  if (!state.lastSha) return 'idle';
+  if (state.builtCommit && state.builtCommit === state.lastSha) return 'live';
+  if (Date.now() - publishStarted > PUBLISH_TIMEOUT) return 'slow';
+  return 'building';
+}
+
+function renderPublishStatus() {
+  const st = publishState();
+  const secs = Math.round((Date.now() - publishStarted) / 1000);
+  const slug = state.previewSlug;
+  const live = slug && !state.pending.deleted.has(slug);
+  const text = {
+    idle: '',
+    building: `<span class="spinner"></span> Publishing to your site… ${secs}s`,
+    live: `✓ Live on your site${live ? ` — <a href="/item/${esc(slug)}/" target="_blank">view page</a>` : ''}`,
+    slow: 'Still publishing — this is taking longer than usual. Check Deployments in Cloudflare if it doesn’t appear soon.',
+  }[st];
+  const status = $('#publish-status');
+  status.innerHTML = text;
+  status.className = `publish-status ${st}`;
+  const pill = $('#publish-pill');
+  pill.hidden = st === 'idle' || $('#preview').open;
+  pill.className = `publish-pill ${st}`;
+  pill.innerHTML = st === 'live' ? '✓ Site updated' : st === 'slow' ? 'Still publishing…' : `<span class="spinner"></span> Publishing… ${secs}s`;
+}
+
+async function checkPublished() {
+  try {
+    const data = await (await fetch('/library.json', { cache: 'no-store' })).json();
+    state.builtCommit = data.commit || '';
+    if (state.builtCommit === state.lastSha) {
+      state.library = data.items || [];
+      // Everything we saved is now in the built site. Keep saved copies only for previews.
+      for (const k of Object.keys(state.pending.saved)) state.pending.saved[k].built = true;
+      state.pending.deleted = new Set();
+      renderLibrary();
+    }
+  } catch {}
+  renderPublishStatus();
+  const st = publishState();
+  if (st === 'building') publishTimer = setTimeout(checkPublished, 8000);
+  else if (st === 'live') setTimeout(() => { if (publishState() === 'live') $('#publish-pill').hidden = true; }, 6000);
+}
+
+function watchPublish(sha) {
+  if (!sha) return;
+  state.lastSha = sha;
+  publishStarted = Date.now();
+  clearTimeout(publishTimer);
+  renderPublishStatus();
+  publishTimer = setTimeout(checkPublished, 15000);
+}
+// keep the seconds counter ticking
+setInterval(() => { if (publishState() === 'building') renderPublishStatus(); }, 1000);
+$('#preview').addEventListener('close', renderPublishStatus);
 
 // ───────── deep links: /admin/#edit=slug ─────────
 function handleHash() {

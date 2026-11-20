@@ -12,8 +12,11 @@ export async function GET() {
     status: e.data.status,
     rating: e.data.rating ?? null,
     collections: e.data.collections,
+    source: e.data.source || {},
   }));
-  return new Response(JSON.stringify({ items, collections: getShelves() }), {
+    // Cloudflare Pages sets this during builds; the admin uses it to know when a save is live.
+  const commit = process.env.CF_PAGES_COMMIT_SHA || '';
+  return new Response(JSON.stringify({ commit, items, collections: getShelves() }), {
     headers: { 'content-type': 'application/json' },
   });
 }

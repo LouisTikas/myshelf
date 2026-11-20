@@ -115,3 +115,29 @@ details label { margin-bottom: 10px; }
   .col-row .col-move, .col-row .col-slug { display: none; }
   .lib-row { flex-wrap: wrap; }
 }
+
+/* Live preview after saving */
+.preview { border: 0; padding: 0; background: transparent; width: min(1100px, 96vw); max-height: 94vh; overflow: visible; }
+.preview::backdrop { background: rgba(10, 6, 4, 0.78); }
+.preview-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--paper); color: var(--ink); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+#preview-body { max-height: calc(94vh - 70px); overflow-y: auto; border-radius: var(--radius); }
+#preview-body .item-page { margin-top: 0; }
+.publish-status { font-size: 0.9rem; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; }
+.publish-status.live { color: var(--ok); }
+.publish-status.slow { color: var(--danger); }
+.publish-status a { color: inherit; }
+.publish-pill {
+  position: fixed; right: 20px; bottom: 20px; z-index: 900; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--paper); color: var(--ink); padding: 9px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 500;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+.publish-pill.live { background: var(--ok); color: #fff; }
+.spinner { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; display: inline-block; animation: spin 0.8s linear infinite; opacity: 0.7; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+.btn.warn-btn { background: #c9852b; color: #fff; }
+.publish-pill[hidden] { display: none; }

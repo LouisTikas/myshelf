@@ -13,7 +13,7 @@ const SHAPES = {
   book:      { kind: 'book', bh: 1,    w: 2 / 3, d: 0.17, min: 14 },
   videogame: { kind: 'cart', bh: 0.92, w: 0.76, d: 0.13, min: 14 },
   music:     { kind: 'cd',   bh: 0.85, w: 0.95, d: 0.075, min: 12 },
-  movie:     { kind: 'vhs',  bh: 1,    w: 0.58, d: 0.16, min: 16 },
+  movie:     { kind: 'bluray', bh: 0.9, w: 0.71, d: 0.085, min: 13 },
   tv:        { kind: 'vhs',  bh: 1,    w: 0.58, d: 0.16, min: 16 },
   boardgame: { kind: 'box',  bh: 0.88, w: 0.88, d: 0.25, min: 20 },
 };
@@ -63,12 +63,15 @@ const onErr = "this.closest('.book3d').classList.remove('has-cover');this.remove
       )}
       <span class="b3-gloss"></span>
       {s.kind === 'vhs' && <span class="vhs-notch"></span>}
+      {s.kind === 'bluray' && <span class="br-band"></span>}
     </span>
     <span class="b3-spine">
       {s.kind === 'cart' ? (
         <span class="cart-end-label"><span class="b3-spine-title">{item.title}</span></span>
       ) : s.kind === 'vhs' ? (
         <span class="vhs-label"><span class="b3-spine-title">{item.title}</span></span>
+      ) : s.kind === 'bluray' ? (
+        <span class="br-spine-title b3-spine-title">{item.title}</span>
       ) : (
         <>
           <span class="b3-spine-title">{item.title}</span>

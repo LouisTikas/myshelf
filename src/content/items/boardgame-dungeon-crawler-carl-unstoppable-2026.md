@@ -10,7 +10,9 @@ dateAdded: 2026-11-20
 collections:
   - "2026"
 source:
-  name: Manual
+  name: BoardGameGeek
+  id: "459928"
+  url: https://boardgamegeek.com/boardgame/459928
 ---
 
 Played this twice with Aaron, it's great!

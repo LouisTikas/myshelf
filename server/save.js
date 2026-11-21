@@ -1,7 +1,7 @@
 import { HttpError, slugify, TYPE_KEYS } from './util.js';
 import { normalizeItem } from './markdown.js';
 import { assertSlug } from './paths.js';
-import { getItem, itemExists, putItem, removeItem } from './db.js';
+import { getItem, itemExists, listItems, putItem, putItems, removeItem } from './db.js';
 import { downloadImage, storeCover, deleteCover, storedCoverName, aspectOf } from './covers.js';
 import { cleanExpansions, storeExpansionCovers, deleteExpansionCovers } from './expansions.js';
 
@@ -70,7 +70,17 @@ export async function saveItem(env, payload) {
   const unusedExpansionCovers = await storeExpansionCovers(env, slug, item.expansions, previous?.expansions);
   if (!item.expansions.length) delete item.expansions;
 
-  await putItem(env, slug, item, payload.body);
+  // Only one entry can be featured ("My Thoughts" on the home page): featuring this one un-features the rest.
+  if (raw.featured === true || raw.featured === 'true') {
+    item.featured = true;
+    const others = (await listItems(env))
+      .filter((r) => r.slug !== slug && r.item.featured)
+      .map((r) => { const { featured, ...rest } = r.item; return { slug: r.slug, item: rest, body: r.body }; });
+    await putItems(env, [{ slug, item, body: payload.body }, ...others]);
+  } else {
+    delete item.featured;
+    await putItem(env, slug, item, payload.body);
+  }
   if (removeOld) await deleteCover(env, oldStored).catch(() => {});
   await deleteExpansionCovers(env, unusedExpansionCovers);
   return { slug, item };

@@ -15,7 +15,7 @@ const [items, shelves] = await Promise.all([getItems(env), getShelves(env)]);
     <p>{site.tagline}</p>
   </section>
 
-  <div class="bookcase">
+  <div class="bookcase scroll-motion">
     {shelves.filter(showsOnHome).map((s) => {
       const list = sortShelf(items.filter((e) => inShelf(e.data, s)), s);
       return <Shelf title={s.name} description={s.description} items={list} href={`/shelf/${s.slug}/`} seeAll scroll limit={24} empty="No items on this shelf yet." collection={s.slug} />;

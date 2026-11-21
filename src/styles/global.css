@@ -339,18 +339,14 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
    and it's off for anyone who has "reduce motion" turned on. */
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
-    /* Single-row (scrolling) shelves move as a whole section. Tall wrapping shelves (collection pages,
-       big status shelves) move row by row instead, so the games you're looking at never fade. */
-    .bookcase > .shelf-section:has(> .shelf-scroll),
-    .shelf-3d:not(.shelf-scroll) > .shelf-row {
+    /* Shelves page only: each shelf rises in and fades out as you scroll. */
+    .bookcase.scroll-motion > .shelf-section {
       /* eased and spread over a longer stretch of scrolling, so the motion reads as smooth */
       animation: shelf-rise cubic-bezier(0.22, 0.61, 0.36, 1) both, shelf-fade cubic-bezier(0.55, 0, 0.75, 0.4) forwards;
       animation-timeline: view(), view();
       animation-range: entry 0% cover 35%, exit 0% exit 100%;
       transform-origin: 50% 100%;
     }
-    /* Rows skip the blur: blurring dozens of rows at once is what makes scrolling heavy. */
-    .shelf-3d:not(.shelf-scroll) > .shelf-row { animation-name: shelf-rise, shelf-fade-light; }
   }
 }
 @keyframes shelf-rise {
@@ -360,10 +356,6 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
 @keyframes shelf-fade {
   from { opacity: 1;    transform: none; filter: none; }
   to   { opacity: 0;    transform: translateY(-28px) scale(0.96); filter: blur(3px); }
-}
-@keyframes shelf-fade-light {
-  from { opacity: 1;    transform: none; }
-  to   { opacity: 0;    transform: translateY(-28px) scale(0.96); }
 }
 
 /* Covers fade out at the right edge of a scrolling shelf while there's more to see.

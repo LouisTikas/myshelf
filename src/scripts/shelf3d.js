@@ -1,8 +1,26 @@
 // One front-facing item per shelf.
 // Mouse: hover turns an item. Keyboard: Tab turns it. Touch: tap a spine to turn it
-// (tap again to open), or swipe sideways to flip through the shelf.
+// (tap again to open), or swipe sideways to flip through the shelf (up/down swipes just scroll the page).
 const SWIPE_STEP = 34;      // px of finger travel per item while swiping
-const SWIPE_LOCK = 10;      // px before we decide the gesture is horizontal
+const SWIPE_LOCK = 10;      // px of finger travel before we decide which way the gesture goes
+const SWIPE_RATIO = 1.2;    // must be clearly more sideways than up/down to count as a swipe
+const SCROLL_SETTLE = 150;  // ms: a touch this soon after the page scrolled is catching the scroll, not swiping
+
+// Remember when the page last scrolled vertically, so a finger landing on a shelf mid-scroll
+// (e.g. to stop the page's momentum on iPhone) is treated as part of that vertical scroll.
+let lastPageScroll = 0;
+window.addEventListener('scroll', () => (lastPageScroll = performance.now()), { passive: true });
+
+// Slide a shelf sideways so this item is in view — horizontally only. (scrollIntoView could also
+// nudge the page up or down, which felt like the page "fighting" a sideways swipe on phones.)
+function revealX(b) {
+  const box = b.closest('.shelf-track') || b.closest('.shelf-scroll');
+  if (!box) return;
+  const r = box.getBoundingClientRect();
+  const a = b.getBoundingClientRect();
+  const left = box.scrollLeft + (a.left + a.width / 2) - (r.left + r.width / 2);
+  box.scrollTo({ left: Math.max(0, Math.min(box.scrollWidth - box.clientWidth, left)), behavior: 'smooth' });
+}
 
 function initShelf(shelf) {
   let books = [...shelf.querySelectorAll('.book3d')];
@@ -17,7 +35,7 @@ function initShelf(shelf) {
     active = b;
     if (reveal) {
       // Keep the newly turned item in view (once it has started widening).
-      requestAnimationFrame(() => b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }));
+      requestAnimationFrame(() => revealX(b));
     }
   };
 
@@ -105,42 +123,47 @@ function initShelf(shelf) {
   });
 
   // ── Touch: swipe sideways to flip through the shelf.
-  let start = null;        // { x, y, id, idx }
-  let swiping = false;
+  // Each touch is locked to ONE direction as soon as it has moved a little: up/down belongs to the
+  // page (we stay out of it for the rest of that touch), sideways belongs to the shelf (and the page
+  // is held still so it doesn't drift vertically). Touch events, not pointer events, because iPhone
+  // Safari cancels pointer events as soon as it starts scrolling the page, which killed swipes.
+  let start = null;        // { x, y, idx, dir: null | 'x' | 'y' }
   let suppressClick = false;
 
-  shelf.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
+  shelf.addEventListener('touchstart', (e) => {
     suppressClick = false; // a new touch starts fresh
-    start = { x: e.clientX, y: e.clientY, id: e.pointerId, idx: books.indexOf(active) };
-    swiping = false;
-  });
-  shelf.addEventListener('pointermove', (e) => {
-    if (!start || e.pointerId !== start.id) return;
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-    if (!swiping) {
-      if (Math.abs(dy) > SWIPE_LOCK && Math.abs(dy) > Math.abs(dx)) { start = null; return; } // vertical: let the page scroll
-      if (Math.abs(dx) < SWIPE_LOCK) return;
-      swiping = true;
+    if (e.touches.length !== 1) { start = null; return; } // pinch etc.: not ours
+    const t = e.touches[0];
+    const catchingScroll = performance.now() - lastPageScroll < SCROLL_SETTLE;
+    start = { x: t.clientX, y: t.clientY, idx: books.indexOf(active), dir: catchingScroll ? 'y' : null };
+  }, { passive: true });
+  shelf.addEventListener('touchmove', (e) => {
+    if (!start || start.dir === 'y') return;
+    if (e.touches.length !== 1) { start = null; return; }
+    const t = e.touches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (!start.dir) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_LOCK) return;
+      start.dir = Math.abs(dx) > Math.abs(dy) * SWIPE_RATIO ? 'x' : 'y';
+      if (start.dir === 'y') return; // vertical: the page scrolls, the shelf ignores this touch
     }
+    if (e.cancelable) e.preventDefault(); // sideways: keep the page from scrolling up/down underneath
     // Finger moving left = forward through the shelf, like flicking through records.
     const steps = Math.trunc(-dx / SWIPE_STEP);
     const idx = Math.max(0, Math.min(books.length - 1, start.idx + steps));
     setActive(books[idx], { reveal: true });
-  });
-  const end = (e) => {
-    if (!start || e.pointerId !== start.id) return;
-    if (swiping) {
+  }, { passive: false });
+  const end = () => {
+    if (start?.dir === 'x') {
       // Swallow the click some browsers fire at the end of a swipe — but only that one.
       suppressClick = true;
       setTimeout(() => (suppressClick = false), 350);
     }
     start = null;
-    swiping = false;
   };
-  shelf.addEventListener('pointerup', end);
-  shelf.addEventListener('pointercancel', end);
+  shelf.addEventListener('touchend', end);
+  shelf.addEventListener('touchcancel', end);
 
   // ── Taps/clicks: a spine turns to face you first; the front-facing item opens.
   books.forEach((b) => {

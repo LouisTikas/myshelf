@@ -36,6 +36,15 @@ const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.exp
     <div class="item-info">
       <p class="eyebrow"><a href={`/type/${d.type}/`}>{t.label}</a>{d.year && <> · {d.year}</>}</p>
       <h1>{d.title}<CopyLink /></h1>
+
+      {hasBody && (
+        <section class="my-thoughts-card">
+          <p class="eyebrow">{t.label} · {STATUS_LABEL(d.type, d.status)}{thoughtsDate && <> · {fmtDate(thoughtsDate)}</>}</p>
+          <h2>My thoughts {d.rating != null && <span class="rating">{stars(d.rating)}</span>}</h2>
+          <div class="prose" set:html={bodyHtml} />
+        </section>
+      )}
+
       {d.creator && <p class="creator">{t.creator}: {d.creator}</p>}
 
       <div class="item-meta">
@@ -82,13 +91,6 @@ const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.exp
         </section>
       )}
 
-      {hasBody && (
-        <section class="my-thoughts-card">
-          <p class="eyebrow">{t.label} · {STATUS_LABEL(d.type, d.status)}{thoughtsDate && <> · {fmtDate(thoughtsDate)}</>}</p>
-          <h2>My thoughts {d.rating != null && <span class="rating">{stars(d.rating)}</span>}</h2>
-          <div class="prose" set:html={bodyHtml} />
-        </section>
-      )}
 
       {d.description && (
         <section class="synopsis">

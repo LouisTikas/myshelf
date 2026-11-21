@@ -213,7 +213,7 @@ a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
 /* "My thoughts" on the item page — styled like a Journal card */
 .my-thoughts-card {
   background: #fbf6ea; border: 1px solid #e3d5b8; border-radius: var(--radius);
-  padding: 22px 24px; margin-top: 22px; box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  padding: 22px 24px; margin: 14px 0 18px; box-shadow: 0 8px 20px rgba(0,0,0,0.08);
 }
 .my-thoughts-card h2 { font-size: 1.4rem; margin: 0 0 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .my-thoughts-card .prose > :last-child { margin-bottom: 0; }

@@ -834,6 +834,11 @@ function showPreview(slug) {
       <div class="item-info">
         <p class="eyebrow">${esc(t.label)}${it.year ? ' · ' + esc(it.year) : ''}</p>
         <h1>${esc(it.title)}</h1>
+        ${body ? `<section class="my-thoughts-card">
+          <p class="eyebrow">${esc(t.label)} · ${esc(STATUS_WORDS(it.type, it.status))}${thoughtsDate ? ' · ' + fmtDate(thoughtsDate) : ''}</p>
+          <h2>My thoughts ${it.rating != null ? `<span class="rating">${starText(it.rating)}</span>` : ''}</h2>
+          <div class="prose">${marked.parse(body)}</div>
+        </section>` : ''}
         ${it.creator ? `<p class="creator">${esc(t.creator)}: ${esc(it.creator)}</p>` : ''}
         <div class="item-meta">
           <span class="status status-${esc(it.status)}">${esc(STATUS_WORDS(it.type, it.status))}</span>
@@ -849,11 +854,6 @@ function showPreview(slug) {
           ${shelves.map((s) => `<span class="chip">${esc(s.name)}</span>`).join('')}
           ${(it.tags || []).map((g) => `<span class="chip chip-tag">#${esc(g)}</span>`).join('')}
         </div>` : ''}
-        ${body ? `<section class="my-thoughts-card">
-          <p class="eyebrow">${esc(t.label)} · ${esc(STATUS_WORDS(it.type, it.status))}${thoughtsDate ? ' · ' + fmtDate(thoughtsDate) : ''}</p>
-          <h2>My thoughts ${it.rating != null ? `<span class="rating">${starText(it.rating)}</span>` : ''}</h2>
-          <div class="prose">${marked.parse(body)}</div>
-        </section>` : ''}
         ${it.description ? `<section class="synopsis"><h2>About</h2><p>${esc(it.description)}</p></section>` : ''}
       </div>
     </article>`;

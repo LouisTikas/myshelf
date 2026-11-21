@@ -188,3 +188,8 @@ details label { margin-bottom: 10px; }
 .featured-field p { margin: 0 0 0 22px; }
 .featured-field p:empty { display: none; }
 .featured-badge { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; vertical-align: middle; color: var(--accent-ink); background: rgba(217, 154, 78, 0.18); }
+
+/* "Adding to <collection>" banner (from ＋ Add more in the arrange dialog) */
+.adding-to { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--accent); background: rgba(217, 154, 78, 0.12); font-size: 0.92rem; }
+.adding-to span { flex: 1; min-width: 200px; }
+.adding-to[hidden] { display: none; }

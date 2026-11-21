@@ -450,3 +450,17 @@ test('saveItem: only one entry is featured at a time', async () => {
   await saveItem(env, { slug: b.slug, item: { title: 'Alien', type: 'movie', status: 'finished', featured: false }, body: 'Scary.' });
   assert.equal((await getItem(env, b.slug)).item.featured, undefined);
 });
+
+test('removeFromCollection: drops only that collection and keeps notes', async () => {
+  const { removeFromCollection } = await import('../server/save.js');
+  const { getItem } = await import('../server/db.js');
+  const env = fakeEnv();
+  const a = await saveItem(env, { item: { title: 'Dune', type: 'book', status: 'finished', collections: ['faves', 'scifi'] }, body: 'Spice.' });
+  const b = await saveItem(env, { item: { title: 'Emma', type: 'book', status: 'finished', collections: ['classics'] }, body: '' });
+  const res = await removeFromCollection(env, 'faves', [a.slug, b.slug]);
+  assert.deepEqual(res.removed, [a.slug]);
+  const row = await getItem(env, a.slug);
+  assert.deepEqual(row.item.collections, ['scifi']);
+  assert.equal(row.body, 'Spice.');
+  assert.deepEqual((await getItem(env, b.slug)).item.collections, ['classics']);
+});

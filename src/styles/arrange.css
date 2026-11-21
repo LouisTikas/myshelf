@@ -46,3 +46,22 @@
 .shelf-edit[hidden] { display: none; }
 .shelf-edit:disabled { opacity: 0.5; cursor: wait; }
 .page-head h1 .shelf-edit { vertical-align: middle; margin-left: 10px; }
+
+/* Red ✕: take an item off a hand-picked collection (applied on save) */
+.ar-remove {
+  position: absolute; top: -7px; right: -7px; z-index: 2;
+  width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid var(--paper, #f5eedf);
+  display: grid; place-items: center; font: 700 12px/1 var(--sans, system-ui, sans-serif);
+  color: #fff; background: #c0392b; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.ar-remove:hover, .ar-remove:focus-visible { transform: scale(1.12); background: #a93226; outline: none; }
+.ar-item.is-removed .ar-thumb, .ar-item.is-removed .ar-name { opacity: 0.35; }
+.ar-item.is-removed { background: rgba(192, 57, 43, 0.08); border-color: rgba(192, 57, 43, 0.35); border-style: dashed; }
+.ar-item.is-removed .ar-name { text-decoration: line-through; }
+.ar-item.is-removed .ar-num { visibility: hidden; }
+.ar-item.is-removed .ar-remove { background: #6a5a4c; }
+.ar-removed-note { font-size: 0.82rem; font-weight: 600; color: #a33a2a; }
+.ar-add { border-color: var(--accent, #d99a4e); color: var(--accent-ink, #8a5418); }
+.ar-add[hidden] { display: none; }
+@media (max-width: 760px) { .ar-foot { flex-wrap: wrap; } }

@@ -49,16 +49,42 @@ async function editCollection(mod, lib, slug) {
   if (!c) throw new Error('That collection was not found.');
   // Start from exactly what the shelf shows now (whatever its sort order is).
   const entries = (lib.items || []).filter((i) => inShelf(i, c)).map((i) => ({ id: i.slug, data: i }));
+  const items = sortShelf(entries, c).map((e) => e.data);
+  // "＋ Add more" opens search with this collection pre-checked (and the media type, if the shelf is all one type).
+  const types = new Set(items.map((i) => i.type));
+  const addHref = `/admin/#add=${encodeURIComponent(slug)}${types.size === 1 ? `&type=${[...types][0]}` : ''}`;
   mod.openArrange({
     title: c.name,
-    items: sortShelf(entries, c).map((e) => e.data),
-    onSave: async (order) => {
-      c.sort = 'custom';
-      c.order = order;
-      await api('collections', { method: 'POST', body: { collections } });
-      reorderOnPage(`.shelf[data-collection="${slug}"]`, order);
-      savedToast(mod, c.name);
+    items,
+    canRemove: (i) => (i.collections || []).includes(slug), // automatic (status) members can't be taken off by hand
+    onAdd: c.auto ? null : () => { location.href = addHref; },
+    onSave: async (order, removed = []) => {
+      if (removed.length) await api('collection-items', { method: 'POST', body: { collection: slug, remove: removed } });
+      // Only switch to a custom order if you actually dragged things around.
+      const before = items.map((i) => i.slug).filter((s) => !removed.includes(s));
+      if (order.join() !== before.join()) {
+        c.sort = 'custom';
+        c.order = order;
+        await api('collections', { method: 'POST', body: { collections } });
+        reorderOnPage(`.shelf[data-collection="${slug}"]`, order);
+      }
+      if (removed.length) removeFromPage(`.shelf[data-collection="${slug}"]`, removed);
+      mod.toast(removed.length ? `Saved “${c.name}” — removed ${removed.length} ${removed.length === 1 ? 'item' : 'items'}.` : `Saved “${c.name}”.`);
     },
+  });
+}
+
+// Take removed covers off the shelf right away and fix the count bubble.
+function removeFromPage(selector, removed) {
+  const gone = new Set(removed);
+  document.querySelectorAll(selector).forEach((shelf) => {
+    shelf.querySelectorAll('.shelf-slot').forEach((slot) => {
+      const s = (slot.querySelector('.book3d')?.getAttribute('href') || '').replace(/^\/item\//, '').replace(/\/$/, '');
+      if (gone.has(s)) slot.remove();
+    });
+    const n = shelf.closest('.shelf-section')?.querySelector('.count-n');
+    if (n) n.textContent = String(Math.max(0, Number(n.textContent) - removed.length));
+    shelf.dispatchEvent(new CustomEvent('shelf:reorder'));
   });
 }
 

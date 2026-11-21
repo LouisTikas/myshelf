@@ -37,6 +37,7 @@ const typesJson = JSON.stringify(TYPES);
       <!-- Add / search -->
       <div class="tabpanel" data-panel="add">
         <div class="panel">
+          <div id="adding-to" class="adding-to" hidden></div>
           <div class="type-picker" id="type-picker">
             {TYPE_KEYS.map((t, i) => (
               <button type="button" class:list={['type-btn', { active: i === 0 }]} data-type={t}>{TYPES[t].label}</button>

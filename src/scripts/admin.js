@@ -17,6 +17,7 @@ const state = {
   editing: null, // { slug?, source? }
   saved: {},          // items saved in this session (for the preview dialog)
   previewSlug: null,
+  addTo: null,        // collection slug picked via "＋ Add more": pre-checked on new entries
 };
 
 // ───────── helpers ─────────
@@ -303,6 +304,7 @@ $('#editor-forget').addEventListener('click', () => {
 function openEditor(item, slug = null) {
   let remembered = false;
   if (!slug) ({ item, used: remembered } = withLastSettings(item));
+  if (!slug && state.addTo && !(item.collections || []).includes(state.addTo)) item = { ...item, collections: [...(item.collections || []), state.addTo] };
   $('#editor-remembered').hidden = !remembered;
   state.editing = { slug, source: item.source || {}, extra: item };
   const sb = $('#editor-save');
@@ -756,16 +758,28 @@ function openArrangeFor(index) {
   const c = state.collections[index];
   // Start from what the shelf shows now; new items (not yet arranged) come first.
   const entries = libraryItems().filter((i) => inShelf(i, c)).map((i) => ({ id: i.slug, data: i }));
+  const items = sortShelf(entries, c).map((e) => e.data);
+  const types = new Set(items.map((i) => i.type));
   openArrange({
     title: c.name,
-    items: sortShelf(entries, c).map((e) => e.data),
-    onSave: async (order) => {
-      c.sort = 'custom';
-      c.order = order;
-      const { collections } = await api('collections', { method: 'POST', body: { collections: state.collections.filter((x) => x.name.trim()) } });
-      state.collections = collections;
-      renderCollections();
-      toast(`Saved the order for “${c.name}”.`);
+    items,
+    canRemove: c.slug ? (i) => (i.collections || []).includes(c.slug) : null,
+    onAdd: c.slug && !c.auto ? () => {
+      document.querySelector('.ar-dialog')?.close();
+      startAddingTo(c.slug, types.size === 1 ? [...types][0] : null);
+    } : null,
+    onSave: async (order, removed = []) => {
+      if (removed.length) await api('collection-items', { method: 'POST', body: { collection: c.slug, remove: removed } });
+      const before = items.map((i) => i.slug).filter((s) => !removed.includes(s));
+      if (order.join() !== before.join()) {
+        c.sort = 'custom';
+        c.order = order;
+        const { collections } = await api('collections', { method: 'POST', body: { collections: state.collections.filter((x) => x.name.trim()) } });
+        state.collections = collections;
+        renderCollections();
+      }
+      if (removed.length) await loadLibrary();
+      toast(removed.length ? `Saved “${c.name}” — removed ${removed.length} ${removed.length === 1 ? 'item' : 'items'}.` : `Saved the order for “${c.name}”.`);
     },
   });
 }
@@ -860,10 +874,38 @@ $('#export-btn').addEventListener('click', async () => {
 });
 
 // ───────── deep links: /admin/#edit=slug ─────────
+// /admin/#add=collection-slug[&type=boardgame] — from "＋ Add more" in a collection's arrange dialog.
 function handleHash() {
   const m = location.hash.match(/^#edit=([a-z0-9-]+)$/);
-  if (m) editSlug(m[1]);
+  if (m) return editSlug(m[1]);
+  if (location.hash.startsWith('#add=')) {
+    const q = new URLSearchParams(location.hash.slice(1));
+    startAddingTo(q.get('add'), q.get('type'));
+    history.replaceState(null, '', location.pathname);
+  }
 }
+
+function startAddingTo(slug, type) {
+  const c = state.collections.find((x) => x.slug === slug && !x.auto);
+  if (!c) return toast('That collection was not found.', 'error');
+  state.addTo = c.slug;
+  showTab('add');
+  if (type && TYPES[type]) $(`.type-btn[data-type="${type}"]`)?.click();
+  renderAddingTo();
+  $('#search-q').focus();
+}
+function renderAddingTo() {
+  const el = $('#adding-to');
+  const c = state.collections.find((x) => x.slug === state.addTo);
+  if (!c) { el.hidden = true; state.addTo = null; return; }
+  el.hidden = false;
+  el.innerHTML = `<span>Adding to <strong>${esc(c.name)}</strong> — it’s checked automatically on anything you pick.</span>
+    <a class="btn ghost small" href="/shelf/${esc(c.slug)}/">Back to shelf</a>
+    <button type="button" class="btn ghost small" data-stop-adding aria-label="Stop adding to ${esc(c.name)}">✕</button>`;
+}
+$('#adding-to').addEventListener('click', (e) => {
+  if (e.target.closest('[data-stop-adding]')) { state.addTo = null; renderAddingTo(); }
+});
 window.addEventListener('hashchange', handleHash);
 
 boot();

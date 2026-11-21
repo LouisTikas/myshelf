@@ -86,6 +86,18 @@ export async function saveItem(env, payload) {
   return { slug, item };
 }
 
+/** Take items out of a hand-picked collection (the red ✕ in the arrange dialog). Other fields are untouched. */
+export async function removeFromCollection(env, collection, slugs) {
+  if (!collection || typeof collection !== 'string') throw new HttpError(400, 'Which collection?');
+  const wanted = new Set((Array.isArray(slugs) ? slugs : []).map(String));
+  if (!wanted.size) return { removed: [] };
+  const rows = (await listItems(env))
+    .filter((r) => wanted.has(r.slug) && (r.item.collections || []).includes(collection))
+    .map((r) => ({ slug: r.slug, item: { ...r.item, collections: r.item.collections.filter((c) => c !== collection) }, body: r.body }));
+  await putItems(env, rows);
+  return { removed: rows.map((r) => r.slug) };
+}
+
 export async function deleteItem(env, slug) {
   assertSlug(slug);
   const row = await getItem(env, slug);

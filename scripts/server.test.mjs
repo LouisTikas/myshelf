@@ -416,3 +416,19 @@ test('BGG base game lists its expansions', async () => {
   assert.equal(e.kind, 'boardgameexpansion');
   assert.deepEqual(e.expansionLinks, []);
 });
+
+test('collections can be limited to a recent time window', async () => {
+  const { inShelf } = await import('../src/lib/sorting.js');
+  const { cleanCollections } = await import('../server/settings.js');
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  const shelf = { slug: 'recently-finished', auto: 'finished', within: 365 };
+  assert.equal(inShelf({ status: 'finished', dateFinished: '2026-03-01' }, shelf, now), true);
+  assert.equal(inShelf({ status: 'finished', dateFinished: '2025-06-01' }, shelf, now), false);
+  assert.equal(inShelf({ status: 'finished', dateAdded: '2024-01-01' }, shelf, now), false, 'falls back to date added');
+  assert.equal(inShelf({ status: 'finished' }, shelf, now), true, 'no date at all: kept');
+  assert.equal(inShelf({ status: 'want', dateFinished: '2026-03-01' }, shelf, now), false);
+  assert.equal(inShelf({ status: 'finished', dateFinished: '2020-01-01' }, { ...shelf, within: undefined }, now), true);
+  const [a, b] = cleanCollections([{ name: 'A', within: '365' }, { name: 'B', within: 12 }]);
+  assert.equal(a.within, 365);
+  assert.equal(b.within, undefined);
+});

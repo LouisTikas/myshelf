@@ -58,8 +58,21 @@ export function arrangeOrder(items, order = []) {
 export const AUTO_RULES = { 'in-progress': 'In progress', finished: 'Finished', want: 'Want to' };
 
 /** Is a plain item ({ collections, status }) on this shelf? Works for manual and automatic collections. */
-export function inShelf(item, shelf) {
-  return (item.collections || []).includes(shelf.slug) || (!!shelf.auto && item.status === shelf.auto);
+/** Time windows a collection can be limited to (days). */
+export const WITHIN_OPTIONS = { '': 'All time', 30: 'Last 30 days', 90: 'Last 3 months', 182: 'Last 6 months', 365: 'Last year', 730: 'Last 2 years' };
+
+/** The date that decides whether an item is "recent" for a collection. */
+function windowDate(item, shelf) {
+  const by = { finished: item.dateFinished, 'in-progress': item.dateStarted, want: item.dateAdded }[shelf.auto];
+  return by || item.dateFinished || item.dateStarted || item.dateAdded || null;
+}
+
+export function inShelf(item, shelf, now = Date.now()) {
+  const member = (item.collections || []).includes(shelf.slug) || (!!shelf.auto && item.status === shelf.auto);
+  if (!member || !shelf.within) return member;
+  const d = windowDate(item, shelf);
+  if (!d) return true; // no date to judge by: keep it
+  return now - new Date(d).getTime() <= Number(shelf.within) * 86400000;
 }
 
 /** Where a collection appears: 'shelves' (home page, default), 'type' (media pages) or 'both'. */

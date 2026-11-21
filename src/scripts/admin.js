@@ -1,6 +1,6 @@
 // Admin UI: search external databases, add/edit/delete items, manage collections.
 import { marked } from 'marked';
-import { SORTS, sortShelf, inShelf, AUTO_RULES, SHOW_OPTIONS } from '../lib/sorting.js';
+import { SORTS, sortShelf, inShelf, AUTO_RULES, SHOW_OPTIONS, WITHIN_OPTIONS } from '../lib/sorting.js';
 import { openArrange } from './arrange.js';
 import Sortable from 'sortablejs';
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -605,6 +605,12 @@ function renderCollections() {
         </select>
         ${(c.sort || 'newest') === 'custom' ? `<button class="btn ghost small" data-arrange ${c.slug ? '' : 'disabled title="Save the collection first"'}>Arrange</button>` : ''}
       </span>
+      <label class="col-within" title="${c.auto === 'finished' ? 'Only keep items finished within this time' : c.auto === 'in-progress' ? 'Only keep items started within this time' : 'Only keep items from within this time'}">
+        <span class="muted small">Keep</span>
+        <select class="col-within-select" aria-label="Time window">
+          ${Object.entries(WITHIN_OPTIONS).map(([k, label]) => `<option value="${k}" ${String(c.within || '') === k ? 'selected' : ''}>${esc(label)}</option>`).join('')}
+        </select>
+      </label>
       <span class="muted small col-slug">${c.auto ? `auto: ${esc(AUTO_RULES[c.auto] || c.auto)}` : c.slug ? '/shelf/' + esc(c.slug) : 'new'}</span>
       <button class="btn ghost small danger" data-remove aria-label="Remove">✕</button>
     </li>`)
@@ -617,6 +623,7 @@ function syncCollectionsFromInputs() {
     c.description = $('.col-desc', row).value;
     c.sort = $('.col-sort-select', row).value;
     c.show = $('.col-show-select', row).value;
+    c.within = Number($('.col-within-select', row).value) || undefined;
   });
 }
 $('#col-list').addEventListener('change', (e) => {

@@ -23,6 +23,7 @@ export function cleanCollections(collections) {
     if (['in-progress', 'finished', 'want'].includes(c.auto)) out.auto = c.auto;
     if (['type', 'both'].includes(c.show)) out.show = c.show; // default (shelves) is left out
     if (SORTS.includes(c.sort) && c.sort !== 'newest') out.sort = c.sort;
+    if ([30, 90, 182, 365, 730].includes(Number(c.within))) out.within = Number(c.within); // only items from the last N days
     if (Array.isArray(c.order)) {
       const order = [...new Set(c.order.map(String).filter((s) => SLUG.test(s)))].slice(0, 5000);
       if (order.length) out.order = order;

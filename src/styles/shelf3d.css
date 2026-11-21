@@ -310,8 +310,8 @@
    plank moves with its items) and holds a track that's packed full; overflow fades at the edges. */
 .shelf-3d:has(> .shelf-row) { background-image: none; }
 .shelf-row {
-  flex: 0 0 calc(100% + 52px); margin: 0 -26px; padding: 0 26px; /* full shelf width, items stay inset */
-  box-sizing: border-box;
+  /* content = the shelf's inner width; padding + negative margins stretch the plank to the shelf edges */
+  flex: 0 0 100%; margin: 0 -26px; padding: 0 26px; box-sizing: content-box; min-width: 0;
   background: linear-gradient(180deg,
     var(--wood-edge) 0, var(--wood-hi) 3px, var(--wood) 6px,
     var(--wood) calc(var(--plank) - 7px), var(--wood-lo) calc(var(--plank) - 7px), var(--wood-lo) 100%

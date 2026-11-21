@@ -182,16 +182,16 @@ function lockRows(shelf) {
   };
   // Keep the front-facing item fully visible; other rows go back to the start.
   const reveal = () => {
-    for (const row of shelf.querySelectorAll(':scope > .shelf-row')) {
-      const front = row.querySelector('.book3d.is-front');
+    for (const track of shelf.querySelectorAll(':scope > .shelf-row > .shelf-track')) {
+      const front = track.querySelector('.book3d.is-front');
       let left = 0;
       if (front) {
-        const slot = front.closest('.shelf-slot');
-        const end = slot.offsetLeft - row.offsetLeft + slot.offsetWidth + 8;
-        left = Math.max(0, end - row.clientWidth);
+        const slot = front.closest('.shelf-slot').getBoundingClientRect();
+        const end = slot.right - track.getBoundingClientRect().left + track.scrollLeft + 8;
+        left = Math.max(0, end - track.clientWidth);
       }
-      if (Math.abs(row.scrollLeft - left) > 1) row.scrollTo({ left, behavior: 'smooth' });
-      else edges(row);
+      if (Math.abs(track.scrollLeft - left) > 1) track.scrollTo({ left, behavior: 'smooth' });
+      else edges(track);
     }
   };
 
@@ -203,18 +203,24 @@ function lockRows(shelf) {
     const cs = getComputedStyle(shelf);
     const avail = shelf.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
     const gap = parseFloat(cs.columnGap) || 0;
-    let row = null, used = 0;
+    // Each row = its own plank (.shelf-row, which also carries the scroll motion) holding a track of
+    // items (.shelf-track, which clips, fades at the edges and slides sideways).
+    let track = null, used = 0;
     for (const slot of slots) {
       const spine = slot.hidden ? 0 : px(slot.querySelector('.book3d'), '--d');
       const add = (used ? gap : 0) + spine;
-      if (!row || (spine && used && used + add > avail)) {
-        row = document.createElement('div');
+      if (!track || (spine && used && used + add > avail)) {
+        const row = document.createElement('div');
         row.className = 'shelf-row';
-        row.addEventListener('scroll', () => edges(row), { passive: true });
+        const t = document.createElement('div');
+        t.className = 'shelf-track';
+        t.addEventListener('scroll', () => edges(t), { passive: true });
+        row.appendChild(t);
         shelf.appendChild(row);
+        track = t;
         used = 0;
       }
-      row.appendChild(slot);
+      track.appendChild(slot);
       if (spine) used += (used ? gap : 0) + spine;
     }
     reveal();

@@ -306,14 +306,24 @@
 .shelf.shelf-3d { touch-action: pan-y; scroll-behavior: smooth; }
 .book3d { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
 
-/* Row strips built by shelf3d.js on wrapping shelves: packed full, overflow fades at the edges. */
+/* Row strips built by shelf3d.js on wrapping shelves. Each row draws its own wooden plank (so the
+   plank moves with its items) and holds a track that's packed full; overflow fades at the edges. */
+.shelf-3d:has(> .shelf-row) { background-image: none; }
 .shelf-row {
-  flex: 0 0 100%; display: flex; flex-wrap: nowrap; align-items: flex-end; column-gap: inherit;
+  flex: 0 0 calc(100% + 52px); margin: 0 -26px; padding: 0 26px; /* full shelf width, items stay inset */
+  box-sizing: border-box;
+  background: linear-gradient(180deg,
+    var(--wood-edge) 0, var(--wood-hi) 3px, var(--wood) 6px,
+    var(--wood) calc(var(--plank) - 7px), var(--wood-lo) calc(var(--plank) - 7px), var(--wood-lo) 100%
+  ) left bottom / 100% var(--plank) no-repeat;
+}
+.shelf-track {
+  display: flex; flex-wrap: nowrap; align-items: flex-end; column-gap: 4px;
   overflow: hidden; scrollbar-width: none;
   padding-top: 40px; margin-top: -40px; /* room above for covers' shadows without changing row height */
   --fade: 70px;
 }
-.shelf-row::-webkit-scrollbar { display: none; }
-.shelf-row.fade-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); }
-.shelf-row.fade-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade)); mask-image: linear-gradient(to right, transparent, #000 var(--fade)); }
-.shelf-row.fade-left.fade-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); }
+.shelf-track::-webkit-scrollbar { display: none; }
+.shelf-track.fade-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); }
+.shelf-track.fade-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade)); mask-image: linear-gradient(to right, transparent, #000 var(--fade)); }
+.shelf-track.fade-left.fade-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); }

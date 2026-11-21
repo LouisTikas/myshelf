@@ -177,3 +177,8 @@ details label { margin-bottom: 10px; }
 
 .col-within { display: inline-flex; align-items: center; gap: 6px; }
 @media (max-width: 960px) { .col-within { grid-column: 2 / -1; } }
+
+/* "Using your last settings" note in the editor header */
+.remembered { margin-left: auto; margin-right: 10px; font-size: 0.8rem; color: #7a6a50; background: #f3e4c8; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.remembered[hidden] { display: none; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--accent-ink, #a5652a); text-decoration: underline; cursor: pointer; }

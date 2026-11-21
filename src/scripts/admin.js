@@ -264,7 +264,46 @@ function updateCreatorLabel() {
   for (const opt of form.status.options) opt.textContent = words[opt.value] || opt.textContent;
 }
 
+// ───────── remember the last status, dates and collections used per type (new entries only) ─────────
+const LAST_KEY = 'myshelf_last_settings';
+const readLast = () => { try { return JSON.parse(localStorage.getItem(LAST_KEY)) || {}; } catch { return {}; } };
+function rememberSettings(item) {
+  const all = readLast();
+  all[item.type] = { status: item.status || '', dateStarted: item.dateStarted || '', dateFinished: item.dateFinished || '', collections: item.collections || [] };
+  try { localStorage.setItem(LAST_KEY, JSON.stringify(all)); } catch {}
+}
+function forgetSettings(type) {
+  const all = readLast();
+  delete all[type];
+  try { localStorage.setItem(LAST_KEY, JSON.stringify(all)); } catch {}
+}
+function withLastSettings(item) {
+  const last = readLast()[item.type || 'book'];
+  if (!last) return { item, used: false };
+  return {
+    used: true,
+    item: {
+      ...item,
+      status: item.status || last.status,
+      dateStarted: item.dateStarted || last.dateStarted,
+      dateFinished: item.dateFinished || last.dateFinished,
+      collections: item.collections?.length ? item.collections : last.collections,
+    },
+  };
+}
+$('#editor-forget').addEventListener('click', () => {
+  forgetSettings(form.type.value);
+  form.status.value = '';
+  form.dateStarted.value = '';
+  form.dateFinished.value = '';
+  renderCollectionChecks([]);
+  $('#editor-remembered').hidden = true;
+});
+
 function openEditor(item, slug = null) {
+  let remembered = false;
+  if (!slug) ({ item, used: remembered } = withLastSettings(item));
+  $('#editor-remembered').hidden = !remembered;
   state.editing = { slug, source: item.source || {}, extra: item };
   const sb = $('#editor-save');
   delete sb.dataset.confirmDup;
@@ -359,6 +398,7 @@ form.addEventListener('submit', async (e) => {
   saveBtn.textContent = 'Saving…';
   try {
     const res = await api('save', { method: 'POST', body: { slug, item, body: form.body.value } });
+    if (!slug) rememberSettings(item);
     state.saved[res.slug] = { slug: res.slug, ...res.item, body: form.body.value };
     editor.close();
     showPreview(res.slug);

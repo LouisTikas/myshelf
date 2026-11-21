@@ -336,28 +336,29 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
   .publish-pill { right: calc(18px + env(safe-area-inset-right)) !important; bottom: calc(92px + env(safe-area-inset-bottom)) !important; }
 }
 
-/* Scroll motion (Shelves page only): shelves below rise up to meet you; shelves above fade away.
+/* Scroll motion (Shelves page, and row by row on collection pages): shelves below rise up to meet you; shelves above fade away.
    Pure CSS scroll-driven animation. Browsers without it (e.g. Firefox today) just show still shelves,
    and it's off for anyone who has "reduce motion" turned on. */
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
-    .bookcase.scroll-motion > .shelf-section {
-      animation: shelf-rise cubic-bezier(0.22, 0.61, 0.36, 1) both, shelf-fade cubic-bezier(0.55, 0, 0.75, 0.4) forwards;
+    .bookcase.scroll-motion > .shelf-section,
+    .bookcase.scroll-motion-rows .shelf-3d:not(.shelf-scroll) > .shelf-row {
+      animation: shelf-rise cubic-bezier(0.25, 0.5, 0.4, 1) both, shelf-fade cubic-bezier(0.5, 0, 0.7, 0.6) forwards;
       animation-timeline: view(), view();
-      /* longer fades: fade in over the bottom ~half of the screen, fade out over the top ~40% */
-      animation-range: cover 0% cover 45%, cover 60% cover 100%;
+      /* long fades: fade in over the bottom ~60% of the trip up the screen, fade out over the top half */
+      animation-range: cover 0% cover 55%, cover 50% cover 100%;
       transform-origin: 50% 100%;
     }
   }
 }
 /* Move + fade only (no shrinking): the GPU can do these without redrawing the 3D boxes. */
 @keyframes shelf-rise {
-  from { opacity: 0;    transform: translateY(80px); }
+  from { opacity: 0;    transform: translateY(140px); }
   to   { opacity: 1;    transform: none; }
 }
 @keyframes shelf-fade {
   from { opacity: 1;    transform: none; }
-  to   { opacity: 0;    transform: translateY(-28px); }
+  to   { opacity: 0;    transform: translateY(-70px); }
 }
 
 /* Covers fade out at the right edge of a scrolling shelf while there's more to see.

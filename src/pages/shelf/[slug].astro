@@ -20,7 +20,7 @@ const boardgames = items.length > 0 && items.every((e) => e.data.type === 'board
     {shelf.description && <p class="lede">{shelf.description}</p>}
   </section>
   {boardgames && <BoardgameFilters items={items} />}
-  <div class="bookcase">
+  <div class="bookcase scroll-motion-rows">
     <Shelf items={items} empty="No items on this shelf yet." collection={shelf.slug} filterable={boardgames} />
   </div>
 </Base>

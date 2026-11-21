@@ -1,10 +1,10 @@
 // One front-facing item per shelf.
 // Mouse: hover turns an item. Keyboard: Tab turns it. Touch: tap a spine to turn it
 // (tap again to open), or swipe sideways to flip through the shelf (up/down swipes just scroll the page).
-const SWIPE_STEP = 34;      // px of finger travel per item while swiping
-const SWIPE_LOCK = 10;      // px of finger travel before we decide which way the gesture goes
-const SWIPE_RATIO = 1.2;    // must be clearly more sideways than up/down to count as a swipe
-const SCROLL_SETTLE = 150;  // ms: a touch this soon after the page scrolled is catching the scroll, not swiping
+const SWIPE_STEP = 26;      // px of finger travel per item while swiping
+const SWIPE_LOCK = 6;       // px of finger travel before we decide which way the gesture goes
+const SWIPE_RATIO = 0.85;   // sideways wins unless the finger is moving mostly up/down (up to ~50° off horizontal still counts)
+const SCROLL_SETTLE = 80;   // ms: a touch this soon after the page scrolled is catching the scroll, not swiping
 
 // Remember when the page last scrolled vertically, so a finger landing on a shelf mid-scroll
 // (e.g. to stop the page's momentum on iPhone) is treated as part of that vertical scroll.

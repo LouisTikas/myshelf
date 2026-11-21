@@ -1,33 +1,18 @@
 ---
 import Base from '../layouts/Base.astro';
-import Cover from '../components/Cover.astro';
-import { getItems, fmtDate, renderBody } from '../lib/items.js';
-import { TYPES, STATUS_LABEL, stars } from '../lib/types.js';
+import JournalCard from '../components/JournalCard.astro';
+import CopyLink from '../components/CopyLink.astro';
+import { getItems } from '../lib/items.js';
 
-const items = (await getItems(Astro.locals.runtime.env)).filter((e) => e.body && e.body.trim());
-const entries = items.map((e) => ({ e, html: renderBody(e.body) }));
+const entries = (await getItems(Astro.locals.runtime.env)).filter((e) => e.body && e.body.trim());
 ---
 <Base title="Journal">
   <section class="page-head">
     <p class="eyebrow">{entries.length} entries</p>
-    <h1>Journal</h1>
+    <h1>Journal<CopyLink /></h1>
   </section>
   <div class="journal-feed">
-    {entries.map(({ e, html }) => {
-      const d = e.data;
-      const date = d.dateFinished || d.dateStarted || d.dateAdded;
-      return (
-        <article class="journal-entry">
-          <Cover item={d} height={120} link={`/item/${e.id}/`} />
-          <div>
-            <p class="eyebrow">{TYPES[d.type].label} · {STATUS_LABEL(d.type, d.status)}{date && <> · {fmtDate(date)}</>}</p>
-            <h2><a href={`/item/${e.id}/`}>{d.title}</a> {d.rating != null && <span class="rating">{stars(d.rating)}</span>}</h2>
-            {d.creator && <p class="creator">{d.creator}</p>}
-            <div class="prose" set:html={html} />
-          </div>
-        </article>
-      );
-    })}
+    {entries.map((e) => <JournalCard entry={e} />)}
     {entries.length === 0 && <p class="shelf-empty">No journal entries yet.</p>}
   </div>
 </Base>

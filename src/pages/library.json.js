@@ -18,6 +18,7 @@ export async function GET({ locals }) {
     dateAdded: e.data.dateAdded || null,
     dateStarted: e.data.dateStarted || null,
     dateFinished: e.data.dateFinished || null,
+    featured: e.data.featured === true,
   }));
   return new Response(JSON.stringify({ items, collections }), {
     headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },

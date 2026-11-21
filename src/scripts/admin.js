@@ -324,6 +324,8 @@ function openEditor(item, slug = null) {
   form.description.value = item.description || '';
   form.details.value = detailsToText(item.details);
   form.body.value = item.body || '';
+  form.featured.checked = item.featured === true;
+  updateFeaturedHint();
   const src = item.source || {};
   $('#editor-source').innerHTML = src.url ? `From <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.name)}</a>` : esc(src.name || '');
   renderCollectionChecks(item.collections || []);
@@ -336,6 +338,21 @@ function openEditor(item, slug = null) {
   editor.showModal();
   form.title.focus();
 }
+
+// Only one entry is featured at a time; say which one this would replace.
+function updateFeaturedHint() {
+  const slug = state.editing?.slug;
+  const current = libraryItems().find((i) => i.featured && i.slug !== slug);
+  const hint = $('#featured-hint');
+  const parts = [];
+  if (form.featured.checked && current) parts.push(`Replaces “${esc(current.title)}” as the featured entry.`);
+  else if (!form.featured.checked && current) parts.push(`Currently featured: “${esc(current.title)}”.`);
+  else if (!form.featured.checked && !current) parts.push('Nothing featured — the home page shows your most recent journal entry.');
+  if (form.featured.checked && !form.body.value.trim()) parts.push('Add some notes above, or the home page will fall back to your most recent entry.');
+  hint.innerHTML = parts.join(' ');
+}
+form.featured.addEventListener('change', updateFeaturedHint);
+form.body.addEventListener('input', () => { if (form.featured.checked) updateFeaturedHint(); });
 
 form.cover.addEventListener('input', renderCoverPreview);
 form.type.addEventListener('change', () => { updateCreatorLabel(); renderCoverPreview(); renderExpansionsField(); });
@@ -376,6 +393,7 @@ form.addEventListener('submit', async (e) => {
     details: textToDetails(form.details.value),
     source,
     expansions: form.type.value === 'boardgame' ? state.editing.expansions || [] : [],
+    featured: form.featured.checked,
   };
   delete item.body;
   if (!slug && !saveBtn.dataset.confirmDup) {
@@ -565,7 +583,7 @@ function renderLibrary() {
       <li class="lib-row">
         ${coverThumb(i, 56)}
         <span class="lib-text">
-          <strong>${esc(i.title)}</strong>
+          <strong>${esc(i.title)}${i.featured ? ' <span class="featured-badge">★ Featured</span>' : ''}</strong>
           <span class="muted small">${esc(TYPES[i.type]?.label)} · ${esc(i.creator || '')}</span>
         </span>
         <span class="lib-actions">

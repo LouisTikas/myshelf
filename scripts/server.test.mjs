@@ -432,3 +432,21 @@ test('collections can be limited to a recent time window', async () => {
   assert.equal(a.within, 365);
   assert.equal(b.within, undefined);
 });
+
+test('saveItem: only one entry is featured at a time', async () => {
+  const { getItem } = await import('../server/db.js');
+  const env = fakeEnv();
+  const a = await saveItem(env, { item: { title: 'Dune', type: 'book', status: 'finished', featured: true }, body: 'Loved it.' });
+  const b = await saveItem(env, { item: { title: 'Alien', type: 'movie', status: 'finished' }, body: 'Scary.' });
+  assert.equal((await getItem(env, a.slug)).item.featured, true);
+  assert.equal((await getItem(env, b.slug)).item.featured, undefined);
+
+  await saveItem(env, { slug: b.slug, item: { title: 'Alien', type: 'movie', status: 'finished', featured: true }, body: 'Scary.' });
+  const rowA = await getItem(env, a.slug);
+  assert.equal(rowA.item.featured, undefined);
+  assert.equal(rowA.body, 'Loved it.'); // un-featuring keeps the other entry's notes
+  assert.equal((await getItem(env, b.slug)).item.featured, true);
+
+  await saveItem(env, { slug: b.slug, item: { title: 'Alien', type: 'movie', status: 'finished', featured: false }, body: 'Scary.' });
+  assert.equal((await getItem(env, b.slug)).item.featured, undefined);
+});

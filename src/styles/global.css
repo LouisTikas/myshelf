@@ -251,6 +251,52 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
   .shelf-head, .shelf-desc { padding: 0 14px; }
 }
 
+/* ───────── Home: "My Ramblings" (featured / latest journal entry) ───────── */
+.my-thoughts { margin-top: 36px; }
+.my-thoughts-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.my-thoughts-head h2 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+/* Long entries get cut off with a fade; the full text lives on the item page. */
+.journal-entry-clamp .prose {
+  max-height: 11.5em; overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 65%, transparent);
+  mask-image: linear-gradient(180deg, #000 65%, transparent);
+}
+.my-thoughts-foot { display: flex; justify-content: center; margin-top: 18px; }
+.btn-see-all {
+  display: inline-block; padding: 10px 26px; border-radius: 999px;
+  font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none;
+  color: #1a1a1a; background: var(--accent); box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.btn-see-all:hover, .btn-see-all:focus-visible { transform: translateY(-1px); filter: brightness(1.08); outline: none; }
+.keep-reading { display: inline-block; margin-top: 6px; font-size: 0.9rem; font-weight: 600; color: var(--accent-ink); text-decoration: none; }
+.keep-reading:hover, .keep-reading:focus-visible { text-decoration: underline; }
+
+/* ───────── Copy-link button next to page titles ───────── */
+.copy-link {
+  position: relative; display: inline-grid; place-items: center; vertical-align: middle;
+  width: 32px; height: 32px; margin-left: 10px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; color: inherit; opacity: 0.45;
+  cursor: pointer; transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.copy-link:hover, .copy-link:focus-visible { opacity: 1; color: var(--accent); background: rgba(217, 154, 78, 0.12); outline: none; }
+.item-page .copy-link:hover, .item-page .copy-link:focus-visible { color: var(--accent-ink); }
+.copy-link svg { grid-area: 1 / 1; }
+.copy-link-done { display: none; }
+.copy-link.is-copied { opacity: 1; color: var(--accent); }
+.item-page .copy-link.is-copied { color: var(--accent-ink); }
+.copy-link.is-copied:not(.is-failed) .copy-link-icon { display: none; }
+.copy-link.is-copied:not(.is-failed) .copy-link-done { display: block; }
+.copy-link-tip {
+  position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+  white-space: nowrap; pointer-events: none;
+  font-family: var(--sans); font-size: 0.75rem; font-weight: 600; letter-spacing: 0; text-transform: none;
+  color: #fff; background: rgba(20, 20, 20, 0.92); padding: 3px 8px; border-radius: 6px;
+  opacity: 0; transition: opacity 0.15s ease;
+}
+.copy-link-tip:empty { display: none; }
+.copy-link.is-copied .copy-link-tip { opacity: 1; }
+
 /* "MyShelf | Lex Judge" */
 .hero-owner { font-weight: 500; color: var(--cream-soft); letter-spacing: -0.01em; }
 .hero-owner .sep { color: var(--accent); margin: 0 0.25em; font-weight: 400; }

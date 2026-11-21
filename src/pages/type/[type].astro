@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Shelf from '../../components/Shelf.astro';
+import CopyLink from '../../components/CopyLink.astro';
 import BoardgameFilters from '../../components/BoardgameFilters.astro';
 import '../../styles/filters.css';
 import { getItems, getShelves, getArrangements } from '../../lib/items.js';
@@ -30,7 +31,7 @@ const groups = ['in-progress', 'finished', 'want', 'abandoned']
 <Base title={t.plural}>
   <section class="page-head">
     <p class="eyebrow">{all.length} {all.length === 1 ? t.label : t.plural}</p>
-    <h1>{t.plural}</h1>
+    <h1>{t.plural}<CopyLink /></h1>
   </section>
   {type === 'boardgame' && all.length > 0 && <BoardgameFilters items={all} />}
   <div class="bookcase">

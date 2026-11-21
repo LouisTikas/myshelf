@@ -182,3 +182,9 @@ details label { margin-bottom: 10px; }
 .remembered { margin-left: auto; margin-right: 10px; font-size: 0.8rem; color: #7a6a50; background: #f3e4c8; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
 .remembered[hidden] { display: none; }
 .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--accent-ink, #a5652a); text-decoration: underline; cursor: pointer; }
+
+/* Featured ("My Ramblings" on the home page) */
+.featured-field { display: flex; flex-direction: column; gap: 2px; }
+.featured-field p { margin: 0 0 0 22px; }
+.featured-field p:empty { display: none; }
+.featured-badge { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; vertical-align: middle; color: var(--accent-ink); background: rgba(217, 154, 78, 0.18); }

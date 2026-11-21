@@ -1,6 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 import Shelf from '../components/Shelf.astro';
+import JournalCard from '../components/JournalCard.astro';
+import CopyLink from '../components/CopyLink.astro';
 import site from '../data/site.json';
 import { getItems, getShelves } from '../lib/items.js';
 import { sortShelf, inShelf, showsOnHome } from '../lib/sorting.js';
@@ -8,10 +10,14 @@ import { TYPES, TYPE_KEYS } from '../lib/types.js';
 
 const env = Astro.locals.runtime.env;
 const [items, shelves] = await Promise.all([getItems(env), getShelves(env)]);
+// "My Ramblings": the entry marked Featured in the editor, or else the most recent journal entry
+// (items are already sorted newest first).
+const hasNotes = (e) => e.body && e.body.trim();
+const latestThought = items.find((e) => e.data.featured === true && hasNotes(e)) || items.find(hasNotes);
 ---
 <Base>
   <section class="hero">
-    <h1>{site.title}{site.owner && <span class="hero-owner"><span class="sep">|</span>{site.owner}</span>}</h1>
+    <h1>{site.title}{site.owner && <span class="hero-owner"><span class="sep">|</span>{site.owner}</span>}<CopyLink label="Copy link to this shelf" /></h1>
     <p>{site.tagline}</p>
   </section>
 
@@ -21,4 +27,16 @@ const [items, shelves] = await Promise.all([getItems(env), getShelves(env)]);
       return <Shelf title={s.name} description={s.description} items={list} href={`/shelf/${s.slug}/`} seeAll scroll limit={12} empty="No items on this shelf yet." collection={s.slug} />;
     })}
   </div>
+
+  {latestThought && (
+    <section class="my-thoughts">
+      <div class="my-thoughts-head">
+        <h2>My Ramblings</h2>
+      </div>
+      <JournalCard entry={latestThought} clamp />
+      <div class="my-thoughts-foot">
+        <a class="btn-see-all" href="/journal/">See all</a>
+      </div>
+    </section>
+  )}
 </Base>

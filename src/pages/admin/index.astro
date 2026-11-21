@@ -148,6 +148,10 @@ const typesJson = JSON.stringify(TYPES);
                 <button type="button" class="btn ghost small" id="add-entry">＋ Dated entry</button></span>
               <textarea name="body" rows="8" placeholder="What did you think?"></textarea>
             </label>
+            <div class="span2 featured-field">
+              <label class="check"><input type="checkbox" name="featured" /> <strong>Featured</strong> — show these notes in <em>My Ramblings</em> on the home page</label>
+              <p id="featured-hint" class="muted small"></p>
+            </div>
             <details class="span2">
               <summary>Description &amp; details</summary>
               <label>Description <textarea name="description" rows="4"></textarea></label>

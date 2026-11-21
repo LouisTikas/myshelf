@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Cover from '../../components/Cover.astro';
+import CopyLink from '../../components/CopyLink.astro';
 import { getEntry, getShelves, fmtDate, renderBody } from '../../lib/items.js';
 import { inShelf } from '../../lib/sorting.js';
 import { TYPES, STATUS_LABEL, DETAIL_LABELS, HIDDEN_DETAILS, formatDetail, stars } from '../../lib/types.js';
@@ -31,7 +32,7 @@ const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.exp
     </div>
     <div class="item-info">
       <p class="eyebrow"><a href={`/type/${d.type}/`}>{t.label}</a>{d.year && <> · {d.year}</>}</p>
-      <h1>{d.title}</h1>
+      <h1>{d.title}<CopyLink /></h1>
       {d.creator && <p class="creator">{t.creator}: {d.creator}</p>}
 
       <div class="item-meta">

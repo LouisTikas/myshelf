@@ -44,8 +44,8 @@
   color: #fbf6ec;
   background: linear-gradient(135deg, rgba(255,255,255,0.14), transparent 45%), linear-gradient(0deg, rgba(0,0,0,0.28), transparent 55%), var(--tc);
 }
-.b3-ph-title { font-family: var(--serif, Georgia, serif); font-weight: 600; font-size: calc(var(--h) * 0.085); line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
-.b3-ph-creator { font-size: calc(var(--h) * 0.055); text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+.b3-ph-title { font-family: var(--serif, Georgia, serif); font-weight: 600; font-size: calc(var(--u, var(--h)) * 0.085); line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.b3-ph-creator { font-size: calc(var(--u, var(--h)) * 0.055); text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
 .b3-gloss { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 
 /* Spine/edge: sits on the box's left side, facing left (−X). */
@@ -123,7 +123,7 @@
 }
 .cart-label > img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .cart-label .b3-ph { padding: 8px; justify-content: center; text-align: center; }
-.cart-label .b3-ph-title { font-size: calc(var(--h) * 0.07); -webkit-line-clamp: 4; }
+.cart-label .b3-ph-title { font-size: calc(var(--u, var(--h)) * 0.07); -webkit-line-clamp: 4; }
 .kind-cart .b3-spine {
   background:
     repeating-linear-gradient(180deg, rgba(0,0,0,0.12) 0 1px, transparent 1px 5px),
@@ -148,7 +148,7 @@
   position: absolute; top: 3%; left: 12%; width: 86%; height: 94%;
 }
 .kind-cd .b3-ph { padding: 8px; }
-.kind-cd .b3-ph-title { font-size: calc(var(--h) * 0.07); }
+.kind-cd .b3-ph-title { font-size: calc(var(--u, var(--h)) * 0.07); }
 .kind-cd .b3-front::before { /* hinge strip */
   content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 10%; z-index: 3;
   background:

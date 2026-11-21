@@ -18,6 +18,9 @@ const editable = Boolean(collection || arrangeKey);
 // SEE ALL only appears once a collection has more than 10 items.
 const showSeeAll = seeAll && href && items.length > 10;
 const shown = limit ? items.slice(0, limit) : items;
+// Board game boxes stand taller than books, so a shelf holding any gets a taller row.
+const BOX_SCALE = 1.35;
+const rowHeight = shown.some((e) => e.data.type === 'boardgame') ? Math.round(height * BOX_SCALE) : height;
 ---
 <section class="shelf-section">
   {title && (
@@ -33,11 +36,11 @@ const shown = limit ? items.slice(0, limit) : items;
     </div>
   )}
   {description && <p class="shelf-desc">{description}</p>}
-  <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${height}px`} data-collection={collection} data-arrange-key={arrangeKey}>
+  <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${rowHeight}px`} data-collection={collection} data-arrange-key={arrangeKey}>
     {shown.length === 0 && <p class="shelf-empty">{empty}</p>}
     {shown.map((e, i) => (
       <div class="shelf-slot" data-f={filterable ? filterData(e.data) : undefined}>
-        <Book3D item={e.data} height={height} href={`/item/${e.id}/`} front={i === 0} />
+        <Book3D item={e.data} height={rowHeight} unit={height} href={`/item/${e.id}/`} front={i === 0} />
       </div>
     ))}
   </div>

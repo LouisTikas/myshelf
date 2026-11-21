@@ -7,7 +7,7 @@ import { TYPES, STATUS_LABEL, stars } from '../lib/types.js';
 interface Props { entry: any; clamp?: boolean }
 const { entry: e, clamp = false } = Astro.props;
 const d = e.data;
-const date = d.dateFinished || d.dateStarted || d.dateAdded;
+const date = (d.status === 'finished' && d.dateFinished) || d.dateStarted || d.dateAdded;
 const html = renderBody(e.body);
 const href = `/item/${e.id}/`;
 ---

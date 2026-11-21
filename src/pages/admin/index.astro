@@ -124,8 +124,8 @@ const typesJson = JSON.stringify(TYPES);
                 {[5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1, 0.5].map((r) => <option value={r}>{'★'.repeat(Math.floor(r)) + (r % 1 ? '½' : '')} ({r})</option>)}
               </select>
             </label>
-            <label>Started <input name="dateStarted" type="date" /></label>
-            <label>Finished <input name="dateFinished" type="date" /></label>
+            <label>Started <span class="date-field"><input name="dateStarted" type="date" /><button type="button" class="date-clear" data-clear-date="dateStarted" aria-label="Clear started date" title="Clear date">×</button></span></label>
+            <label>Finished <span class="date-field"><input name="dateFinished" type="date" /><button type="button" class="date-clear" data-clear-date="dateFinished" aria-label="Clear finished date" title="Clear date">×</button></span></label>
             <fieldset class="span2">
               <legend>Collections</legend>
               <div id="editor-collections" class="checks"></div>

@@ -19,6 +19,9 @@ const details = Object.entries(d.details || {})
   .map(([k, v]) => [DETAIL_LABELS[k] || k, formatDetail(k, v, d.details)])
   .filter(([, v]) => v);
 const hasBody = Boolean(bodyHtml);
+// Only Finished entries show a finished date (an old one can linger after the status changed).
+const finished = d.status === 'finished' ? d.dateFinished : null;
+const thoughtsDate = finished || d.dateStarted || d.dateAdded;
 const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.expansions : [];
 ---
 <Base title={d.title} description={d.description}>
@@ -42,7 +45,7 @@ const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.exp
 
       <dl class="facts">
         {d.dateStarted && <><dt>Started</dt><dd>{fmtDate(d.dateStarted)}</dd></>}
-        {d.dateFinished && <><dt>Finished</dt><dd>{fmtDate(d.dateFinished)}</dd></>}
+        {finished && <><dt>Finished</dt><dd>{fmtDate(finished)}</dd></>}
         {details.map(([k, v]) => <><dt>{k}</dt><dd>{v}</dd></>)}
         {d.genres?.length > 0 && <><dt>Genres</dt><dd>{d.genres.join(', ')}</dd></>}
       </dl>
@@ -80,9 +83,10 @@ const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.exp
       )}
 
       {hasBody && (
-        <section class="journal-body prose">
-          <h2>My notes</h2>
-          <Fragment set:html={bodyHtml} />
+        <section class="my-thoughts-card">
+          <p class="eyebrow">{t.label} · {STATUS_LABEL(d.type, d.status)}{thoughtsDate && <> · {fmtDate(thoughtsDate)}</>}</p>
+          <h2>My thoughts {d.rating != null && <span class="rating">{stars(d.rating)}</span>}</h2>
+          <div class="prose" set:html={bodyHtml} />
         </section>
       )}
 

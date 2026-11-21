@@ -319,7 +319,9 @@ function openEditor(item, slug = null) {
   form.status.value = item.status || '';
   form.rating.value = item.rating == null ? '' : String(item.rating);
   form.dateStarted.value = item.dateStarted || '';
-  form.dateFinished.value = item.status === 'want' ? '' : item.dateFinished || '';
+  // A finished date only belongs to Finished entries; older entries that changed status lose a stale one here.
+  form.dateFinished.value = item.status === 'finished' ? item.dateFinished || '' : '';
+  delete form.dataset.stashedFinished;
   form.cover.value = item.cover || '';
   form.tags.value = (item.tags || []).join(', ');
   form.genres.value = (item.genres || []).join(', ');
@@ -361,9 +363,19 @@ form.type.addEventListener('change', () => { updateCreatorLabel(); renderCoverPr
 form.status.addEventListener('change', () => {
   $$('#editor-collections input[data-auto]').forEach((cb) => (cb.checked = form.status.value === cb.dataset.auto));
   const today = new Date().toISOString().slice(0, 10);
-  if (form.status.value === 'finished' && !form.dateFinished.value) form.dateFinished.value = today;
+  // Moving off Finished clears the finished date; switching back brings it back (or today's date).
+  if (form.status.value !== 'finished' && form.dateFinished.value) {
+    form.dataset.stashedFinished = form.dateFinished.value;
+    form.dateFinished.value = '';
+  }
+  if (form.status.value === 'finished' && !form.dateFinished.value) form.dateFinished.value = form.dataset.stashedFinished || today;
   if (form.status.value === 'in-progress' && !form.dateStarted.value) form.dateStarted.value = today;
 });
+// × buttons next to the date fields (phone date pickers often have no way to empty them).
+$$('[data-clear-date]', editor).forEach((b) => b.addEventListener('click', () => {
+  form[b.dataset.clearDate].value = '';
+  if (b.dataset.clearDate === 'dateFinished') delete form.dataset.stashedFinished;
+}));
 $$('[data-close]', editor).forEach((b) => b.addEventListener('click', () => editor.close()));
 $('#add-entry').addEventListener('click', () => {
   const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -814,6 +826,8 @@ function showPreview(slug) {
     .map(([k, v]) => [DETAIL_NAMES[k] || k, Array.isArray(v) ? v.join(', ') : k === 'runtime' || k === 'playtime' ? `${v} min` : v])
     .filter(([, v]) => v !== '' && v != null);
   const body = (it.body || '').trim();
+  const finished = it.status === 'finished' ? it.dateFinished : null;
+  const thoughtsDate = finished || it.dateStarted || it.dateAdded;
   $('#preview-body').innerHTML = `
     <article class="item-page preview-page">
       <div class="item-cover">${coverMarkup(it, it.type === 'music' || it.type === 'boardgame' ? 280 : 340)}</div>
@@ -827,7 +841,7 @@ function showPreview(slug) {
         </div>
         <dl class="facts">
           ${it.dateStarted ? `<dt>Started</dt><dd>${fmtDate(it.dateStarted)}</dd>` : ''}
-          ${it.dateFinished ? `<dt>Finished</dt><dd>${fmtDate(it.dateFinished)}</dd>` : ''}
+          ${finished ? `<dt>Finished</dt><dd>${fmtDate(finished)}</dd>` : ''}
           ${details.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
           ${(it.genres || []).length ? `<dt>Genres</dt><dd>${esc(it.genres.join(', '))}</dd>` : ''}
         </dl>
@@ -835,7 +849,11 @@ function showPreview(slug) {
           ${shelves.map((s) => `<span class="chip">${esc(s.name)}</span>`).join('')}
           ${(it.tags || []).map((g) => `<span class="chip chip-tag">#${esc(g)}</span>`).join('')}
         </div>` : ''}
-        ${body ? `<section class="journal-body prose"><h2>My notes</h2>${marked.parse(body)}</section>` : ''}
+        ${body ? `<section class="my-thoughts-card">
+          <p class="eyebrow">${esc(t.label)} · ${esc(STATUS_WORDS(it.type, it.status))}${thoughtsDate ? ' · ' + fmtDate(thoughtsDate) : ''}</p>
+          <h2>My thoughts ${it.rating != null ? `<span class="rating">${starText(it.rating)}</span>` : ''}</h2>
+          <div class="prose">${marked.parse(body)}</div>
+        </section>` : ''}
         ${it.description ? `<section class="synopsis"><h2>About</h2><p>${esc(it.description)}</p></section>` : ''}
       </div>
     </article>`;

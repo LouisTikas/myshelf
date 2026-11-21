@@ -207,9 +207,17 @@ a.cover:hover, a.cover:focus-visible { transform: translateY(-8px) rotate(-1deg)
 .chip { font-size: 0.82rem; text-decoration: none; padding: 4px 10px; border-radius: 999px; border: 1px solid #d2c3a6; color: var(--ink); }
 a.chip:hover { border-color: var(--accent-ink); color: var(--accent-ink); }
 .chip-tag { color: var(--ink-soft); }
-.journal-body, .synopsis { border-top: 1px solid #ddd0b6; padding-top: 18px; margin-top: 18px; }
-.journal-body h2, .synopsis h2 { font-size: 1.1rem; color: var(--accent-ink); }
+.synopsis { border-top: 1px solid #ddd0b6; padding-top: 18px; margin-top: 18px; }
+.synopsis h2 { font-size: 1.1rem; color: var(--accent-ink); }
 .synopsis p { color: var(--ink-soft); white-space: pre-line; }
+/* "My thoughts" on the item page — styled like a Journal card */
+.my-thoughts-card {
+  background: #fbf6ea; border: 1px solid #e3d5b8; border-radius: var(--radius);
+  padding: 22px 24px; margin-top: 22px; box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+.my-thoughts-card h2 { font-size: 1.4rem; margin: 0 0 10px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.my-thoughts-card .prose > :last-child { margin-bottom: 0; }
+@media (max-width: 760px) { .my-thoughts-card { padding: 18px; } }
 
 /* Expansions attached to a board game */
 .expansions-section { border-top: 1px solid #ddd0b6; padding-top: 18px; margin-top: 18px; }

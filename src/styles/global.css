@@ -352,14 +352,13 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
     }
   }
 }
-/* Only translate + opacity: the GPU can do these without redrawing the shelf (scaling forced redraws). */
 @keyframes shelf-rise {
-  from { opacity: 0;    transform: translateY(80px); }
+  from { opacity: 0;    transform: translateY(80px) scale(0.96); }
   to   { opacity: 1;    transform: none; }
 }
 @keyframes shelf-fade {
   from { opacity: 1;    transform: none; }
-  to   { opacity: 0;    transform: translateY(-28px); }
+  to   { opacity: 0;    transform: translateY(-28px) scale(0.96); }
 }
 
 /* Covers fade out at the right edge of a scrolling shelf while there's more to see.

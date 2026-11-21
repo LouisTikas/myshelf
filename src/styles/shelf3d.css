@@ -320,11 +320,3 @@
 .shelf-row.fade-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); }
 .shelf-row.fade-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade)); mask-image: linear-gradient(to right, transparent, #000 var(--fade)); }
 .shelf-row.fade-left.fade-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); }
-
-/* While scrolling (class set by shelf3d.js): simpler boxes = smoother frames.
-   No hover, no turning animations, no blurred cover colour on spines, no text/box shadows. */
-html.is-scrolling .book3d { pointer-events: none; }
-html.is-scrolling .book3d, html.is-scrolling .b3-box { transition: none; }
-html.is-scrolling .book3d.has-cover .b3-spine::before { filter: none; background-size: 600% auto; }
-html.is-scrolling .b3-spine-title, html.is-scrolling .b3-spine-creator { text-shadow: none; }
-html.is-scrolling .book3d .b3-front { box-shadow: none !important; }

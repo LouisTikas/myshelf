@@ -49,7 +49,7 @@ const expansions = d.type === 'boardgame' && Array.isArray(d.expansions) ? d.exp
 
       <div class="item-meta">
         <span class:list={['status', `status-${d.status}`]}>{STATUS_LABEL(d.type, d.status)}</span>
-        {d.rating != null && <span class="rating" aria-label={`${d.rating} out of 5`}>{stars(d.rating)}</span>}
+        {d.rating != null && !hasBody && <span class="rating" aria-label={`${d.rating} out of 5`}>{stars(d.rating)}</span>}
       </div>
 
       <dl class="facts">

@@ -842,7 +842,7 @@ function showPreview(slug) {
         ${it.creator ? `<p class="creator">${esc(t.creator)}: ${esc(it.creator)}</p>` : ''}
         <div class="item-meta">
           <span class="status status-${esc(it.status)}">${esc(STATUS_WORDS(it.type, it.status))}</span>
-          ${it.rating != null ? `<span class="rating">${starText(it.rating)}</span>` : ''}
+          ${it.rating != null && !body ? `<span class="rating">${starText(it.rating)}</span>` : ''}
         </div>
         <dl class="facts">
           ${it.dateStarted ? `<dt>Started</dt><dd>${fmtDate(it.dateStarted)}</dd>` : ''}

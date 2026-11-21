@@ -1,0 +1,38 @@
+---
+// Full view of one status shelf on a media page, e.g. /type/boardgame/finished/ → every board game you've Played.
+import Base from '../../../layouts/Base.astro';
+import Shelf from '../../../components/Shelf.astro';
+import CopyLink from '../../../components/CopyLink.astro';
+import BoardgameFilters from '../../../components/BoardgameFilters.astro';
+import '../../../styles/filters.css';
+import { getItems, getArrangements } from '../../../lib/items.js';
+import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../../lib/types.js';
+import { sortShelf } from '../../../lib/sorting.js';
+
+const { type, status } = Astro.params;
+const STATUSES = ['in-progress', 'finished', 'want', 'abandoned'];
+if (!TYPE_KEYS.includes(type) || !STATUSES.includes(status)) return new Response(null, { status: 404, statusText: 'Not found' });
+const env = Astro.locals.runtime.env;
+const t = TYPES[type];
+const [items, arrangements] = await Promise.all([getItems(env), getArrangements(env)]);
+const key = `${type}:${status}`;
+const list = items.filter((e) => e.data.type === type && e.data.status === status);
+// Same order as the shelf on the media page: your arranged order if you set one, otherwise newest first.
+const shelfItems = arrangements[key] ? sortShelf(list, { sort: 'custom', order: arrangements[key] }) : list;
+const label = STATUS_LABEL(type, status);
+const isBoardgame = type === 'boardgame';
+---
+<Base title={`${label} · ${t.plural}`}>
+  <a class="back-link" href={`/type/${type}/`}>
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    <span>{t.plural}</span>
+  </a>
+  <section class="page-head">
+    <p class="eyebrow">{t.plural} · {shelfItems.length} {shelfItems.length === 1 ? t.label : t.plural}</p>
+    <h1>{label}<CopyLink /><button type="button" class="shelf-edit" data-arrange-key={key} data-title={label} hidden aria-label={`Arrange ${label}`} title="Arrange this shelf"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></h1>
+  </section>
+  {isBoardgame && shelfItems.length > 0 && <BoardgameFilters items={shelfItems} />}
+  <div class="bookcase scroll-motion-rows">
+    <Shelf items={shelfItems} empty={`No ${t.plural.toLowerCase()} here yet.`} arrangeKey={key} height={type === 'music' ? 160 : 180} filterable={isBoardgame} />
+  </div>
+</Base>

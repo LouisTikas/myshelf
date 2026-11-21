@@ -40,6 +40,7 @@ const groups = ['in-progress', 'finished', 'want', 'abandoned']
       <Shelf title={c.name} description={c.description} items={items} href={`/shelf/${c.slug}/`} seeAll scroll collection={c.slug}
         height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />
     ))}
-    {groups.map((g) => <Shelf title={g.label} items={g.items} arrangeKey={g.key} height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />)}
+    {/* Status shelves work like collections: one scrolling row, with SEE ALL once there are more than 10. */}
+    {groups.map((g) => <Shelf title={g.label} items={g.items} href={`/type/${type}/${g.status}/`} seeAll scroll arrangeKey={g.key} height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />)}
   </div>
 </Base>

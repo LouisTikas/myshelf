@@ -91,7 +91,7 @@ if (token) {
           fetch('/library.json', { cache: 'no-store' }).then((r) => r.json()),
         ]);
         if (btn.dataset.arrangeKey) {
-          const title = btn.closest('.shelf-head')?.querySelector('h2')?.textContent.trim() || 'this shelf';
+          const title = btn.dataset.title || btn.closest('.shelf-head')?.querySelector('h2')?.textContent.trim() || 'this shelf';
           await editTypeShelf(mod, lib, btn.dataset.arrangeKey, title);
         } else {
           await editCollection(mod, lib, btn.dataset.collection);

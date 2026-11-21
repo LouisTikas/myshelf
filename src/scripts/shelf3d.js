@@ -234,3 +234,15 @@ function lockRows(shelf) {
   });
 }
 document.querySelectorAll('.shelf-3d:not(.shelf-scroll)').forEach(lockRows);
+
+// ── While the page is scrolling, drop the expensive parts of the 3D boxes (see .is-scrolling in
+// shelf3d.css) and ignore hover, so boxes don't turn under a still cursor mid-scroll.
+{
+  let timer = 0;
+  const root = document.documentElement;
+  addEventListener('scroll', () => {
+    if (!timer) root.classList.add('is-scrolling');
+    clearTimeout(timer);
+    timer = setTimeout(() => { root.classList.remove('is-scrolling'); timer = 0; }, 160);
+  }, { passive: true });
+}

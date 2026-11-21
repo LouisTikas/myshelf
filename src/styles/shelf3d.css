@@ -312,9 +312,6 @@
   overflow: hidden; scrollbar-width: none;
   padding-top: 40px; margin-top: -40px; /* room above for covers' shadows without changing row height */
   --fade: 70px;
-  /* Same idea per row on long collection pages: off-screen rows aren't drawn. */
-  content-visibility: auto;
-  contain-intrinsic-block-size: auto var(--row);
 }
 .shelf-row::-webkit-scrollbar { display: none; }
 .shelf-row.fade-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); }

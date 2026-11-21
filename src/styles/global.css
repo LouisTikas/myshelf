@@ -102,9 +102,6 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
 .bookcase > .shelf-section:last-of-type { padding-bottom: 0; }
 .shelf-section {
   padding: 6px 0 14px;
-  /* Performance: the browser skips drawing shelves that are off-screen until you scroll near them. */
-  content-visibility: auto;
-  contain-intrinsic-block-size: auto 380px;
 }
 .shelf-head { display: flex; align-items: baseline; gap: 10px; padding: 0 22px; }
 .shelf-head h2 { font-size: 1.25rem; font-weight: 600; margin: 0; }
@@ -347,18 +344,20 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
     .bookcase.scroll-motion > .shelf-section {
       animation: shelf-rise cubic-bezier(0.22, 0.61, 0.36, 1) both, shelf-fade cubic-bezier(0.55, 0, 0.75, 0.4) forwards;
       animation-timeline: view(), view();
-      animation-range: entry 0% cover 35%, exit 0% exit 100%;
+      /* longer fades: fade in over the bottom ~half of the screen, fade out over the top ~40% */
+      animation-range: cover 0% cover 45%, cover 60% cover 100%;
       transform-origin: 50% 100%;
     }
   }
 }
+/* Move + fade only (no shrinking): the GPU can do these without redrawing the 3D boxes. */
 @keyframes shelf-rise {
-  from { opacity: 0;    transform: translateY(80px) scale(0.96); }
+  from { opacity: 0;    transform: translateY(80px); }
   to   { opacity: 1;    transform: none; }
 }
 @keyframes shelf-fade {
   from { opacity: 1;    transform: none; }
-  to   { opacity: 0;    transform: translateY(-28px) scale(0.96); }
+  to   { opacity: 0;    transform: translateY(-28px); }
 }
 
 /* Covers fade out at the right edge of a scrolling shelf while there's more to see.

@@ -271,3 +271,16 @@ details label { margin-bottom: 10px; }
 .media-types legend { font-weight: 600; padding: 0 6px; }
 .media-types p { margin: 0 0 8px; }
 .site-nav a[hidden], .fab-menu li[hidden], .type-btn[hidden] { display: none !important; }
+
+/* Hearts: "I enjoyed this too" on a friend's item */
+.heart-btn { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 50%; cursor: pointer; background: transparent; border: 1px solid #d5c6a8; color: var(--ink-soft); transition: color 0.15s, border-color 0.15s, transform 0.15s; }
+.heart-btn svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.heart-btn:hover { color: var(--accent); border-color: var(--accent); }
+.heart-btn.on { color: var(--accent); border-color: var(--accent); }
+.heart-btn.on svg { fill: currentColor; }
+.heart-btn.pop { animation: heart-pop 0.25s ease-out; }
+.heart-btn:disabled { opacity: 0.6; cursor: wait; }
+.heart-mark { color: var(--accent); vertical-align: -3px; }
+.heart-mark svg { fill: currentColor; width: 16px; height: 16px; }
+@keyframes heart-pop { 50% { transform: scale(1.2); } }
+@media (prefers-reduced-motion: reduce) { .heart-btn.pop { animation: none; } }

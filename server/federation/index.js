@@ -75,7 +75,15 @@ async function saveFriend(env, f) {
 
 async function deleteFriend(env, id) {
   const DB = await ensureSchema(env);
+  const f = await DB.prepare('SELECT url FROM friends WHERE id = ?').bind(id).first();
   await DB.prepare('DELETE FROM friends WHERE id = ?').bind(id).run();
+  // Hearts only mean something between friends.
+  if (f) {
+    await DB.batch([
+      DB.prepare('DELETE FROM hearts_sent WHERE friend_url = ?').bind(f.url),
+      DB.prepare('DELETE FROM hearts_received WHERE from_url = ?').bind(f.url),
+    ]);
+  }
 }
 
 async function addInbox(env, { id, from, kind, payload, status = 'unread' }) {
@@ -245,6 +253,32 @@ export async function receive(env, request, fetcher = fetch) {
       payload: { note: str(msg.note, 1000), item: { uid: row.uid, slug: row.slug, title: row.item.title, type: row.item.type }, lentTo: row.item.lentTo || '' },
     });
     return { ok: true };
+  }
+
+  if (msg.kind === 'heart') {
+    const row = await getItemByUid(env, str(msg.item?.uid, 40));
+    // Friends can see public and friends-only items, so those are the ones they can heart.
+    if (!row || row.item.visibility === 'private') throw new HttpError(404, 'That item isn’t on this shelf');
+    const DB = await ensureSchema(env);
+    const had = await DB.prepare('SELECT inbox_id FROM hearts_received WHERE from_url = ? AND uid = ?').bind(from, row.uid).first();
+    if (msg.on === false) {
+      if (had) {
+        await DB.batch([
+          DB.prepare('DELETE FROM hearts_received WHERE from_url = ? AND uid = ?').bind(from, row.uid),
+          // Take the inbox note away too, unless it's already been read.
+          DB.prepare(`DELETE FROM inbox WHERE id = ? AND status = 'unread'`).bind(had.inbox_id || ''),
+        ]);
+      }
+      return { ok: true, on: false };
+    }
+    if (had) return { ok: true, on: true }; // already hearted: no second inbox note
+    const it = row.item;
+    await addInbox(env, {
+      id: msg.id, from, kind: 'heart',
+      payload: { item: { uid: row.uid, slug: row.slug, title: it.title, type: it.type, creator: it.creator || '', cover: it.cover || '', visibility: it.visibility || 'public' } },
+    });
+    await DB.prepare('INSERT OR IGNORE INTO hearts_received (from_url, uid, inbox_id, created_at) VALUES (?, ?, ?, ?)').bind(from, row.uid, msg.id, now()).run();
+    return { ok: true, on: true };
   }
 
   if (msg.kind === 'borrow-reply') {
@@ -523,10 +557,62 @@ export async function friendShelf(env, requestUrl, id, fetcher = fetch) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new HttpError(502, data.error || `Their site answered ${res.status}`);
   const mine = new Set((await listItemsWithKeys(env, null)).map((r) => r.extKey).filter(Boolean));
+  const hearted = new Set((await heartsSent(env, f.url)).map((h) => h.uid));
   return {
     friend: { id: f.id, url: f.url, name: f.name, owner: f.owner },
-    items: (Array.isArray(data.items) ? data.items : []).slice(0, 5000).map((i) => ({ ...i, youHave: Boolean(i.extKey && mine.has(i.extKey)) })),
+    items: (Array.isArray(data.items) ? data.items : []).slice(0, 5000).map((i) => ({
+      ...i, youHave: Boolean(i.extKey && mine.has(i.extKey)), hearted: hearted.has(i.uid),
+    })),
   };
+}
+
+// ───────── hearts ─────────
+
+/** Hearts you've given: all of them, or just those on one friend's items. → [{ friendUrl, uid }] */
+export async function heartsSent(env, friendUrl = null) {
+  const DB = await ensureSchema(env);
+  const q = friendUrl
+    ? DB.prepare('SELECT friend_url, uid FROM hearts_sent WHERE friend_url = ?').bind(friendUrl)
+    : DB.prepare('SELECT friend_url, uid FROM hearts_sent');
+  const { results } = await q.all();
+  return (results || []).map((r) => ({ friendUrl: r.friend_url, uid: r.uid }));
+}
+
+/**
+ * Heart a friend's item ("I enjoyed this too"), or take the heart back with on: false.
+ * The friend is picked by id (Manage → Friends) or by site address (the public Friends page).
+ */
+export async function heart(env, requestUrl, { friendId, friendUrl, uid, title, on = true }, fetcher = fetch) {
+  let f;
+  if (friendId) f = await acceptedFriend(env, friendId);
+  else {
+    const byUrl = await friendByUrl(env, cleanSiteUrl(friendUrl));
+    if (!byUrl) throw new HttpError(404, 'Friend not found');
+    f = await acceptedFriend(env, byUrl.id);
+  }
+  const id = str(uid, 40);
+  if (!id) throw new HttpError(400, 'Which item?');
+  const yes = on !== false;
+  try {
+    await send(env, requestUrl, f.url, 'heart', { item: { uid: id }, on: yes }, fetcher);
+  } catch (err) {
+    // A friend on an older copy of MyShelf doesn't know about hearts yet.
+    if (/Unknown message/.test(err.message)) {
+      const who = f.owner || f.name;
+      throw new HttpError(502, `${who ? `${who}’s` : 'Their'} MyShelf needs an update before it can get hearts.`);
+    }
+    throw err;
+  }
+  const DB = await ensureSchema(env);
+  if (yes) {
+    await DB.prepare(
+      `INSERT INTO hearts_sent (friend_url, uid, title, created_at) VALUES (?1, ?2, ?3, ?4)
+       ON CONFLICT (friend_url, uid) DO UPDATE SET title = ?3`,
+    ).bind(f.url, id, str(title, 200), now()).run();
+  } else {
+    await DB.prepare('DELETE FROM hearts_sent WHERE friend_url = ? AND uid = ?').bind(f.url, id).run();
+  }
+  return { ok: true, on: yes };
 }
 
 // ───────── public friends page ─────────

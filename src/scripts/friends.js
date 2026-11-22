@@ -35,6 +35,9 @@ const thumb = (cover, title, type) => {
   return cover ? `<img class="thumb" src="${esc(cover)}" alt="" style="height:52px" loading="lazy" referrerpolicy="no-referrer">` : ph;
 };
 
+const HEART = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2 0 3.3 1.1 5 3 1.7-1.9 3-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>';
+const heartBtn = (on, attrs) => `<button type="button" class="heart-btn${on ? ' on' : ''}" aria-pressed="${on}" title="${on ? 'You enjoyed this too (click to undo)' : 'I enjoyed this too'}" ${attrs}>${HEART}</button>`;
+
 // ───────── friends tab ─────────
 const state = { me: null, friends: [], inbox: [], loaded: false };
 
@@ -69,7 +72,7 @@ function renderInbox() {
   const list = $('#inbox-list');
   $('#inbox-clear').hidden = !state.inbox.some((m) => !waiting(m));
   if (!state.inbox.length) {
-    list.innerHTML = '<li class="muted">Nothing yet. Friend requests, recommendations and borrow requests show up here.</li>';
+    list.innerHTML = '<li class="muted">Nothing yet. Friend requests, recommendations, borrow requests and hearts show up here.</li>';
     return;
   }
   list.innerHTML = state.inbox.map((m) => {
@@ -103,6 +106,11 @@ function renderInbox() {
       if (open) actions = `
         <button class="btn primary small" data-borrow="yes" data-id="${esc(m.id)}">Yes, lend it</button>
         <button class="btn ghost small" data-borrow="no" data-id="${esc(m.id)}">Not now</button>`;
+    } else if (m.kind === 'heart') {
+      const it = p.item || {};
+      const title = it.visibility === 'public' && it.slug ? `<a href="/item/${esc(it.slug)}/" target="_blank">${esc(it.title)}</a>` : esc(it.title);
+      body = `<span class="inbox-item">${thumb(it.cover, it.title, it.type)}<span><span class="heart-mark" aria-hidden="true">${HEART}</span> ${who} enjoyed
+        <strong>${title}</strong> too.</span></span>`;
     } else if (m.kind === 'borrow-reply') {
       body = `${who} ${p.answer === 'yes' ? 'said <strong>yes</strong> to' : 'can’t lend you'} <strong>${esc(p.title)}</strong>${p.answer === 'yes' ? '.' : ' right now.'}`;
     }
@@ -268,9 +276,29 @@ document.addEventListener('click', async (e) => {
     return;
   }
 
+  const h = e.target.closest('[data-heart]');
+  if (h) return toggleHeart(h, { friendId: h.dataset.friend, uid: h.dataset.heart, title: h.dataset.title });
+
   const rec = e.target.closest('[data-recommend]');
   if (rec) return openRecommend(rec.dataset.recommend, rec.dataset.title);
 });
+
+async function toggleHeart(btn, fields) {
+  const on = !btn.classList.contains('on');
+  btn.disabled = true;
+  try {
+    await api('friends', { method: 'POST', body: { action: 'heart', ...fields, on } });
+    btn.classList.toggle('on', on);
+    btn.classList.toggle('pop', on);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.title = on ? 'You enjoyed this too (click to undo)' : 'I enjoyed this too';
+    if (on) toast('Sent. They’ll see you enjoyed it too.');
+  } catch (err) {
+    toast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 async function showFriendShelf(id) {
   const box = $('#friend-shelf');
@@ -294,6 +322,7 @@ async function showFriendShelf(id) {
               <span class="muted small">${esc(i.creator || '')}${i.rating ? ` · ${'★'.repeat(Math.floor(i.rating))}${i.rating % 1 ? '½' : ''}` : ''}</span>
             </span>
             <span class="lib-actions">
+              ${heartBtn(i.hearted, `data-heart="${esc(i.uid)}" data-friend="${esc(friend.id)}" data-title="${esc(i.title)}"`)}
               ${i.available ? `<button class="btn ghost small" data-ask="${esc(i.uid)}" data-friend="${esc(friend.id)}" data-title="${esc(i.title)}">Ask to borrow</button>` : i.owned ? '<span class="muted small">Lent out</span>' : ''}
             </span>
           </li>`).join('')}</ul>`).join('')}`;

@@ -54,7 +54,7 @@ const host = (u) => u.replace(/^https?:\/\//, '');
             const t = TYPES[i.type] || TYPES.book;
             const link = i.url || i.friend.url;
             return (
-              <li class="feed-row" data-friend={i.friend.url} data-type={i.type || 'book'} hidden={n >= PAGE}>
+              <li class="feed-row" data-friend={i.friend.url} data-type={i.type || 'book'} data-uid={i.uid} data-title={i.title} hidden={n >= PAGE}>
                 <a class="feed-cover" href={link} target="_blank" rel="noopener" style={`--tc:${t.color}; aspect-ratio:${t.aspect}`}>
                   {i.cover ? <img src={i.cover} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <span>{(i.title || '?').slice(0, 1)}</span>}
                 </a>
@@ -63,11 +63,16 @@ const host = (u) => u.replace(/^https?:\/\//, '');
                   <h3><a href={link} target="_blank" rel="noopener">{i.title}</a> {i.rating != null && <span class="rating">{stars(i.rating)}</span>}</h3>
                   <p class="creator">{t.label}{i.creator && <> · {i.creator}</>}{i.year && <> · {i.year}</>}</p>
                 </div>
+                {/* Shown by the script below only to you, when you're signed in on this device. */}
+                <button type="button" class="heart-btn" aria-pressed="false" title="I enjoyed this too" hidden>
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2 0 3.3 1.1 5 3 1.7-1.9 3-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>
+                </button>
               </li>
             );
           })}
         </ul>
         <p class="shelf-empty" id="feed-none" hidden>Nothing here yet.</p>
+        <p class="heart-msg" id="heart-msg" role="status" hidden></p>
         <div class="feed-more" id="feed-more" hidden={items.length <= PAGE}>
           <button type="button" class="btn-see-all" id="feed-more-btn">Load more</button>
         </div>
@@ -127,6 +132,62 @@ const host = (u) => u.replace(/^https?:\/\//, '');
       });
     });
   }
+
+  // Hearts ("I enjoyed this too"): only for you. This page is public, so the buttons stay hidden unless
+  // this browser is signed in to Manage, and which items you've hearted is fetched with your token.
+  (async () => {
+    let token = '';
+    try { token = localStorage.getItem('myshelf_token') || ''; } catch {}
+    const rows = [...document.querySelectorAll('.feed-row[data-uid]')];
+    if (!token || !rows.length) return;
+    const api = (body) => fetch('/api/friends' + (body ? '' : '?hearts=1'), {
+      method: body ? 'POST' : 'GET',
+      headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let hearts;
+    try {
+      const res = await api();
+      if (!res.ok) return; // not signed in (or an old token): leave the page as everyone sees it
+      ({ hearts } = await res.json());
+    } catch { return; }
+    const on = new Set(hearts.map((h) => `${h.friendUrl} ${h.uid}`));
+    const msg = document.getElementById('heart-msg');
+    let msgTimer;
+    const say = (text, error = false) => {
+      msg.textContent = text;
+      msg.classList.toggle('error', error);
+      msg.hidden = false;
+      clearTimeout(msgTimer);
+      msgTimer = setTimeout(() => (msg.hidden = true), error ? 7000 : 3500);
+    };
+    const set = (btn, yes) => {
+      btn.classList.toggle('on', yes);
+      btn.setAttribute('aria-pressed', String(yes));
+      btn.title = yes ? 'You enjoyed this too (click to undo)' : 'I enjoyed this too';
+    };
+    for (const row of rows) {
+      const btn = row.querySelector('.heart-btn');
+      set(btn, on.has(`${row.dataset.friend} ${row.dataset.uid}`));
+      btn.hidden = false;
+      btn.addEventListener('click', async () => {
+        const yes = !btn.classList.contains('on');
+        btn.disabled = true;
+        try {
+          const res = await api({ action: 'heart', friendUrl: row.dataset.friend, uid: row.dataset.uid, title: row.dataset.title, on: yes });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `Couldn’t send (${res.status})`);
+          set(btn, yes);
+          btn.classList.toggle('pop', yes);
+          if (yes) say('Sent. They’ll see you enjoyed it too.');
+        } catch (err) {
+          say(err.message, true);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+  })();
 </script>
 
 <style>
@@ -147,6 +208,18 @@ const host = (u) => u.replace(/^https?:\/\//, '');
   .feed-text h3 a:hover { color: var(--accent); }
   .feed-text .rating { color: var(--accent); font-size: 0.9rem; margin-left: 4px; }
   .feed-text .creator { margin: 2px 0 0; color: var(--cream-soft); font-size: 0.88rem; }
+  .heart-btn { flex: 0 0 auto; margin-left: auto; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; cursor: pointer; background: transparent; border: 1px solid rgba(241,230,208,0.18); color: var(--cream-soft); transition: color 0.15s, border-color 0.15s; }
+  .heart-btn[hidden] { display: none; }
+  .heart-btn svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+  .heart-btn:hover, .heart-btn.on { color: var(--accent); border-color: var(--accent); }
+  .heart-btn.on svg { fill: currentColor; }
+  .heart-btn.pop { animation: heart-pop 0.25s ease-out; }
+  .heart-btn:disabled { opacity: 0.6; cursor: wait; }
+  @keyframes heart-pop { 50% { transform: scale(1.2); } }
+  @media (prefers-reduced-motion: reduce) { .heart-btn.pop { animation: none; } }
+  .heart-msg { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; margin: 0; padding: 10px 16px; border-radius: 10px; background: #1d1d1f; border: 1px solid var(--accent); color: var(--cream); font-size: 0.9rem; box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+  .heart-msg.error { border-color: #d9534f; }
+  .heart-msg[hidden] { display: none; }
   .friend-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
   .friend-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; text-decoration: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(241,230,208,0.1); transition: border-color 0.15s; }
   .friend-card:hover { border-color: var(--accent); }

@@ -90,8 +90,9 @@ Friends are other people running their own MyShelf. There's no central server: y
    - see each other's *Friends only* items (**View shelf**), with "You have this" next to anything you both own,
    - **Recommend** something from your Library; it lands in their inbox with an **Add it** button,
    - **Ask to borrow** anything they've marked *I own a copy*. Saying yes marks it as lent on their shelf.
+   - tap the **heart** on any of their items to say you enjoyed it too. They get a note in their inbox; tap again to take it back. (Your friend needs a copy of MyShelf with hearts, so ask them to update if it says otherwise.)
 
-**Friends page:** `/friends/` on your site (in the menu) shows your friends' latest public entries and links to their shelves. Only public items appear there, and your inbox and requests stay private in Manage.
+**Friends page:** `/friends/` on your site (in the menu) shows your friends' latest public entries and links to their shelves. Only public items appear there, and your inbox and requests stay private in Manage. When you're signed in to Manage on that browser, each entry also gets a heart button; visitors never see it.
 
 **What friends can see:** your public items, your *Friends only* items, whether you own them, and whether they're available to borrow. They never see *Only me* items or who you've lent things to. Removing a friend tells their site to remove you too.
 

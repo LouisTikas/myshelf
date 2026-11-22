@@ -4,8 +4,6 @@ A self-hosted media journal and virtual bookshelf for books, movies, TV, music, 
 
 **Cost: $0.** Everything runs on Cloudflare's free plan (one Worker, a D1 database and KV storage, no credit card needed). Your copy of the code lives in a free GitHub account. Everyone runs their own copy, so your shelf and your data stay in your own accounts.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/lexjudex/myshelf)
-
 ## How it works
 
 ```
@@ -25,16 +23,7 @@ Friends' MyShelf sites ◄──► /federation/v1/* (signed messages; see "Frie
 
 You need a free [GitHub](https://github.com/signup) account and a free [Cloudflare](https://dash.cloudflare.com/sign-up) account. There are two ways to set up. Both end in the same place.
 
-### Option A: one-click (quickest)
-
-1. Click **Deploy to Cloudflare** above and sign in to Cloudflare and GitHub when asked.
-2. Cloudflare copies MyShelf into a new repository on your GitHub account and creates your database and cover storage.
-3. It asks for your secrets. Only **`ADMIN_TOKEN`** is required: make up a long random password and keep it somewhere safe. Leave the API keys blank for now if you don't have them yet.
-4. Click **Deploy**. In a minute or two your site is live at `https://myshelf.<your-subdomain>.workers.dev`.
-
-Option A's copy isn't linked to this repository, so getting updates later takes a couple of git commands (see [Getting updates](#getting-updates)).
-
-### Option B: fork (easiest to keep up to date)
+### Option A: fork (recommended, easiest to keep up to date)
 
 1. On GitHub, click **Fork** on this repository.
 2. In the Cloudflare dashboard: **Workers & Pages → Create → Import a repository**, then pick your fork. Leave the build command as `npm run build` and the deploy command as `npx wrangler deploy`.
@@ -42,6 +31,16 @@ Option A's copy isn't linked to this repository, so getting updates later takes 
 4. Open your Worker → **Settings → Variables and Secrets** → add `ADMIN_TOKEN` as a **Secret**.
 
 With a fork, GitHub's **Sync fork** button pulls in new versions, and Cloudflare redeploys automatically.
+
+### Option B: one-click (quickest)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/lexjudex/myshelf)
+1. Click **Deploy to Cloudflare** above and sign in to Cloudflare and GitHub when asked.
+2. Cloudflare copies MyShelf into a new repository on your GitHub account and creates your database and cover storage.
+3. It asks for your secrets. Only **`ADMIN_TOKEN`** is required: make up a long random password and keep it somewhere safe. Leave the API keys blank for now if you don't have them yet.
+4. Click **Deploy**. In a minute or two your site is live at `https://myshelf.<your-subdomain>.workers.dev`.
+
+Option A's copy isn't linked to this repository, so getting updates later takes a couple of git commands (see [Getting updates](#getting-updates)).
+
 
 ### Then, for both options
 

@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Shelf from '../../components/Shelf.astro';
 import CopyLink from '../../components/CopyLink.astro';
-import BoardgameFilters from '../../components/BoardgameFilters.astro';
+import MediaFilters from '../../components/MediaFilters.astro';
 import '../../styles/filters.css';
 import { getItems, getShelves, getArrangements } from '../../lib/items.js';
 import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../lib/types.js';
@@ -33,14 +33,14 @@ const groups = ['in-progress', 'finished', 'want', 'abandoned']
     <p class="eyebrow">{all.length} {all.length === 1 ? t.label : t.plural}</p>
     <h1>{t.plural}<CopyLink /></h1>
   </section>
-  {type === 'boardgame' && all.length > 0 && <BoardgameFilters items={all} />}
+  {all.length > 0 && <MediaFilters items={all} type={type} />}
   <div class="bookcase">
     {groups.length === 0 && <Shelf items={[]} empty={`No ${t.plural.toLowerCase()} yet.`} />}
     {typeCollections.map(({ c, items }) => (
       <Shelf title={c.name} description={c.description} items={items} href={`/shelf/${c.slug}/`} seeAll scroll collection={c.slug}
-        height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />
+        height={type === 'music' ? 160 : 180} filterable />
     ))}
     {/* Status shelves work like collections: one scrolling row, with SEE ALL once there are more than 10. */}
-    {groups.map((g) => <Shelf title={g.label} items={g.items} href={`/type/${type}/${g.status}/`} seeAll scroll arrangeKey={g.key} height={type === 'music' ? 160 : 180} filterable={type === 'boardgame'} />)}
+    {groups.map((g) => <Shelf title={g.label} items={g.items} href={`/type/${type}/${g.status}/`} seeAll scroll arrangeKey={g.key} height={type === 'music' ? 160 : 180} filterable />)}
   </div>
 </Base>

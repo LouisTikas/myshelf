@@ -1,0 +1,74 @@
+---
+// Filter bar for media pages, status pages and collections. All filtering happens in the browser
+// (see src/scripts/filters.js). Which filters appear depends on the type of items and on what data
+// they actually have, so a filter is only offered when it can narrow things down.
+import { TYPES, STATUS_LABEL } from '../lib/types.js';
+import { filterData, BANDS, decadeOf } from '../lib/filters.js';
+interface Props { items: any[]; type?: string }
+const { items } = Astro.props;
+const types = [...new Set(items.map((e) => e.data.type))];
+const type = Astro.props.type || (types.length === 1 ? types[0] : null); // null = mixed collection
+const fs = items.map((e) => filterData(e.data));
+
+// Values present, most common first (for tag-style groups).
+const tally = (pick) => {
+  const m = new Map();
+  for (const f of fs) for (const v of [].concat(pick(f) ?? [])) if (v != null && v !== '') m.set(v, (m.get(v) || 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]))).map(([v]) => v);
+};
+const bandsPresent = (key, field) => BANDS[key].filter(([, , lo, hi]) => fs.some((f) => f[field] != null && f[field] >= lo && f[field] <= hi));
+const any = (v) => [['', 'Any'], ...v];
+
+const groups = [];
+if (!type && types.length > 1) groups.push({ key: 'ty', label: 'Type', options: any(types.map((t) => [t, TYPES[t].plural])) });
+if (type === 'boardgame') {
+  groups.push({ key: 'players', label: 'Players', best: true, options: any([['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6+']]) });
+  groups.push({ key: 'time', label: 'Play time', options: any([['30', 'Under 30 min'], ['60', '30–60 min'], ['120', '1–2 hrs'], ['long', '2+ hrs']]) });
+  groups.push({ key: 'weight', label: 'Complexity', options: any([['light', 'Light'], ['medium', 'Medium'], ['heavy', 'Heavy']]) });
+}
+if (type === 'book' && bandsPresent('len', 'pg').length > 1) groups.push({ key: 'len', label: 'Length', options: any(bandsPresent('len', 'pg').map(([v, l]) => [v, l])) });
+if (type === 'movie' && bandsPresent('run', 'rt').length > 1) groups.push({ key: 'run', label: 'Runtime', options: any(bandsPresent('run', 'rt').map(([v, l]) => [v, l])) });
+if (type === 'tv' && bandsPresent('se', 'se').length > 1) groups.push({ key: 'se', label: 'Seasons', options: any(bandsPresent('se', 'se').map(([v, l]) => [v, l])) });
+if (type === 'tv') { const n = tally((f) => f.nw); if (n.length > 1) groups.push({ key: 'nw', label: 'Network', tags: true, options: any(n.map((v) => [v, v])) }); }
+if (type === 'music') { const k = tally((f) => f.k); if (k.length > 1) groups.push({ key: 'k', label: 'Format', options: any(k.map((v) => [v, v])) }); }
+if (type === 'videogame') { const p = tally((f) => f.pl); if (p.length > 1) groups.push({ key: 'pl', label: 'Platforms', tags: true, multi: 'any', options: p.map((v) => [v, v]) }); }
+if (fs.length) groups.push({ key: 'rating', label: 'My rating', options: any([['3', '★3+'], ['4', '★4+'], ['4.5', '★4½+'], ['none', 'Unrated']]) });
+const statuses = ['finished', 'in-progress', 'want', 'abandoned'].filter((s) => fs.some((f) => f.s === s));
+const generic = { finished: 'Finished', 'in-progress': 'In progress', want: 'Want to', abandoned: 'Abandoned' };
+if (statuses.length > 1) groups.push({ key: 'status', label: 'Status', options: any(statuses.map((s) => [s, type ? STATUS_LABEL(type, s) : generic[s]])) });
+const decades = [...new Set(fs.map((f) => decadeOf(f.y)).filter(Boolean))].sort().reverse();
+if (decades.length > 1) groups.push({ key: 'dec', label: type === 'boardgame' || type === 'videogame' ? 'Released' : 'Decade', options: any(decades.map((d) => [d, d])) });
+if (type === 'boardgame') { const m = tally((f) => f.m); if (m.length) groups.push({ key: 'mech', label: 'Mechanics', tags: true, multi: 'all', options: m.map((v) => [v, v]) }); }
+{ const c = tally((f) => f.c); if (c.length) groups.push({ key: 'cat', label: type === 'boardgame' ? 'Categories' : 'Genres', tags: true, multi: 'all', options: c.map((v) => [v, v]) }); }
+
+const t = type ? TYPES[type] : null;
+const noun = type === 'boardgame' ? ['game', 'games'] : t ? [t.label.toLowerCase(), t.plural.toLowerCase()] : ['item', 'items'];
+---
+{groups.length > 0 && (
+<section class="bg-filters" id="media-filters" aria-label="Filter" data-noun={noun[0]} data-nouns={noun[1]}>
+  <div class="bgf-head">
+    <button type="button" class="bgf-toggle" aria-expanded="true" aria-controls="bgf-body">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+      Filters
+    </button>
+    <span class="bgf-summary" id="bgf-summary"></span>
+    <button type="button" class="bgf-clear" id="bgf-clear" hidden>Clear all</button>
+  </div>
+  <div class="bgf-body" id="bgf-body">
+    {groups.map((g) => (
+      <div class:list={['bgf-group', { 'bgf-tags': g.tags }]}>
+        <span class="bgf-label">{g.label}</span>
+        <div class="bgf-chips" data-filter={g.key} data-multi={g.multi}>
+          {g.options.map(([v, l]) => <button type="button" class="bgf-chip" data-value={v}>{l}</button>)}
+        </div>
+        {g.best && <label class="bgf-check"><input type="checkbox" id="bgf-best" /> Best at this count</label>}
+      </div>
+    ))}
+  </div>
+  <p class="bgf-empty" id="bgf-empty" hidden>Nothing matches these filters. <button type="button" class="bgf-linkbtn" data-clear>Clear filters</button></p>
+</section>
+)}
+
+<script>
+  import '../scripts/filters.js';
+</script>

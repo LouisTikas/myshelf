@@ -3,7 +3,7 @@
 import Base from '../../../layouts/Base.astro';
 import Shelf from '../../../components/Shelf.astro';
 import CopyLink from '../../../components/CopyLink.astro';
-import BoardgameFilters from '../../../components/BoardgameFilters.astro';
+import MediaFilters from '../../../components/MediaFilters.astro';
 import '../../../styles/filters.css';
 import { getItems, getArrangements } from '../../../lib/items.js';
 import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../../lib/types.js';
@@ -20,7 +20,6 @@ const list = items.filter((e) => e.data.type === type && e.data.status === statu
 // Same order as the shelf on the media page: your arranged order if you set one, otherwise newest first.
 const shelfItems = arrangements[key] ? sortShelf(list, { sort: 'custom', order: arrangements[key] }) : list;
 const label = STATUS_LABEL(type, status);
-const isBoardgame = type === 'boardgame';
 ---
 <Base title={`${label} · ${t.plural}`}>
   <a class="back-link" href={`/type/${type}/`}>
@@ -31,8 +30,8 @@ const isBoardgame = type === 'boardgame';
     <p class="eyebrow">{t.plural} · {shelfItems.length} {shelfItems.length === 1 ? t.label : t.plural}</p>
     <h1>{label}<CopyLink /><button type="button" class="shelf-edit" data-arrange-key={key} data-title={label} hidden aria-label={`Arrange ${label}`} title="Arrange this shelf"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></h1>
   </section>
-  {isBoardgame && shelfItems.length > 0 && <BoardgameFilters items={shelfItems} />}
+  {shelfItems.length > 1 && <MediaFilters items={shelfItems} type={type} />}
   <div class="bookcase scroll-motion-rows">
-    <Shelf items={shelfItems} empty={`No ${t.plural.toLowerCase()} here yet.`} arrangeKey={key} height={type === 'music' ? 160 : 180} filterable={isBoardgame} />
+    <Shelf items={shelfItems} empty={`No ${t.plural.toLowerCase()} here yet.`} arrangeKey={key} height={type === 'music' ? 160 : 180} filterable />
   </div>
 </Base>

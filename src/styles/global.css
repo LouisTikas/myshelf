@@ -63,6 +63,11 @@ main { max-width: 1280px; margin: 0 auto; padding: 0 20px 60px; }
 .site-footer { max-width: 1280px; margin: 0 auto; padding: 30px 20px 40px; color: var(--cream-soft); font-size: 0.85rem; border-top: 1px solid rgba(255,255,255,0.07); }
 .site-footer p { margin: 0.3em 0; }
 .attrib { font-size: 0.75rem; opacity: 0.75; }
+.kofi { margin: 12px 0 10px; }
+.motion-pref { margin-top: 8px !important; }
+.motion-toggle { font: inherit; font-size: 0.8rem; color: var(--cream-soft); background: transparent; border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; padding: 3px 11px; cursor: pointer; }
+.motion-toggle:hover, .motion-toggle:focus-visible { color: var(--cream); border-color: var(--accent); }
+.motion-toggle .motion-state { font-weight: 700; color: var(--accent); }
 .quiet { color: inherit; opacity: 0.7; }
 
 /* Hero / page heads */
@@ -405,6 +410,9 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
     }
   }
 }
+/* Shelf effects turned off (footer toggle): no rising/fading shelves either. */
+html.flat-shelves .bookcase > .shelf-section,
+html.flat-shelves .bookcase .shelf-3d > .shelf-row { animation: none !important; }
 /* Move + fade only (no shrinking): the GPU can do these without redrawing the 3D boxes. */
 @keyframes shelf-rise {
   from { opacity: 0;    transform: translateY(140px); }

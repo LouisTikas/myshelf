@@ -302,8 +302,13 @@
   .book3d, .b3-box { transition: none; }
 }
 
+/* Shelf effects off (footer toggle): every item faces front, side by side, and nothing turns. */
+html.flat-shelves .book3d { width: var(--w); transition: none; }
+html.flat-shelves .b3-box { transform: translateZ(calc(var(--d) / -2)) rotateY(0deg); transition: none; }
+
 /* Touch: vertical swipes scroll the page; horizontal swipes are ours (flip through the shelf). */
 .shelf.shelf-3d { touch-action: pan-y; scroll-behavior: smooth; }
+html.flat-shelves .shelf.shelf-3d { touch-action: auto; }
 .book3d { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; user-select: none; }
 
 /* Row strips built by shelf3d.js on wrapping shelves. Each row draws its own wooden plank (so the

@@ -26,7 +26,7 @@
 .bgf-check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--cream); cursor: pointer; }
 .bgf-check.disabled { opacity: 0.45; cursor: default; }
 .bgf-check input { accent-color: var(--accent); }
-.bgf-tags .bgf-chips { max-height: 76px; overflow-y: auto; }
+.bgf-tags .bgf-chips { max-height: 154px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; scrollbar-width: thin; scrollbar-color: rgba(241,230,208,0.3) transparent; } /* about 4 rows of chips */
 .bgf-empty { margin: 14px 0 0; color: var(--cream-soft); }
 .bgf-linkbtn { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .shelf-section[hidden] { display: none; }

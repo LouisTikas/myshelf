@@ -112,7 +112,7 @@ function renderFriends() {
   const label = { accepted: '', requested: 'Waiting for them to accept', pending: 'Wants to be friends', blocked: 'Blocked' };
   const list = $('#friend-list');
   if (!state.friends.length) {
-    list.innerHTML = '<li class="muted">No friends yet. Paste a friend’s MyShelf address above.</li>';
+    list.innerHTML = '<li class="muted">No friends yet. Add one with a friend’s MyShelf address below.</li>';
     return;
   }
   list.innerHTML = state.friends.map((f) => `
@@ -313,7 +313,7 @@ const siteForm = $('#site-form');
 async function loadSite() {
   try {
     const { site } = await api('site');
-    for (const k of ['title', 'tagline', 'owner', 'url', 'source']) siteForm[k].value = site[k] || '';
+    for (const k of ['title', 'tagline', 'owner', 'url', 'source', 'kofi']) siteForm[k].value = site[k] || '';
   } catch (err) {
     $('#site-msg').textContent = err.message;
   }
@@ -321,7 +321,7 @@ async function loadSite() {
 document.addEventListener('myshelf:tab', (e) => { if (e.detail === 'settings') loadSite(); });
 siteForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const body = Object.fromEntries(['title', 'tagline', 'owner', 'url', 'source'].map((k) => [k, siteForm[k].value]));
+  const body = Object.fromEntries(['title', 'tagline', 'owner', 'url', 'source', 'kofi'].map((k) => [k, siteForm[k].value]));
   try {
     const { site } = await api('site', { method: 'POST', body });
     siteForm.url.value = site.url || '';

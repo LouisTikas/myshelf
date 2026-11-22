@@ -228,3 +228,26 @@ details label { margin-bottom: 10px; }
 .rec-body label { display: flex; flex-direction: column; gap: 4px; }
 .tab-count[hidden] { display: none; }
 #friend-url { flex: 1 1 320px; width: auto; }
+
+/* Checkbox labels: box on the left, wording wraps as one block beside it */
+.check { align-items: flex-start !important; }
+.check input { margin-top: 0.2em; flex: 0 0 auto; }
+.featured-field #featured-hint { margin: 4px 0 0 26px; }
+
+/* Collections settings: same size controls everywhere, labels in a tidy column on narrow screens */
+.col-within select { width: auto; padding: 6px 8px; font-size: 0.85rem; }
+@media (max-width: 960px) {
+  .col-show, .col-sort, .col-within { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+  .col-show select, .col-sort select, .col-within select { width: 100%; }
+  .col-row { row-gap: 10px; padding: 14px 0; }
+}
+
+/* Admin tabs on phones: one swipeable row instead of overflowing the page */
+@media (max-width: 760px) {
+  .admin-top { flex-direction: column; align-items: stretch; }
+  .admin-top > * { min-width: 0; max-width: 100%; }
+  .tabs { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; flex: 1 1 100%; min-width: 0; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { white-space: nowrap; flex: 0 0 auto; padding: 8px 13px; }
+  .admin-status { justify-content: space-between; }
+}

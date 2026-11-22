@@ -25,6 +25,8 @@ export async function saveSite(env, input = {}) {
     // Where visitors can get this site's source code (the footer's "Source" link). MyShelf is AGPL-licensed:
     // if you run a modified copy, point this at your own repository.
     source: cleanLink(input.source) || defaults.source,
+    // Ko-fi page ID for the footer's support button. Blank hides the button.
+    kofi: input.kofi === undefined ? defaults.kofi : String(input.kofi).trim().replace(/^https?:\/\/(www\.)?ko-fi\.com\//i, '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 40),
   };
   await setSetting(env, 'site', site);
   return site;

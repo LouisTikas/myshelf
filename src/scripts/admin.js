@@ -608,9 +608,11 @@ function libraryItems() {
 function renderLibrary() {
   const q = $('#lib-filter').value.trim().toLowerCase();
   const type = $('#lib-type').value;
+  // Newest additions first (when it was added to the database, falling back to the date added).
+  const added = (i) => i.createdAt || i.dateAdded || '';
   const list = libraryItems().filter(
     (i) => (!type || i.type === type) && (!q || `${i.title} ${i.creator}`.toLowerCase().includes(q)),
-  );
+  ).map((i, n) => [i, n]).sort(([a, x], [b, y]) => added(b).localeCompare(added(a)) || y - x).map(([i]) => i);
   $('#lib-list').innerHTML = list.length
     ? list
         .map((i) => `
@@ -693,6 +695,7 @@ function renderCollections() {
         </select>
       </label>
       <span class="col-sort">
+        <span class="muted small">Sort</span>
         <select class="col-sort-select" aria-label="Sort order">
           ${Object.entries(SORTS).map(([k, label]) => `<option value="${k}" ${(c.sort || 'newest') === k ? 'selected' : ''}>${esc(label)}</option>`).join('')}
         </select>

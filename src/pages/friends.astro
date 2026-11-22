@@ -1,0 +1,91 @@
+---
+// Public friends page: what your friends have been up to lately, then links to their shelves.
+// Only their PUBLIC entries are shown here; friends-only items stay in Manage → Friends.
+import Base from '../layouts/Base.astro';
+import CopyLink from '../components/CopyLink.astro';
+import { friendsFeed } from '../../server/federation/index.js';
+import { fmtDate } from '../lib/items.js';
+import { TYPES, STATUS_LABEL, stars } from '../lib/types.js';
+
+const env = Astro.locals.runtime.env;
+let friends = [], items = [];
+try { ({ friends, items } = await friendsFeed(env)); } catch {}
+const who = (f) => f.owner || f.name || f.url.replace(/^https?:\/\//, '');
+const host = (u) => u.replace(/^https?:\/\//, '');
+---
+<Base title="Friends">
+  <section class="page-head">
+    <p class="eyebrow">{friends.length} {friends.length === 1 ? 'friend' : 'friends'}</p>
+    <h1>Friends<CopyLink /></h1>
+  </section>
+
+  {friends.length === 0 ? (
+    <p class="shelf-empty">No friends yet.</p>
+  ) : (
+    <>
+      <section class="friends-feed">
+        <h2>Lately</h2>
+        {items.length === 0 && <p class="shelf-empty">Nothing new from friends yet.</p>}
+        <ul class="feed-list">
+          {items.map((i) => {
+            const t = TYPES[i.type] || TYPES.book;
+            const link = i.url || i.friend.url;
+            return (
+              <li class="feed-row">
+                <a class="feed-cover" href={link} target="_blank" rel="noopener" style={`--tc:${t.color}; aspect-ratio:${t.aspect}`}>
+                  {i.cover ? <img src={i.cover} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <span>{(i.title || '?').slice(0, 1)}</span>}
+                </a>
+                <div class="feed-text">
+                  <p class="eyebrow"><a href={i.friend.url} target="_blank" rel="noopener">{who(i.friend)}</a> · {STATUS_LABEL(i.type, i.status)}{i.date && <> · {fmtDate(i.date)}</>}</p>
+                  <h3><a href={link} target="_blank" rel="noopener">{i.title}</a> {i.rating != null && <span class="rating">{stars(i.rating)}</span>}</h3>
+                  <p class="creator">{t.label}{i.creator && <> · {i.creator}</>}{i.year && <> · {i.year}</>}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      <section class="friends-shelves">
+        <h2>Their shelves</h2>
+        <ul class="friend-cards">
+          {friends.map((f) => (
+            <li>
+              <a class="friend-card" href={f.url} target="_blank" rel="noopener">
+                <span class="friend-initial" aria-hidden="true">{who(f).slice(0, 1).toUpperCase()}</span>
+                <span class="friend-card-text">
+                  <strong>{who(f)}</strong>
+                  <span>{f.owner && f.name ? `${f.name} · ` : ''}{host(f.url)}</span>
+                </span>
+                <span class="friend-go" aria-hidden="true">→</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </>
+  )}
+</Base>
+
+<style>
+  .friends-feed, .friends-shelves { margin: 8px 0 36px; }
+  .friends-feed h2, .friends-shelves h2 { font-size: 1.3rem; margin: 0 0 12px; }
+  .feed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .feed-row { display: flex; gap: 16px; align-items: center; padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(241,230,208,0.08); }
+  .feed-cover { flex: 0 0 auto; height: 84px; display: grid; place-items: center; border-radius: 4px; overflow: hidden; background: var(--tc); color: #fbf6ec; font-weight: 700; text-decoration: none; box-shadow: 0 6px 14px rgba(0,0,0,0.35); }
+  .feed-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .feed-text { min-width: 0; }
+  .feed-text .eyebrow { margin: 0 0 4px; }
+  .feed-text h3 { margin: 0; font-size: 1.05rem; }
+  .feed-text h3 a { text-decoration: none; }
+  .feed-text h3 a:hover { color: var(--accent); }
+  .feed-text .rating { color: var(--accent); font-size: 0.9rem; margin-left: 4px; }
+  .feed-text .creator { margin: 2px 0 0; color: var(--cream-soft); font-size: 0.88rem; }
+  .friend-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .friend-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; text-decoration: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(241,230,208,0.1); transition: border-color 0.15s; }
+  .friend-card:hover { border-color: var(--accent); }
+  .friend-initial { width: 40px; height: 40px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: rgba(217,154,78,0.18); color: var(--accent); font-weight: 700; }
+  .friend-card-text { display: flex; flex-direction: column; min-width: 0; }
+  .friend-card-text span { color: var(--cream-soft); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .friend-go { margin-left: auto; color: var(--accent); }
+</style>

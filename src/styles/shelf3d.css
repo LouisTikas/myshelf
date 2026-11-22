@@ -302,7 +302,7 @@
   .book3d, .b3-box { transition: none; }
 }
 
-/* Shelf effects off (footer toggle): every item faces front, side by side, and nothing turns. */
+/* Shelf effects off (Manage → Settings): every item faces front, side by side, and nothing turns. */
 html.flat-shelves .book3d { width: var(--w); transition: none; }
 html.flat-shelves .b3-box { transform: translateZ(calc(var(--d) / -2)) rotateY(0deg); transition: none; }
 
@@ -332,3 +332,10 @@ html.flat-shelves .shelf.shelf-3d { touch-action: auto; }
 .shelf-track.fade-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent); }
 .shelf-track.fade-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade)); mask-image: linear-gradient(to right, transparent, #000 var(--fade)); }
 .shelf-track.fade-left.fade-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); }
+
+/* Click-and-drag scrolling on long shelves (mouse) */
+@media (hover: hover) and (pointer: fine) {
+  .shelf-scroll, .shelf-scroll .book3d { cursor: grab; }
+}
+.shelf-scroll.is-dragging { scroll-behavior: auto !important; cursor: grabbing; user-select: none; }
+.shelf-scroll.is-dragging .book3d { cursor: grabbing; }

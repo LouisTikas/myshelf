@@ -251,3 +251,4 @@ details label { margin-bottom: 10px; }
   .tab { white-space: nowrap; flex: 0 0 auto; padding: 8px 13px; }
   .admin-status { justify-content: space-between; }
 }
+.effects-pref { margin: 6px 0 22px; max-width: 70ch; }

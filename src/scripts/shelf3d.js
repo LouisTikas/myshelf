@@ -22,7 +22,7 @@ function revealX(b) {
   box.scrollTo({ left: Math.max(0, Math.min(box.scrollWidth - box.clientWidth, left)), behavior: 'smooth' });
 }
 
-// Shelf effects turned off (footer toggle): covers all face front and links just open, so none of
+// Shelf effects turned off (Manage → Settings): covers all face front and links just open, so none of
 // the turning, swiping or row-locking below is needed. Shelves scroll and wrap like normal.
 const FLAT = document.documentElement.classList.contains('flat-shelves');
 
@@ -58,7 +58,7 @@ function initShelf(shelf) {
   // ── Mouse: real movement only (layout shifts under a still cursor shouldn't turn things).
   let mouse = null;
   shelf.addEventListener('pointermove', (e) => {
-    if (e.pointerType !== 'mouse') return;
+    if (e.pointerType !== 'mouse' || shelf.classList.contains('is-dragging')) return;
     mouse = { x: e.clientX, y: e.clientY };
     const b = e.target.closest?.('.book3d');
     if (b && books.includes(b)) setActive(b);
@@ -68,58 +68,13 @@ function initShelf(shelf) {
   // Trackpad scrolling with the cursor over the shelf: the item under the cursor faces front.
   let raf = 0;
   shelf.addEventListener('scroll', () => {
-    if (!mouse) return;
+    if (!mouse || shelf.classList.contains('is-dragging')) return;
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
       const el = document.elementFromPoint(mouse.x, mouse.y)?.closest('.book3d');
       if (el && books.includes(el)) setActive(el);
     });
   }, { passive: true });
-
-  // ── Long shelves glide with the mouse: the cursor's position across the shelf maps to the
-  // scroll position, so moving to the right edge brings the last item fully into view
-  // (even after it widens to face front). Trackpad/wheel scrolling takes over instantly.
-  if (shelf.classList.contains('shelf-scroll')) {
-    const EDGE = 70; // px at each end that count as "all the way"
-    let target = 0;
-    let glide = 0;
-    const step = () => {
-      const cur = shelf.scrollLeft;
-      const max = shelf.scrollWidth - shelf.clientWidth;
-      const goal = Math.max(0, Math.min(max, target));
-      const d = goal - cur;
-      if (Math.abs(d) < 0.5) { shelf.scrollTo({ left: goal, behavior: 'instant' }); glide = 0; return; }
-      shelf.scrollTo({ left: cur + d * 0.16, behavior: 'instant' });
-      glide = requestAnimationFrame(step);
-    };
-    const aim = (clientX) => {
-      const max = shelf.scrollWidth - shelf.clientWidth;
-      if (max <= 0) return;
-      const r = shelf.getBoundingClientRect();
-      const t = Math.min(1, Math.max(0, (clientX - r.left - EDGE) / Math.max(1, r.width - 2 * EDGE)));
-      target = t * max;
-      if (!glide) glide = requestAnimationFrame(step);
-    };
-    shelf.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') aim(e.clientX); }, { passive: true });
-    // When an item finishes turning (the shelf just got wider), make sure the front-facing
-    // item is completely visible — nudge the shelf just enough if it's cut off at either end.
-    const PAD = 12;
-    shelf.addEventListener('transitionend', (e) => {
-      if (e.propertyName !== 'width' || !e.target.classList?.contains('book3d')) return;
-      if (mouse) aim(mouse.x);
-      const r = shelf.getBoundingClientRect();
-      const a = active.getBoundingClientRect();
-      const base = glide ? target : shelf.scrollLeft;
-      let goal = base;
-      if (a.right > r.right - PAD) goal = shelf.scrollLeft + (a.right - (r.right - PAD));
-      else if (a.left < r.left + PAD) goal = shelf.scrollLeft - ((r.left + PAD) - a.left);
-      if (goal !== base) {
-        target = goal;
-        if (!glide) glide = requestAnimationFrame(step);
-      }
-    });
-    shelf.addEventListener('wheel', () => { cancelAnimationFrame(glide); glide = 0; }, { passive: true });
-  }
 
   // ── Keyboard: only keyboard focus turns an item. (A tap also focuses the link; reacting
   // to that turned the item before the tap was handled, so a single tap opened it.)
@@ -180,6 +135,47 @@ function initShelf(shelf) {
 }
 
 document.querySelectorAll('.shelf-3d').forEach(initShelf);
+
+// ── Mouse: click and drag a long shelf sideways to move through it (with effects on or off).
+// A drag never opens or turns the item it started on; a plain click still does.
+function dragToScroll(shelf) {
+  let drag = null;
+  let suppress = false;
+  shelf.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return;
+    drag = { id: e.pointerId, x: e.clientX, left: shelf.scrollLeft, moved: false };
+    suppress = false;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved) {
+      if (Math.abs(dx) < 5) return; // tiny wobble during a click isn't a drag
+      drag.moved = true;
+      shelf.classList.add('is-dragging');
+    }
+    shelf.scrollLeft = drag.left - dx;
+  });
+  const end = () => {
+    if (!drag) return;
+    if (drag.moved) {
+      shelf.classList.remove('is-dragging');
+      suppress = true; // swallow the click that follows the drag
+    }
+    drag = null;
+  };
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
+  shelf.addEventListener('click', (e) => {
+    if (!suppress) return;
+    suppress = false;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+  // Stop the browser's own "drag this link/image" from hijacking the gesture.
+  shelf.addEventListener('dragstart', (e) => e.preventDefault());
+}
+document.querySelectorAll('.shelf-scroll').forEach(dragToScroll);
 
 // ── Fade covers out at the right edge while there's more shelf to scroll to.
 function watchEdge(shelf) {

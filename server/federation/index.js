@@ -280,6 +280,8 @@ function feedItem(row, origin, forFriend) {
     title: it.title, type: it.type, creator: it.creator || '', year: it.year || '',
     cover: abs(it.cover), status: it.status, rating: it.rating ?? null,
     dateFinished: it.dateFinished || null,
+    dateStarted: it.dateStarted || null,
+    dateAdded: it.dateAdded || null,
     extKey: row.extKey || null,
     source: it.source?.url ? { name: it.source.name, id: it.source.id, url: it.source.url } : null,
     url: (it.visibility || 'public') === 'public' ? `${origin}/item/${row.slug}/` : null,
@@ -483,5 +485,50 @@ export async function friendShelf(env, requestUrl, id, fetcher = fetch) {
   return {
     friend: { id: f.id, url: f.url, name: f.name, owner: f.owner },
     items: (Array.isArray(data.items) ? data.items : []).slice(0, 5000).map((i) => ({ ...i, youHave: Boolean(i.extKey && mine.has(i.extKey)) })),
+  };
+}
+
+// ───────── public friends page ─────────
+
+/** Accepted friends, safe to show anyone: name, owner and address. */
+export async function publicFriends(env) {
+  const DB = await ensureSchema(env);
+  const { results } = await DB.prepare(`SELECT url, name, owner FROM friends WHERE status = 'accepted' ORDER BY owner, name`).all();
+  return (results || []).map((r) => ({ url: r.url, name: r.name, owner: r.owner }));
+}
+
+const FEED_TTL = 600; // seconds a friend's public shelf is cached for the friends page
+
+/**
+ * Friends' most recent PUBLIC entries, newest first. Each friend's public shelf feed is fetched
+ * (unsigned, so their friends-only items never appear on this public page) and cached for a few minutes.
+ */
+export async function friendsFeed(env, { limit = 30, fetcher = fetch } = {}) {
+  const friends = await publicFriends(env);
+  const cache = globalThis.caches?.default;
+  const load = async (f) => {
+    const url = f.url + SHELF_PATH;
+    try {
+      let res = cache ? await cache.match(url) : null;
+      if (!res) {
+        res = await fetcher(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(4000) });
+        if (!res.ok) return [];
+        if (cache) {
+          const copy = new Response(res.clone().body, res);
+          copy.headers.set('cache-control', `public, max-age=${FEED_TTL}`);
+          await cache.put(url, copy).catch(() => {});
+        }
+      }
+      const data = await res.json();
+      return (Array.isArray(data.items) ? data.items : []).map((i) => ({ ...i, friend: { name: f.name, owner: f.owner, url: f.url } }));
+    } catch {
+      return []; // a friend's site being down shouldn't break the page
+    }
+  };
+  const all = (await Promise.all(friends.map(load))).flat();
+  const when = (i) => (i.status === 'finished' && i.dateFinished) || i.dateStarted || i.dateAdded || '';
+  return {
+    friends,
+    items: all.filter((i) => when(i) && i.title).sort((a, b) => when(b).localeCompare(when(a))).slice(0, limit).map((i) => ({ ...i, date: when(i) })),
   };
 }

@@ -313,7 +313,7 @@ const siteForm = $('#site-form');
 async function loadSite() {
   try {
     const { site } = await api('site');
-    for (const k of ['title', 'tagline', 'owner', 'url', 'source', 'kofi']) siteForm[k].value = site[k] || '';
+    for (const k of ['title', 'tagline', 'owner', 'url', 'source']) siteForm[k].value = site[k] || '';
   } catch (err) {
     $('#site-msg').textContent = err.message;
   }
@@ -321,7 +321,7 @@ async function loadSite() {
 document.addEventListener('myshelf:tab', (e) => { if (e.detail === 'settings') loadSite(); });
 siteForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const body = Object.fromEntries(['title', 'tagline', 'owner', 'url', 'source', 'kofi'].map((k) => [k, siteForm[k].value]));
+  const body = Object.fromEntries(['title', 'tagline', 'owner', 'url', 'source'].map((k) => [k, siteForm[k].value]));
   try {
     const { site } = await api('site', { method: 'POST', body });
     siteForm.url.value = site.url || '';
@@ -366,4 +366,13 @@ $('#restore-file').addEventListener('change', async (e) => {
   } catch (err) {
     msg.textContent = err.message;
   }
+});
+
+// ───────── shelf effects (per device) ─────────
+const effects = $('#shelf-effects');
+try { effects.checked = localStorage.getItem('myshelf_motion') !== 'off'; } catch {}
+effects.addEventListener('change', () => {
+  try { effects.checked ? localStorage.removeItem('myshelf_motion') : localStorage.setItem('myshelf_motion', 'off'); } catch {}
+  document.documentElement.classList.toggle('flat-shelves', !effects.checked);
+  toast(effects.checked ? 'Shelf effects are on.' : 'Shelf effects are off on this device.');
 });

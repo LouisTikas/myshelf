@@ -30,6 +30,16 @@ export function normalizeItem(input) {
     if (typeof item[f] === 'string') item[f] = item[f].split(',');
     item[f] = (item[f] || []).map((s) => String(s).trim()).filter(Boolean);
   }
+  // Who can see it: public (default, left out), friends, or private.
+  if (['friends', 'private'].includes(item.visibility)) item.visibility = String(item.visibility);
+  else delete item.visibility;
+  // Borrowing: do you own a copy, and is it lent out right now?
+  if (item.owned === true || item.owned === 'true' || item.owned === 'on') item.owned = true;
+  else delete item.owned;
+  item.lentTo = String(item.lentTo || '').trim().slice(0, 120);
+  item.lentSince = cleanDate(item.lentSince);
+  if (!item.lentTo) { delete item.lentTo; delete item.lentSince; }
+  else if (!item.lentSince) delete item.lentSince;
   if (item.details && typeof item.details === 'object') {
     for (const [k, v] of Object.entries(item.details)) if (isEmpty(v)) delete item.details[k];
   }

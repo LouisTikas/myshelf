@@ -1,10 +1,11 @@
-# Copy to .dev.vars for local testing with `npm run preview`. Never commit .dev.vars.
-ADMIN_TOKEN=change-me
-TMDB_TOKEN=
-TWITCH_CLIENT_ID=
-TWITCH_CLIENT_SECRET=
-BGG_TOKEN=
-SPOTIFY_CLIENT_ID=
-SPOTIFY_CLIENT_SECRET=
-GOOGLE_BOOKS_KEY=
-CONTACT_EMAIL=
+# Secrets for your MyShelf. The "Deploy to Cloudflare" button asks for each of these.
+# For local testing, copy this file to .dev.vars and fill it in. Never commit .dev.vars.
+ADMIN_TOKEN=change-me # your admin password
+TMDB_TOKEN= # movies + TV (optional)
+TWITCH_CLIENT_ID= # video games via IGDB (optional)
+TWITCH_CLIENT_SECRET= # video games via IGDB (optional)
+BGG_TOKEN= # board games (optional)
+SPOTIFY_CLIENT_ID= # music (optional)
+SPOTIFY_CLIENT_SECRET= # music (optional)
+GOOGLE_BOOKS_KEY= # optional
+CONTACT_EMAIL= # optional

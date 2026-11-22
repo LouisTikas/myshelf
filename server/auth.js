@@ -14,7 +14,7 @@ async function safeEqual(a, b) {
 
 /** Returns an error Response if the request isn't authorized, otherwise null. */
 export async function checkAuth(request, env) {
-  if (!env.ADMIN_TOKEN) return json({ error: 'ADMIN_TOKEN is not set in Cloudflare Pages environment variables.' }, 500);
+  if (!env.ADMIN_TOKEN) return json({ error: 'ADMIN_TOKEN is not set. Add it as a secret: Worker → Settings → Variables and Secrets.' }, 500);
   const auth = request.headers.get('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   if (!token || !(await safeEqual(token, env.ADMIN_TOKEN))) return json({ error: 'Unauthorized' }, 401);

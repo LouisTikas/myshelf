@@ -25,6 +25,8 @@ const typesJson = JSON.stringify(TYPES);
           <button class="tab active" data-tab="add">＋ Add</button>
           <button class="tab" data-tab="library">Library</button>
           <button class="tab" data-tab="collections">Collections</button>
+          <button class="tab" data-tab="friends">Friends <span id="friends-unread" class="tab-count" hidden></span></button>
+          <button class="tab" data-tab="settings">Settings</button>
         </nav>
         <div class="admin-status">
           <span id="config-status"></span>
@@ -84,6 +86,55 @@ const typesJson = JSON.stringify(TYPES);
           </div>
         </div>
       </div>
+
+      <!-- Friends -->
+      <div class="tabpanel" data-panel="friends" hidden>
+        <div class="panel">
+          <h2>Friends</h2>
+          <p class="muted">Connect with friends who run their own MyShelf. Friends can see items you mark <em>Friends only</em>, send you recommendations, and ask to borrow things you own.</p>
+          <div class="my-address">
+            <span class="muted small">Your address — send this to friends:</span>
+            <code id="my-address">…</code>
+            <button type="button" class="btn ghost small" id="copy-address">Copy</button>
+          </div>
+          <form id="friend-add" class="row">
+            <input id="friend-url" type="url" placeholder="Friend’s address, e.g. https://myshelf.alex.workers.dev" required />
+            <button class="btn primary" type="submit">Add friend</button>
+          </form>
+          <p id="friend-msg" class="muted small"></p>
+          <h3>Inbox</h3>
+          <ul id="inbox-list" class="inbox-list"></ul>
+          <h3>Your friends</h3>
+          <ul id="friend-list" class="friend-list"></ul>
+          <div id="friend-shelf" class="friend-shelf" hidden></div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="tabpanel" data-panel="settings" hidden>
+        <div class="panel">
+          <h2>Your site</h2>
+          <form id="site-form" class="site-form">
+            <label>Site name <input name="title" maxlength="80" required /></label>
+            <label>Your name <input name="owner" maxlength="80" placeholder="Shown next to the site name and to friends" /></label>
+            <label class="span2">Tagline <input name="tagline" maxlength="200" /></label>
+            <label class="span2">Public address <span class="muted small">(optional — set this if you use a custom domain, so friends always reach the same address)</span>
+              <input name="url" placeholder="https://myshelf.example.com" />
+            </label>
+            <label class="span2">Source code link <span class="muted small">(the footer’s “Source” link — if you change the code, point this at your own repository, as the AGPL license asks)</span>
+              <input name="source" placeholder="https://github.com/you/myshelf" />
+            </label>
+            <div class="row span2"><button class="btn primary" type="submit">Save</button><span id="site-msg" class="muted small"></span></div>
+          </form>
+          <h2>Backup &amp; restore</h2>
+          <p class="muted">A backup is one JSON file with all your entries, notes, collections, shelf orders and site settings. Restoring adds those to this site, replacing entries with the same name. Moving to a new site? Restore here while the old site is still online and the covers are copied over from it.</p>
+          <div class="row">
+            <button id="settings-export" class="btn ghost" type="button">⤓ Download backup</button>
+            <label class="btn ghost file-btn">⤒ Restore from backup… <input id="restore-file" type="file" accept="application/json,.json" hidden /></label>
+          </div>
+          <p id="restore-msg" class="muted small"></p>
+        </div>
+      </div>
     </section>
 
     <!-- Editor (modal) -->
@@ -126,6 +177,16 @@ const typesJson = JSON.stringify(TYPES);
             </label>
             <label>Started <span class="date-field"><input name="dateStarted" type="date" /><button type="button" class="date-clear" data-clear-date="dateStarted" aria-label="Clear started date" title="Clear date">×</button></span></label>
             <label>Finished <span class="date-field"><input name="dateFinished" type="date" /><button type="button" class="date-clear" data-clear-date="dateFinished" aria-label="Clear finished date" title="Clear date">×</button></span></label>
+            <label>Who can see it
+              <select name="visibility">
+                <option value="public">Everyone</option>
+                <option value="friends">Friends only</option>
+                <option value="private">Only me</option>
+              </select>
+            </label>
+            <label class="check span2"><input type="checkbox" name="owned" /> I own a copy <span class="muted small">(friends can ask to borrow it)</span></label>
+            <label>Lent to <input name="lentTo" placeholder="Nobody right now" /></label>
+            <label>Lent since <span class="date-field"><input name="lentSince" type="date" /><button type="button" class="date-clear" data-clear-date="lentSince" aria-label="Clear lent date" title="Clear date">×</button></span></label>
             <fieldset class="span2">
               <legend>Collections</legend>
               <div id="editor-collections" class="checks"></div>
@@ -184,9 +245,29 @@ const typesJson = JSON.stringify(TYPES);
       <div id="preview-body"></div>
     </dialog>
 
+    <!-- Recommend an item to friends -->
+    <dialog id="recommend" class="editor recommend">
+      <form id="recommend-form" method="dialog">
+        <header class="editor-head">
+          <h2 id="recommend-title">Recommend</h2>
+          <button type="button" class="btn ghost small" data-close-rec>✕</button>
+        </header>
+        <div class="rec-body">
+          <fieldset><legend>Send to</legend><div id="rec-friends" class="checks"></div></fieldset>
+          <label>Note <span class="muted small">(optional)</span><textarea name="note" rows="3" maxlength="1000" placeholder="Why they’ll love it"></textarea></label>
+        </div>
+        <footer class="editor-foot">
+          <span class="spacer"></span>
+          <button type="button" class="btn ghost" data-close-rec>Cancel</button>
+          <button type="submit" class="btn primary" id="rec-send">Send</button>
+        </footer>
+      </form>
+    </dialog>
+
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </div>
   <script>
     import '../../scripts/admin.js';
+    import '../../scripts/friends.js';
   </script>
 </Base>

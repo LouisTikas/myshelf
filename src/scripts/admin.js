@@ -42,6 +42,7 @@ async function api(path, { method = 'GET', body } = {}) {
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
+const libraryHeaders = () => ({ authorization: `Bearer ${getToken()}` });
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let toastTimer;
 function toast(msg, kind = 'ok') {
@@ -79,6 +80,7 @@ async function boot() {
     renderStorage(ping);
     await Promise.all([loadLibrary(), loadCollections()]);
     handleHash();
+    document.dispatchEvent(new CustomEvent('myshelf:ready'));
   } catch (e) {
     if (e.message !== 'Unauthorized') showLogin(e.message.includes('Failed to fetch') ? 'Could not reach the API.' : e.message);
   }
@@ -90,7 +92,7 @@ function renderConfig(c) {
   if (!c.bgg) missing.push('BGG');
   if (!c.spotify) missing.push('Spotify (using MusicBrainz)');
   $('#config-status').innerHTML = missing.length
-    ? `<span class="warn" title="Set these in Cloudflare Pages → Settings → Variables">Missing keys: ${esc(missing.join(', '))}</span>`
+    ? `<span class="warn" title="Add these as secrets: Worker → Settings → Variables and Secrets">Missing keys: ${esc(missing.join(', '))}</span>`
     : '<span class="okay">All sources connected</span>';
 }
 // Storage status + one-time import of the old Git-based entries.
@@ -99,7 +101,7 @@ function renderStorage(ping) {
   const s = ping.storage || {};
   const missing = [!s.db && 'a D1 database binding named <code>DB</code>', !s.covers && 'a KV namespace binding named <code>COVERS</code>'].filter(Boolean);
   if (missing.length) {
-    el.innerHTML = `<strong>Storage isn’t connected yet.</strong> In Cloudflare Pages → Settings → Bindings, add ${missing.join(' and ')}, then redeploy.`;
+    el.innerHTML = `<strong>Storage isn’t connected yet.</strong> Your Worker is missing ${missing.join(' and ')}. Check wrangler.jsonc (or Worker → Settings → Bindings), then redeploy.`;
     el.className = 'storage-banner warn';
     el.hidden = false;
     return;
@@ -145,7 +147,17 @@ $('#logout').addEventListener('click', () => { setToken(''); showLogin(); });
 function showTab(name) {
   $$('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tabpanel').forEach((p) => (p.hidden = p.dataset.panel !== name));
+  document.dispatchEvent(new CustomEvent('myshelf:tab', { detail: name }));
 }
+// From the Friends tab: "Add it" on a recommendation searches for it here.
+document.addEventListener('myshelf:search', (e) => {
+  const { type, title } = e.detail || {};
+  showTab('add');
+  if (type && TYPES[type]) $(`.type-btn[data-type="${type}"]`)?.click();
+  $('#search-q').value = title || '';
+  $('#search-form').requestSubmit();
+});
+document.addEventListener('myshelf:library-changed', () => Promise.all([loadLibrary(), loadCollections()]));
 $$('.tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
 // ───────── search ─────────
@@ -329,6 +341,10 @@ function openEditor(item, slug = null) {
   form.details.value = detailsToText(item.details);
   form.body.value = item.body || '';
   form.featured.checked = item.featured === true;
+  form.visibility.value = ['friends', 'private'].includes(item.visibility) ? item.visibility : 'public';
+  form.owned.checked = item.owned === true;
+  form.lentTo.value = item.lentTo || '';
+  form.lentSince.value = item.lentSince || '';
   updateFeaturedHint();
   const src = item.source || {};
   $('#editor-source').innerHTML = src.url ? `From <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.name)}</a>` : esc(src.name || '');
@@ -408,6 +424,10 @@ form.addEventListener('submit', async (e) => {
     source,
     expansions: form.type.value === 'boardgame' ? state.editing.expansions || [] : [],
     featured: form.featured.checked,
+    visibility: form.visibility.value,
+    owned: form.owned.checked,
+    lentTo: form.lentTo.value.trim(),
+    lentSince: form.lentTo.value.trim() ? form.lentSince.value || new Date().toISOString().slice(0, 10) : null,
   };
   delete item.body;
   if (!slug && !saveBtn.dataset.confirmDup) {
@@ -574,7 +594,7 @@ $('#editor-refresh-bgg').addEventListener('click', async (e) => {
 // ───────── library ─────────
 async function loadLibrary() {
   try {
-    const res = await fetch('/library.json', { cache: 'no-store' });
+    const res = await fetch('/library.json', { cache: 'no-store', headers: libraryHeaders() });
     const data = await res.json();
     state.library = data.items || [];
   } catch {
@@ -597,12 +617,13 @@ function renderLibrary() {
       <li class="lib-row">
         ${coverThumb(i, 56)}
         <span class="lib-text">
-          <strong>${esc(i.title)}${i.featured ? ' <span class="featured-badge">★ Featured</span>' : ''}</strong>
+          <strong>${esc(i.title)}${i.featured ? ' <span class="featured-badge">★ Featured</span>' : ''}${i.visibility === 'friends' ? ' <span class="vis-badge">Friends only</span>' : ''}${i.visibility === 'private' ? ' <span class="vis-badge">Only me</span>' : ''}${i.lentTo ? ` <span class="vis-badge">Lent to ${esc(i.lentTo)}</span>` : ''}</strong>
           <span class="muted small">${esc(TYPES[i.type]?.label)} · ${esc(i.creator || '')}</span>
         </span>
         <span class="lib-actions">
           <a class="btn ghost small" href="/item/${esc(i.slug)}/" target="_blank">View</a>
           <button class="btn ghost small" data-edit="${esc(i.slug)}">Edit</button>
+          <button class="btn ghost small" data-recommend="${esc(i.slug)}" data-title="${esc(i.title)}" title="Recommend to friends">Recommend</button>
           <button class="btn ghost small danger" data-del="${esc(i.slug)}">Delete</button>
         </span>
       </li>`)

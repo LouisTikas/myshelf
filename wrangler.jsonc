@@ -1,0 +1,26 @@
+// MyShelf runs as one Cloudflare Worker: the Astro server code plus static files (CSS, JS, fonts).
+// The "Deploy to Cloudflare" button reads this file, creates the D1 database and KV namespace below
+// on the new owner's account, and writes their IDs back into their copy of the repo.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "myshelf",
+  "main": "./dist/_worker.js/index.js",
+  "compatibility_date": "2025-09-01",
+  // nodejs_compat: some libraries expect Node built-ins.
+  // global_fetch_strictly_public: lets two MyShelf Workers on the same Cloudflare account reach each other
+  // over their public URLs (handy for testing friends features with a second copy).
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "myshelf" }
+  ],
+  "kv_namespaces": [
+    { "binding": "COVERS" }
+  ],
+  // Keep variables you add in the Cloudflare dashboard when the site redeploys.
+  "keep_vars": true,
+  "observability": { "enabled": true }
+}

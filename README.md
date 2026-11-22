@@ -1,116 +1,152 @@
 # MyShelf
 
-A self-hosted media journal and virtual bookshelf for books, movies, TV, music, video games, and board games. Search a database, pick the match, and the cover and details import automatically. Write your thoughts, add it to collections, and it appears on your shelves.
+A self-hosted media journal and virtual bookshelf for books, movies, TV, music, video games and board games. Search a database, pick the match, and the cover and details import automatically. Write your thoughts, sort things into collections, and they appear on your shelves. Connect with friends who run their own MyShelf to share recommendations and lend each other things.
 
-**Cost: $0.** It runs on Cloudflare's free plan (Pages + D1 database + KV storage — no credit card needed). The code lives in a free GitHub repo.
+**Cost: $0.** Everything runs on Cloudflare's free plan (one Worker, a D1 database and KV storage, no credit card needed). Your copy of the code lives in a free GitHub account. Everyone runs their own copy, so your shelf and your data stay in your own accounts.
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/lexjudex/myshelf)
 
 ## How it works
 
 ```
-You (admin page) ──► /api/* (runs on Cloudflare, holds your API keys)
+You (admin page) ──► /api/* on your Worker (holds your API keys)
                         ├─► searches Open Library / Google Books / TMDB / Spotify / IGDB / BGG
                         └─► saves the entry to D1 and the cover image to KV
 Visitors ──► pages render straight from D1, so every change is live immediately
+Friends' MyShelf sites ◄──► /federation/v1/* (signed messages; see "Friends" below)
 ```
 
-- **Your entries** (details, notes, collections, shelf orders) live in a **Cloudflare D1** database. The tables create themselves.
+- **Your entries** (details, notes, collections, shelf orders, friends, inbox) live in your **Cloudflare D1** database. The tables create and upgrade themselves.
 - **Cover images** live in **Cloudflare KV** and are served from `/img/…`.
-- **Site title and tagline** are in `src/data/site.json` (changing it is a code change, so it redeploys).
-- **Backups:** Manage → Library → **Download backup** saves everything as one JSON file. Do this now and then.
-- GitHub only holds the code now. Pushing code changes still redeploys the site, but adding or editing entries never does, so the 500-builds-a-month limit no longer matters.
+- **Site name, tagline and your name** are set in **Manage → Settings**.
+- **Backups:** Manage → Settings → **Download backup** saves everything as one JSON file. Do this now and then.
 
-## One-time setup (about 30–45 minutes, mostly collecting free API keys)
+## Set up your own MyShelf (about 20–40 minutes, mostly collecting free API keys)
 
-### 1. Put the code in a private GitHub repo
-Create a new **private** repo (for example `myshelf`), then push this folder to it:
-```bash
-git init && git add . && git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/myshelf.git
-git push -u origin main
-```
+You need a free [GitHub](https://github.com/signup) account and a free [Cloudflare](https://dash.cloudflare.com/sign-up) account. There are two ways to set up. Both end in the same place.
 
-### 2. Create the Cloudflare Pages project
-Cloudflare dashboard → **Workers & Pages** → **Create** → choose the **Pages** tab → **Connect to Git** → pick the repo.
-- Framework preset: **Astro**
-- Build command: `npm run build`
-- Build output directory: `dist`
+### Option A: one-click (quickest)
 
-Deploy it. Your site will be live at `https://<project>.pages.dev`.
+1. Click **Deploy to Cloudflare** above and sign in to Cloudflare and GitHub when asked.
+2. Cloudflare copies MyShelf into a new repository on your GitHub account and creates your database and cover storage.
+3. It asks for your secrets. Only **`ADMIN_TOKEN`** is required: make up a long random password and keep it somewhere safe. Leave the API keys blank for now if you don't have them yet.
+4. Click **Deploy**. In a minute or two your site is live at `https://myshelf.<your-subdomain>.workers.dev`.
 
-### 3. Create the database and cover storage
-Cloudflare dashboard → **Storage & Databases**:
-- **D1 SQL Database** → **Create** → name it `myshelf`.
-- **Workers KV** → **Create** → name it `myshelf-covers`.
+Option A's copy isn't linked to this repository, so getting updates later takes a couple of git commands (see [Getting updates](#getting-updates)).
 
-Then open your Pages project → **Settings → Bindings** → **Add**:
-- **D1 database**: variable name `DB` → pick `myshelf`.
-- **KV namespace**: variable name `COVERS` → pick `myshelf-covers`.
+### Option B: fork (easiest to keep up to date)
 
-Add both for **Production** (and Preview if you use preview deployments).
+1. On GitHub, click **Fork** on this repository.
+2. In the Cloudflare dashboard: **Workers & Pages → Create → Import a repository**, then pick your fork. Leave the build command as `npm run build` and the deploy command as `npx wrangler deploy`.
+3. Deploy. The first deploy creates the D1 database and KV namespace listed in `wrangler.jsonc` on your account.
+4. Open your Worker → **Settings → Variables and Secrets** → add `ADMIN_TOKEN` as a **Secret**.
 
-### 4. Get the free API keys
-| Source | Where | What to copy |
+With a fork, GitHub's **Sync fork** button pulls in new versions, and Cloudflare redeploys automatically.
+
+### Then, for both options
+
+1. Go to `https://<your-site>/admin/` and enter your `ADMIN_TOKEN`.
+2. Open **Settings** and set your site name and your name.
+3. Add API keys as you get them (next section). The admin header lists any that are still missing.
+
+### Free API keys
+
+Add each one in your Worker → **Settings → Variables and Secrets** → **Add** → type **Secret**, then save and deploy. No rebuild is needed.
+
+| Source | Where | Secret name(s) |
 |---|---|---|
-| **TMDB** (movies, TV) | themoviedb.org → Settings → API → request a personal key | **API Read Access Token** (the long one) |
-| **IGDB** (video games) | dev.twitch.tv/console → Register Your Application (redirect URL `http://localhost`, client type Confidential). Your Twitch account needs 2FA turned on. | Client ID + Client Secret |
-| **BoardGameGeek** | boardgamegeek.com/applications → register a non-commercial app → create a token. Approval can take a little while. | Token |
-| **Spotify** (music) | developer.spotify.com/dashboard → Create app → check **Web API** → redirect URI `http://127.0.0.1:8788/callback` (required, but unused) | Client ID + Client Secret |
-| Open Library | No key needed | |
-| Google Books | Optional. Works without a key at low volume. | API key (optional) |
+| **TMDB** (movies, TV) | themoviedb.org → Settings → API → request a personal key. Copy the **API Read Access Token** (the long one). | `TMDB_TOKEN` |
+| **IGDB** (video games) | dev.twitch.tv/console → Register Your Application (redirect URL `http://localhost`, client type Confidential). Your Twitch account needs 2FA turned on. | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` |
+| **BoardGameGeek** | boardgamegeek.com/applications → register a non-commercial app → create a token. Approval can take a while. | `BGG_TOKEN` |
+| **Spotify** (music, optional) | developer.spotify.com/dashboard → Create app → check **Web API** → redirect URI `http://127.0.0.1:8788/callback` (required, but unused). | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` |
+| Open Library | No key needed. | |
+| Google Books | Optional. Works without a key at low volume. | `GOOGLE_BOOKS_KEY` |
+| Contact email | Optional. Sent to Open Library and MusicBrainz, as they request. | `CONTACT_EMAIL` |
 
-If Spotify isn't set up or ever fails, music search falls back to **MusicBrainz + Cover Art Archive** automatically.
+Without Spotify, or if it ever fails, music search uses **MusicBrainz + Cover Art Archive** automatically.
 
-### 5. Add the secrets to Cloudflare
-Pages project → **Settings → Variables and Secrets** → add each one as a **Secret** for Production:
-
-| Name | Value |
-|---|---|
-| `ADMIN_TOKEN` | A long random password you make up. This is your login. |
-| `TMDB_TOKEN` | TMDB Read Access Token |
-| `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` | From Twitch |
-| `BGG_TOKEN` | From BGG |
-| `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | From Spotify |
-| `GOOGLE_BOOKS_KEY` | Optional |
-| `CONTACT_EMAIL` | Optional. Sent in the User-Agent to Open Library and MusicBrainz, as they request. |
-
-Then go to **Deployments** → **Retry deployment** on the latest one. Variables and bindings only apply to new deployments.
-
-### 6. Use it
-Go to `https://<project>.pages.dev/admin/` and enter your `ADMIN_TOKEN`. The header shows any API keys that are still missing, and a banner appears if the database or cover storage isn't connected.
+## Using it
 
 - **＋ Add:** pick a type, search, click a result, adjust the details, write your notes, and save.
-- **Library:** edit or delete anything.
-- **Collections:** create, rename, reorder, and remove shelves.
+- **Library:** edit, delete, or **Recommend** anything to friends.
+- **Collections:** create, rename, reorder and remove shelves.
+- **Friends:** your address to share, friend requests, your inbox, and your friends' shelves.
+- **Settings:** site name, your name, public address, backup and restore.
 - Every item page has a small **Edit** link that goes straight to the editor.
 
-Changes are live on the public site as soon as you save.
+In the editor, **Who can see it** sets each item to *Everyone*, *Friends only*, or *Only me*. Only *Everyone* items appear on your public pages. **I own a copy** lets friends ask to borrow it, and **Lent to** tracks who has it.
+
+## Friends
+
+Friends are other people running their own MyShelf. There's no central server: your site and theirs talk to each other directly.
+
+1. Send a friend your address (shown in **Manage → Friends**).
+2. They paste it into **Add friend**. You get a request in your inbox and click **Accept**.
+3. Now you can:
+   - see each other's *Friends only* items (**View shelf**), with "You have this" next to anything you both own,
+   - **Recommend** something from your Library; it lands in their inbox with an **Add it** button,
+   - **Ask to borrow** anything they've marked *I own a copy*. Saying yes marks it as lent on their shelf.
+
+**What friends can see:** your public items, your *Friends only* items, whether you own them, and whether they're available to borrow. They never see *Only me* items or who you've lent things to. Removing a friend tells their site to remove you too.
+
+**Custom domain?** Set **Settings → Public address** so friends always reach you at the same address.
+
+**How it works under the hood:** each site has its own Ed25519 key, made automatically and stored in your database. Sites describe themselves at `/.well-known/myshelf`, accept signed messages at `/federation/v1/inbox`, and serve a shelf feed at `/federation/v1/shelf`. Friends-only items are included only when the request is signed by a friend. Every item has a permanent `uid` and a shared `ext_key` (like `boardgame:bgg:266192`), so two shelves can tell when they hold the same thing. The protocol is described in `server/federation/protocol.js`.
+
+## Getting updates
+
+- **Forked (Option B):** on GitHub, open your fork and click **Sync fork → Update branch**. Cloudflare redeploys automatically.
+- **One-click (Option A):** run this once on your computer:
+  ```bash
+  git clone https://github.com/YOUR-USERNAME/YOUR-REPO.git && cd YOUR-REPO
+  git remote add upstream https://github.com/lexjudex/myshelf.git
+  ```
+  Then whenever you want the latest version: `git pull upstream main && git push`.
+
+Database changes in new versions apply themselves on the next page load.
+
+## Moving from the older Cloudflare Pages version
+
+Older copies of MyShelf ran on Cloudflare Pages. To move to a Worker:
+
+1. Update your repository to this version. Your Pages site rebuilds and keeps working.
+2. On the old site: **Manage → Settings → Download backup**.
+3. Create the new Worker (Option B above, pointing at your existing repository) and add your secrets to it.
+4. On the new site: **Manage → Settings → Restore from backup**. Leave the old site up until this finishes: the covers are copied over from it.
+5. Check the new site, then delete the old Pages project (and its D1 database and KV namespace, if you want).
+
+The very oldest version kept entries as Markdown files in `src/content/items/`. If you still have those, the admin page offers to **Import** them.
 
 ## Optional: make the site private
-By default the shelves are public (anyone with the URL can see them), but only you can add or edit. To hide everything, use **Cloudflare Zero Trust → Access → Applications → Add → Self-hosted**: enter your `*.pages.dev` domain and add a policy that allows only your email. It's free for up to 50 users. To protect only the admin area, use the path `admin*`. The `/api` is already locked by your token either way.
 
-## Moving from the old Git-based version
-Older versions stored entries as Markdown files in `src/content/items/` and covers in `public/covers/`. After connecting D1 and KV (step 3), open the admin page: a banner offers to **Import** anything that isn't in the database yet. It copies the entries, covers, collections and shelf orders, and is safe to run more than once. Once you've checked the import, those folders (plus `src/data/collections.json` and `arrangements.json`) can be deleted, and `GITHUB_TOKEN` / `GITHUB_REPO` removed from Cloudflare.
+By default your public items are visible to anyone with the URL, but only you can add or edit. To hide everything, use **Cloudflare Zero Trust → Access → Applications → Add → Self-hosted**: enter your site's domain and add a policy that allows only your email. It's free for up to 50 users. To protect only the admin page, use the path `admin*` (the `/api` is already locked by your token).
+
+If you lock the whole site, add **Bypass** policies for `/.well-known/myshelf` and `/federation/*` so friends' sites can still reach yours.
 
 ## Free-tier limits worth knowing
-- D1 free: 5 GB storage, 5 million rows read a day. KV free: 1 GB, 100,000 reads and 1,000 writes a day. A personal shelf won't come close.
-- Builds now happen only when you push code (500 a month on the free plan).
+
+- Workers free: 100,000 requests a day. D1 free: 5 GB storage, 5 million rows read a day. KV free: 1 GB, 100,000 reads and 1,000 writes a day. A personal shelf won't come close.
 - Spotify Development Mode requires Premium and caps search at 10 results per type.
 - Attribution for TMDB and BGG is in the site footer, as their terms require. Leave it in.
 
 ## Local development
+
 ```bash
 npm install
-npm run dev          # public site only, at http://localhost:4321
-npm test             # offline tests for the API layer
+npm test             # offline tests for the API layer and the friends protocol
+cp .dev.vars.example .dev.vars   # then fill in ADMIN_TOKEN (and any keys)
+npm run preview      # builds, then serves with wrangler dev at http://localhost:8787
 ```
-`npm run dev` works too, using a local D1/KV if you've copied `wrangler.toml.example` to `wrangler.toml`. To run the full site locally, also copy `.dev.vars.example` to `.dev.vars`, fill it in, and run `npm run preview` (builds, then serves with `wrangler pages dev` at http://localhost:8788). Local data lives in `.wrangler/` and never touches your live database.
+
+Local data lives in `.wrangler/` and never touches your live database. To try friends features locally, run two copies on different ports with separate data folders, for example `npx wrangler dev --port 8801 --persist-to .wrangler/a` and `npx wrangler dev --port 8802 --persist-to .wrangler/b`, and add `http://localhost:8802` as a friend from the first.
 
 ## Item format
+
 Each item is stored as JSON in D1 (and that's what **Download backup** gives you):
 ```json
 {
   "slug": "book-dune-1965",
+  "uid": "6f1c2d1e-8a3b-4c5d-9e7f-0a1b2c3d4e5f",
   "item": {
     "title": "Dune", "type": "book", "creator": "Frank Herbert", "year": "1965",
     "cover": "/img/book-dune-1965-m1a2b3.jpg", "coverAspect": 0.6667,
@@ -118,19 +154,28 @@ Each item is stored as JSON in D1 (and that's what **Download backup** gives you
     "dateStarted": "2026-10-01", "dateFinished": "2026-10-28",
     "collections": ["favorites", "2026"], "tags": ["sci-fi"], "genres": ["Science fiction"],
     "details": { "pages": 612 },
+    "visibility": "friends", "owned": true, "lentTo": "Sam", "lentSince": "2026-11-01",
     "source": { "name": "Open Library", "id": "OL893415W", "url": "https://openlibrary.org/works/OL893415W" }
   },
   "body": "Your journal / review in Markdown."
 }
 ```
-`type` is book | movie | tv | music | videogame | boardgame; `status` is want | in-progress | finished | abandoned; `rating` is 0–5 in halves.
+`type` is book | movie | tv | music | videogame | boardgame; `status` is want | in-progress | finished | abandoned; `rating` is 0–5 in halves; `visibility` is public (the default, left out) | friends | private.
 
 ## Project map
 ```
+wrangler.jsonc          Worker config: D1 + KV bindings (created for you on first deploy)
 src/pages/              home, /shelf/[slug], /type/[type], /item/[slug], /journal, /admin, /img/[name]
-src/pages/api/          search, details, item, save, delete, collections, arrangements, import, export, ping
+src/pages/api/          admin API (search, save, delete, collections, friends, site, export, restore, …)
+src/pages/federation/   friends protocol endpoints; /.well-known/myshelf is in src/pages/[wellknown]/
 src/middleware.js       locks /api/* behind your ADMIN_TOKEN
-server/                 D1 + KV storage, provider integrations, import of the old Markdown shelf
-src/data/site.json      site title and tagline
+server/db.js            D1 storage and the list of schema migrations
+server/federation/      keys, signatures, friends, inbox, recommendations, borrowing
+server/                 KV covers, provider integrations, backups, site settings
+src/data/site.json      default site name and tagline for new sites
 src/styles/global.css   colors and shelf look (CSS variables at the top)
 ```
+
+## License
+
+MyShelf is free software under the [GNU Affero General Public License v3.0 or later](LICENSE). You can use, change and share it. If you run a **modified** copy where other people can reach it, you have to offer them your modified source code too. The simplest way is to keep your fork public and set **Settings → Source code link** to it, which updates the "Source" link in your site's footer.

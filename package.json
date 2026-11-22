@@ -1,13 +1,14 @@
 {
   "name": "myshelf",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "A self-hosted media journal and virtual bookshelf (books, movies, TV, music, video games, board games).",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "npm run build && npx wrangler pages dev dist",
+    "preview": "npm run build && wrangler dev",
+    "deploy": "wrangler deploy",
     "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {
@@ -18,5 +19,44 @@
     "marked": "^18.2.1",
     "sortablejs": "^1.15.7",
     "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "wrangler": "^4.166.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "ADMIN_TOKEN": {
+        "description": "Your admin password. Make up a long random one (for example run `openssl rand -hex 24`) and keep it somewhere safe. You type it at **/admin/** to manage your shelf."
+      },
+      "TMDB_TOKEN": {
+        "description": "Movies and TV. Free at [themoviedb.org](https://www.themoviedb.org/settings/api): copy the **API Read Access Token**. Leave blank to add it later."
+      },
+      "TWITCH_CLIENT_ID": {
+        "description": "Video games (IGDB). Register an app at [dev.twitch.tv/console](https://dev.twitch.tv/console). Leave blank to add it later."
+      },
+      "TWITCH_CLIENT_SECRET": {
+        "description": "The Client Secret from the same Twitch app. Leave blank to add it later."
+      },
+      "BGG_TOKEN": {
+        "description": "Board games. Register a non-commercial app at [boardgamegeek.com/applications](https://boardgamegeek.com/applications) and create a token. Leave blank to add it later."
+      },
+      "SPOTIFY_CLIENT_ID": {
+        "description": "Music (optional; MusicBrainz is used without it). Create an app at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)."
+      },
+      "SPOTIFY_CLIENT_SECRET": {
+        "description": "The Client Secret from the same Spotify app (optional)."
+      },
+      "GOOGLE_BOOKS_KEY": {
+        "description": "Optional. Books work without it."
+      },
+      "CONTACT_EMAIL": {
+        "description": "Optional. Sent to Open Library and MusicBrainz so they can reach you if something goes wrong, as they ask."
+      }
+    }
+  },
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lexjudex/myshelf.git"
   }
 }

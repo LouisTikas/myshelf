@@ -1,10 +1,12 @@
 ---
-import site from '../data/site.json';
+import { getSite } from '../../server/site.js';
 import { TYPES, TYPE_KEYS } from '../lib/types.js';
 import '@fontsource-variable/plus-jakarta-sans';
 import '../styles/global.css';
 
 interface Props { title?: string; description?: string; noindex?: boolean }
+// Prerendered pages (admin, 404) are built ahead of time, so they use the defaults in src/data/site.json.
+const site = await getSite(Astro.isPrerendered ? null : Astro.locals.runtime?.env);
 const { title, description = site.tagline, noindex = false } = Astro.props;
 const pageTitle = title ? `${title} · ${site.title}` : site.title;
 const path = Astro.url.pathname;
@@ -96,7 +98,7 @@ const navItems = [
       nav?.querySelectorAll('.fab-item').forEach((a) => a.addEventListener('click', () => set(false)));
     </script>
     <footer class="site-footer">
-      <p>{site.title} · <a href="/admin/" class="quiet">Manage</a></p>
+      <p>{site.title} · <a href="/admin/" class="quiet">Manage</a>{site.source && <> · <a href={site.source} class="quiet" rel="noopener">Source</a></>}</p>
       <p class="attrib">
         Metadata from Open Library, Google Books, Spotify, MusicBrainz, IGDB, and
         <a href="https://boardgamegeek.com" rel="noopener">BoardGameGeek</a> (Powered by BGG).

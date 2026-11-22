@@ -2,6 +2,7 @@
 // Public friends page: what your friends have been up to lately, then links to their shelves.
 // Only their PUBLIC entries are shown here; friends-only items stay in Manage → Friends.
 import Base from '../layouts/Base.astro';
+import '../styles/filters.css';
 import CopyLink from '../components/CopyLink.astro';
 import { friendsFeed } from '../../server/federation/index.js';
 import { fmtDate } from '../lib/items.js';
@@ -9,8 +10,15 @@ import { TYPES, STATUS_LABEL, stars } from '../lib/types.js';
 
 const env = Astro.locals.runtime.env;
 let friends = [], items = [];
-try { ({ friends, items } = await friendsFeed(env)); } catch {}
+try { ({ friends, items } = await friendsFeed(env, { limit: 240 })); } catch {}
+const PAGE = 12; // cards shown at first and per "Load more"
 const who = (f) => f.owner || f.name || f.url.replace(/^https?:\/\//, '');
+// Filters only offer choices that would narrow the list.
+const feedFriends = friends.filter((f) => items.some((i) => i.friend.url === f.url));
+const feedTypes = Object.keys(TYPES).filter((t) => items.some((i) => (i.type || 'book') === t));
+const groups = [];
+if (feedFriends.length > 1) groups.push({ key: 'friend', label: 'Friend', options: feedFriends.map((f) => [f.url, who(f)]) });
+if (feedTypes.length > 1) groups.push({ key: 'type', label: 'Media', options: feedTypes.map((t) => [t, TYPES[t].plural]) });
 const host = (u) => u.replace(/^https?:\/\//, '');
 ---
 <Base title="Friends">
@@ -26,12 +34,27 @@ const host = (u) => u.replace(/^https?:\/\//, '');
       <section class="friends-feed">
         <h2>Lately</h2>
         {items.length === 0 && <p class="shelf-empty">Nothing new from friends yet.</p>}
-        <ul class="feed-list">
-          {items.map((i) => {
+        {groups.length > 0 && (
+          <div class="bg-filters feed-filters" aria-label="Filter">
+            <div class="bgf-body">
+              {groups.map((g) => (
+                <div class="bgf-group">
+                  <span class="bgf-label">{g.label}</span>
+                  <div class="bgf-chips" data-filter={g.key}>
+                    <button type="button" class="bgf-chip on" data-value="" aria-pressed="true">All</button>
+                    {g.options.map(([v, l]) => <button type="button" class="bgf-chip" data-value={v} aria-pressed="false">{l}</button>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <ul class="feed-list" id="feed-list" data-page={PAGE}>
+          {items.map((i, n) => {
             const t = TYPES[i.type] || TYPES.book;
             const link = i.url || i.friend.url;
             return (
-              <li class="feed-row">
+              <li class="feed-row" data-friend={i.friend.url} data-type={i.type || 'book'} hidden={n >= PAGE}>
                 <a class="feed-cover" href={link} target="_blank" rel="noopener" style={`--tc:${t.color}; aspect-ratio:${t.aspect}`}>
                   {i.cover ? <img src={i.cover} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <span>{(i.title || '?').slice(0, 1)}</span>}
                 </a>
@@ -44,6 +67,10 @@ const host = (u) => u.replace(/^https?:\/\//, '');
             );
           })}
         </ul>
+        <p class="shelf-empty" id="feed-none" hidden>Nothing here yet.</p>
+        <div class="feed-more" id="feed-more" hidden={items.length <= PAGE}>
+          <button type="button" class="btn-see-all" id="feed-more-btn">Load more</button>
+        </div>
       </section>
 
       <section class="friends-shelves">
@@ -67,9 +94,48 @@ const host = (u) => u.replace(/^https?:\/\//, '');
   )}
 </Base>
 
+<script>
+  // "Lately": show 12 cards, "Load more" adds 12 more, and the Friend / Media chips narrow the list.
+  const list = document.getElementById('feed-list');
+  if (list) {
+    const page = Number(list.dataset.page) || 12;
+    const rows = [...list.querySelectorAll('.feed-row')];
+    const more = document.getElementById('feed-more');
+    const none = document.getElementById('feed-none');
+    const state = { friend: '', type: '' };
+    let shown = page;
+    const render = () => {
+      const match = rows.filter((r) => (!state.friend || r.dataset.friend === state.friend) && (!state.type || r.dataset.type === state.type));
+      rows.forEach((r) => { r.hidden = true; });
+      match.slice(0, shown).forEach((r) => { r.hidden = false; });
+      more.hidden = match.length <= shown;
+      none.hidden = match.length > 0 || rows.length === 0;
+    };
+    document.getElementById('feed-more-btn')?.addEventListener('click', () => { shown += page; render(); });
+    document.querySelectorAll('.feed-filters .bgf-chips').forEach((group) => {
+      group.addEventListener('click', (e) => {
+        const chip = e.target.closest('.bgf-chip');
+        if (!chip) return;
+        state[group.dataset.filter] = chip.dataset.value;
+        group.querySelectorAll('.bgf-chip').forEach((c) => {
+          const on = c === chip;
+          c.classList.toggle('on', on);
+          c.setAttribute('aria-pressed', String(on));
+        });
+        shown = page; // a new filter starts back at the first 12
+        render();
+      });
+    });
+  }
+</script>
+
 <style>
   .friends-feed, .friends-shelves { margin: 8px 0 36px; }
   .friends-feed h2, .friends-shelves h2 { font-size: 1.3rem; margin: 0 0 12px; }
+  @media (min-width: 761px) { .feed-filters .bgf-label { width: 64px; } }
+  .feed-row[hidden] { display: none; }
+  .feed-more { display: flex; justify-content: center; margin-top: 18px; }
+  .feed-more[hidden] { display: none; }
   .feed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
   .feed-row { display: flex; gap: 16px; align-items: center; padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(241,230,208,0.08); }
   .feed-cover { flex: 0 0 auto; height: 84px; display: grid; place-items: center; border-radius: 4px; overflow: hidden; background: var(--tc); color: #fbf6ec; font-weight: 700; text-decoration: none; box-shadow: 0 6px 14px rgba(0,0,0,0.35); }

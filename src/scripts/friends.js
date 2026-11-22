@@ -313,7 +313,7 @@ const siteForm = $('#site-form');
 async function loadSite() {
   try {
     const { site } = await api('site');
-    for (const k of ['title', 'tagline', 'owner', 'url']) siteForm[k].value = site[k] || '';
+    for (const k of ['title', 'tagline', 'owner', 'url', 'source']) siteForm[k].value = site[k] || '';
   } catch (err) {
     $('#site-msg').textContent = err.message;
   }
@@ -321,10 +321,11 @@ async function loadSite() {
 document.addEventListener('myshelf:tab', (e) => { if (e.detail === 'settings') loadSite(); });
 siteForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const body = Object.fromEntries(['title', 'tagline', 'owner', 'url'].map((k) => [k, siteForm[k].value]));
+  const body = Object.fromEntries(['title', 'tagline', 'owner', 'url', 'source'].map((k) => [k, siteForm[k].value]));
   try {
     const { site } = await api('site', { method: 'POST', body });
     siteForm.url.value = site.url || '';
+    siteForm.source.value = site.source || '';
     $('#site-msg').textContent = 'Saved. Your public pages show it right away.';
   } catch (err) {
     $('#site-msg').textContent = err.message;

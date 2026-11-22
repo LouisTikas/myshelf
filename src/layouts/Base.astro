@@ -98,7 +98,7 @@ const navItems = [
       nav?.querySelectorAll('.fab-item').forEach((a) => a.addEventListener('click', () => set(false)));
     </script>
     <footer class="site-footer">
-      <p>{site.title} · <a href="/admin/" class="quiet">Manage</a></p>
+      <p>{site.title} · <a href="/admin/" class="quiet">Manage</a>{site.source && <> · <a href={site.source} class="quiet" rel="noopener">Source</a></>}</p>
       <p class="attrib">
         Metadata from Open Library, Google Books, Spotify, MusicBrainz, IGDB, and
         <a href="https://boardgamegeek.com" rel="noopener">BoardGameGeek</a> (Powered by BGG).

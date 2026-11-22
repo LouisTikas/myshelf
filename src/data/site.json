@@ -1,5 +1,6 @@
 {
   "title": "MyShelf",
   "tagline": "Things I've read, watched, heard, and played.",
-  "owner": ""
+  "owner": "",
+  "source": "https://github.com/lexjudex/myshelf"
 }

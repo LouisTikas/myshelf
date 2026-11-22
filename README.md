@@ -175,3 +175,7 @@ server/                 KV covers, provider integrations, backups, site settings
 src/data/site.json      default site name and tagline for new sites
 src/styles/global.css   colors and shelf look (CSS variables at the top)
 ```
+
+## License
+
+MyShelf is free software under the [GNU Affero General Public License v3.0 or later](LICENSE). You can use, change and share it. If you run a **modified** copy where other people can reach it, you have to offer them your modified source code too. The simplest way is to keep your fork public and set **Settings → Source code link** to it, which updates the "Source" link in your site's footer.

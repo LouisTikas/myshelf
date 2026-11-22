@@ -1,6 +1,6 @@
 // Site title, tagline and owner name: edited in Manage → Settings, stored in D1.
 // src/data/site.json holds the defaults a brand-new site starts with.
-import defaults from '../src/data/site.json';
+import defaults from '../src/data/site.json' with { type: 'json' };
 import { getSetting, setSetting, hasDb } from './db.js';
 import { HttpError } from './util.js';
 

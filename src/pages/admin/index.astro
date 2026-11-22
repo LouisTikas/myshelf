@@ -50,6 +50,10 @@ const typesJson = JSON.stringify(TYPES);
             <button class="btn primary" type="submit">Search</button>
             <button class="btn ghost" type="button" id="manual-add">Add manually</button>
           </form>
+          <form id="link-form" class="row link-form" hidden>
+            <input id="link-url" type="url" inputmode="url" placeholder="Can't find it? Paste a BoardGameGeek link…" autocomplete="off" />
+            <button class="btn ghost" type="submit">Look up</button>
+          </form>
           <p id="search-msg" class="muted"></p>
           <div id="results" class="results"></div>
         </div>

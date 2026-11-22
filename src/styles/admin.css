@@ -13,7 +13,10 @@
 code { background: var(--paper-2); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
 
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
-.row input[type='search'], .row input[type='password'] { flex: 1 1 260px; }
+.row input[type='search'], .row input[type='password'], .row input[type='url'] { flex: 1 1 260px; }
+.row[hidden] { display: none; }
+.link-form { margin-top: -4px; }
+.link-form input { font-size: 0.92rem; }
 
 input, select, textarea {
   font: inherit; color: var(--ink); background: #fffaf0;

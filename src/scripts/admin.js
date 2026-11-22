@@ -166,22 +166,26 @@ $$('.type-btn').forEach((b) =>
     state.type = b.dataset.type;
     $$('.type-btn').forEach((x) => x.classList.toggle('active', x === b));
     $('#search-q').placeholder = `Search ${TYPES[state.type].plural.toLowerCase()}…`;
+    syncLinkForm();
     $('#results').innerHTML = '';
     $('#search-msg').textContent = '';
     $('#search-q').focus();
   }),
 );
 
-$('#search-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const q = $('#search-q').value.trim();
-  if (q.length < 2) return;
+// "Paste a BGG link" — only for board games.
+function syncLinkForm() {
+  $('#link-form').hidden = state.type !== 'boardgame';
+}
+syncLinkForm();
+
+async function runSearch(q) {
   $('#search-msg').textContent = 'Searching…';
   $('#results').innerHTML = '';
   try {
     const { results } = await api(`search?type=${state.type}&q=${encodeURIComponent(q)}`);
     state.results = results;
-    $('#search-msg').textContent = results.length ? `${results.length} results — pick one to add it.` : 'No matches. Try different words, or add it manually.';
+    $('#search-msg').textContent = results.length ? `${results.length} result${results.length === 1 ? '' : 's'} — pick one to add it.` : 'No matches. Try different words, or add it manually.';
     $('#results').innerHTML = results
       .map((r, i) => `
         <button type="button" class="result" data-i="${i}">
@@ -198,6 +202,22 @@ $('#search-form').addEventListener('submit', async (e) => {
     $('#search-msg').textContent = '';
     toast(err.message, 'error');
   }
+}
+
+$('#search-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const q = $('#search-q').value.trim();
+  if (q.length >= 2) runSearch(q);
+});
+
+$('#link-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const url = $('#link-url').value.trim();
+  if (!/boardgamegeek\.com\/(boardgame|boardgameexpansion|thing)\/\d+/i.test(url)) {
+    toast('That doesn\'t look like a BoardGameGeek game link (boardgamegeek.com/boardgame/…).', 'error');
+    return;
+  }
+  runSearch(url);
 });
 
 $('#results').addEventListener('click', async (e) => {

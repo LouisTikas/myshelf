@@ -368,11 +368,15 @@ $('#restore-file').addEventListener('change', async (e) => {
   }
 });
 
-// ───────── shelf effects (per device) ─────────
-const effects = $('#shelf-effects');
-try { effects.checked = localStorage.getItem('myshelf_motion') !== 'off'; } catch {}
-effects.addEventListener('change', () => {
-  try { effects.checked ? localStorage.removeItem('myshelf_motion') : localStorage.setItem('myshelf_motion', 'off'); } catch {}
-  document.documentElement.classList.toggle('flat-shelves', !effects.checked);
-  toast(effects.checked ? 'Shelf effects are on.' : 'Shelf effects are off on this device.');
+// ───────── shelf effects (per device; on the login screen and in Settings) ─────────
+const effectToggles = $$('.shelf-effects');
+const effectsOn = () => { try { return localStorage.getItem('myshelf_motion') !== 'off'; } catch { return true; } };
+effectToggles.forEach((box) => {
+  box.checked = effectsOn();
+  box.addEventListener('change', () => {
+    try { box.checked ? localStorage.removeItem('myshelf_motion') : localStorage.setItem('myshelf_motion', 'off'); } catch {}
+    document.documentElement.classList.toggle('flat-shelves', !box.checked);
+    effectToggles.forEach((other) => (other.checked = box.checked));
+    toast(box.checked ? 'Shelf effects are on.' : 'Shelf effects are off on this device.');
+  });
 });

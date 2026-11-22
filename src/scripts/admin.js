@@ -42,6 +42,7 @@ async function api(path, { method = 'GET', body } = {}) {
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
+const libraryHeaders = () => ({ authorization: `Bearer ${getToken()}` });
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let toastTimer;
 function toast(msg, kind = 'ok') {
@@ -329,6 +330,10 @@ function openEditor(item, slug = null) {
   form.details.value = detailsToText(item.details);
   form.body.value = item.body || '';
   form.featured.checked = item.featured === true;
+  form.visibility.value = ['friends', 'private'].includes(item.visibility) ? item.visibility : 'public';
+  form.owned.checked = item.owned === true;
+  form.lentTo.value = item.lentTo || '';
+  form.lentSince.value = item.lentSince || '';
   updateFeaturedHint();
   const src = item.source || {};
   $('#editor-source').innerHTML = src.url ? `From <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.name)}</a>` : esc(src.name || '');
@@ -408,6 +413,10 @@ form.addEventListener('submit', async (e) => {
     source,
     expansions: form.type.value === 'boardgame' ? state.editing.expansions || [] : [],
     featured: form.featured.checked,
+    visibility: form.visibility.value,
+    owned: form.owned.checked,
+    lentTo: form.lentTo.value.trim(),
+    lentSince: form.lentTo.value.trim() ? form.lentSince.value || new Date().toISOString().slice(0, 10) : null,
   };
   delete item.body;
   if (!slug && !saveBtn.dataset.confirmDup) {
@@ -574,7 +583,7 @@ $('#editor-refresh-bgg').addEventListener('click', async (e) => {
 // ───────── library ─────────
 async function loadLibrary() {
   try {
-    const res = await fetch('/library.json', { cache: 'no-store' });
+    const res = await fetch('/library.json', { cache: 'no-store', headers: libraryHeaders() });
     const data = await res.json();
     state.library = data.items || [];
   } catch {
@@ -597,7 +606,7 @@ function renderLibrary() {
       <li class="lib-row">
         ${coverThumb(i, 56)}
         <span class="lib-text">
-          <strong>${esc(i.title)}${i.featured ? ' <span class="featured-badge">★ Featured</span>' : ''}</strong>
+          <strong>${esc(i.title)}${i.featured ? ' <span class="featured-badge">★ Featured</span>' : ''}${i.visibility === 'friends' ? ' <span class="vis-badge">Friends only</span>' : ''}${i.visibility === 'private' ? ' <span class="vis-badge">Only me</span>' : ''}${i.lentTo ? ` <span class="vis-badge">Lent to ${esc(i.lentTo)}</span>` : ''}</strong>
           <span class="muted small">${esc(TYPES[i.type]?.label)} · ${esc(i.creator || '')}</span>
         </span>
         <span class="lib-actions">

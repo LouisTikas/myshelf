@@ -1,0 +1,487 @@
+// Friends between MyShelf sites: adding friends, recommendations, borrow requests, and friends-only shelves.
+// Each site keeps its own list of friends and its own inbox in D1; sites talk over HTTPS with signed messages
+// (see protocol.js). Nothing goes through a central server.
+import { HttpError } from '../util.js';
+import { ensureSchema, getItem, getItemByUid, putItem } from '../db.js';
+import { getSite } from '../site.js';
+import { getIdentity } from './crypto.js';
+import {
+  PROTOCOL, SOFTWARE, WELL_KNOWN, INBOX_PATH, SHELF_PATH, MAX_BODY, KINDS,
+  cleanSiteUrl, signedHeaders, verifyRequest,
+} from './protocol.js';
+
+const MAX_PENDING = 100; // friend requests waiting for an answer
+const MAX_INBOX = 2000;  // oldest read messages are trimmed past this
+const TIMEOUT_MS = 8000;
+const now = () => new Date().toISOString();
+const str = (v, n) => String(v ?? '').trim().slice(0, n);
+
+// ───────── who am I ─────────
+
+/** The address friends should use: the one set in Settings, or else the address this request came in on. */
+export async function selfOrigin(env, requestUrl) {
+  const site = await getSite(env);
+  return site.url || new URL(requestUrl).origin;
+}
+
+async function selfOrigins(env, requestUrl) {
+  const site = await getSite(env);
+  return [...new Set([new URL(requestUrl).origin, site.url].filter(Boolean))];
+}
+
+/** GET /.well-known/myshelf */
+export async function wellKnown(env, requestUrl) {
+  const [site, identity, url] = await Promise.all([getSite(env), getIdentity(env), selfOrigin(env, requestUrl)]);
+  return {
+    software: SOFTWARE,
+    protocol: PROTOCOL,
+    url,
+    name: site.title,
+    owner: site.owner,
+    publicKey: identity.publicKey,
+    inbox: url + INBOX_PATH,
+    shelf: url + SHELF_PATH,
+  };
+}
+
+// ───────── storage ─────────
+
+const rowToFriend = (r) => r && ({ id: r.id, url: r.url, name: r.name, owner: r.owner, status: r.status, publicKey: r.public_key, createdAt: r.created_at, updatedAt: r.updated_at });
+// What the admin page gets: no keys.
+const publicFriend = (f) => { if (!f) return f; const { publicKey, ...rest } = f; return rest; };
+
+async function friendByUrl(env, url) {
+  const DB = await ensureSchema(env);
+  return rowToFriend(await DB.prepare('SELECT * FROM friends WHERE url = ?').bind(url).first());
+}
+
+async function friendById(env, id) {
+  const DB = await ensureSchema(env);
+  const f = rowToFriend(await DB.prepare('SELECT * FROM friends WHERE id = ?').bind(String(id || '')).first());
+  if (!f) throw new HttpError(404, 'Friend not found');
+  return f;
+}
+
+async function saveFriend(env, f) {
+  const DB = await ensureSchema(env);
+  const t = now();
+  await DB.prepare(
+    `INSERT INTO friends (id, url, name, owner, public_key, status, created_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
+     ON CONFLICT (url) DO UPDATE SET name = ?3, owner = ?4, public_key = ?5, status = ?6, updated_at = ?7`,
+  ).bind(f.id || crypto.randomUUID(), f.url, str(f.name, 80), str(f.owner, 80), f.publicKey, f.status, t).run();
+  return friendByUrl(env, f.url);
+}
+
+async function deleteFriend(env, id) {
+  const DB = await ensureSchema(env);
+  await DB.prepare('DELETE FROM friends WHERE id = ?').bind(id).run();
+}
+
+async function addInbox(env, { id, from, kind, payload, status = 'unread' }) {
+  const DB = await ensureSchema(env);
+  // INSERT OR IGNORE: the same message id arriving twice (a retry or a replay) is stored once.
+  const res = await DB.prepare(
+    `INSERT OR IGNORE INTO inbox (id, from_url, kind, payload, status, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+  ).bind(id, from, kind, JSON.stringify(payload), status, now()).run();
+  await DB.prepare(
+    `DELETE FROM inbox WHERE id IN (SELECT id FROM inbox WHERE status != 'unread' ORDER BY created_at DESC LIMIT -1 OFFSET ?)`,
+  ).bind(MAX_INBOX).run();
+  return res;
+}
+
+async function inboxById(env, id) {
+  const DB = await ensureSchema(env);
+  const r = await DB.prepare('SELECT * FROM inbox WHERE id = ?').bind(String(id || '')).first();
+  if (!r) throw new HttpError(404, 'Message not found');
+  return { id: r.id, from: r.from_url, kind: r.kind, payload: JSON.parse(r.payload), status: r.status, createdAt: r.created_at };
+}
+
+async function setInboxStatus(env, id, status) {
+  const DB = await ensureSchema(env);
+  await DB.prepare('UPDATE inbox SET status = ? WHERE id = ?').bind(status, id).run();
+}
+
+async function logOutbox(env, { id, to, kind, payload, status, error = null }) {
+  const DB = await ensureSchema(env);
+  await DB.prepare(
+    `INSERT OR REPLACE INTO outbox (id, to_url, kind, payload, status, error, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+  ).bind(id, to, kind, JSON.stringify(payload), status, error, now()).run();
+  await DB.prepare(`DELETE FROM outbox WHERE id IN (SELECT id FROM outbox ORDER BY created_at DESC LIMIT -1 OFFSET ?)`).bind(MAX_INBOX).run();
+}
+
+// ───────── talking to other sites ─────────
+
+/** Look up another site's name and key. */
+export async function discover(url, fetcher = fetch) {
+  const origin = cleanSiteUrl(url);
+  let info;
+  try {
+    const res = await fetcher(origin + WELL_KNOWN, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!res.ok) throw new Error(String(res.status));
+    info = await res.json();
+  } catch {
+    throw new HttpError(502, `Couldn’t reach a MyShelf site at ${origin}. Check the address and that the site is up.`);
+  }
+  if (info?.software !== SOFTWARE || typeof info.publicKey !== 'string' || !info.publicKey) {
+    throw new HttpError(502, `${origin} doesn’t look like a MyShelf site.`);
+  }
+  if (Number(info.protocol) > PROTOCOL) {
+    throw new HttpError(502, `${origin} runs a newer version of MyShelf. Update your copy to connect with it.`);
+  }
+  // A site can only speak for its own address.
+  const claimed = cleanSiteUrl(info.url || origin);
+  if (claimed !== origin) throw new HttpError(502, `${origin} says its address is ${claimed}. Add that address instead.`);
+  return { url: origin, name: str(info.name, 80), owner: str(info.owner, 80), publicKey: info.publicKey };
+}
+
+async function send(env, requestUrl, toUrl, kind, fields, fetcher = fetch) {
+  const [identity, from] = await Promise.all([getIdentity(env), selfOrigin(env, requestUrl)]);
+  const message = { id: crypto.randomUUID(), kind, ...fields };
+  const body = JSON.stringify(message);
+  const url = toUrl + INBOX_PATH;
+  let error = null;
+  let reply = {};
+  try {
+    const res = await fetcher(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(await signedHeaders(identity, { method: 'POST', url, from, body })) },
+      body,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    reply = await res.json().catch(() => ({}));
+    if (!res.ok) error = reply.error || `Their site answered ${res.status}`;
+  } catch (err) {
+    error = `Couldn’t reach ${toUrl}`;
+  }
+  await logOutbox(env, { id: message.id, to: toUrl, kind, payload: message, status: error ? 'failed' : 'sent', error });
+  if (error) throw new HttpError(502, error);
+  return { message, reply };
+}
+
+// ───────── inbound ─────────
+
+/** POST /federation/v1/inbox */
+export async function receive(env, request, fetcher = fetch) {
+  const body = await request.text();
+  if (body.length > MAX_BODY) throw new HttpError(413, 'Message too large');
+  let msg;
+  try { msg = JSON.parse(body); } catch { throw new HttpError(400, 'Message must be JSON'); }
+  if (!msg || typeof msg.id !== 'string' || !/^[0-9a-f-]{36}$/i.test(msg.id) || !KINDS.includes(msg.kind)) {
+    throw new HttpError(400, 'Unknown message');
+  }
+  const origins = await selfOrigins(env, request.url);
+  const claimedFrom = request.headers.get('myshelf-from') || '';
+  if (origins.includes(claimedFrom)) throw new HttpError(400, 'A site can’t message itself');
+  const known = claimedFrom ? await friendByUrl(env, claimedFrom).catch(() => null) : null;
+
+  // A friend request may come from a site we've never heard of: fetch its key from its own address.
+  let discovered = null;
+  const getKey = async (from) => {
+    if (known && known.status !== 'blocked') return known.publicKey;
+    if (msg.kind !== 'friend-request' || known?.status === 'blocked') return null;
+    discovered = await discover(from, fetcher).catch(() => null);
+    return discovered?.publicKey || null;
+  };
+  const { from } = await verifyRequest(request, body, origins, getKey);
+
+  switch (msg.kind) {
+    case 'friend-request': {
+      const info = discovered || { url: from, name: known?.name, owner: known?.owner, publicKey: known.publicKey };
+      if (known?.status === 'accepted') return { ok: true, status: 'accepted' };
+      if (known?.status === 'requested') {
+        // We'd already asked them: that's a yes from both sides.
+        await saveFriend(env, { ...known, ...info, status: 'accepted' });
+        await addInbox(env, { id: msg.id, from, kind: 'friend-accept', payload: { name: info.name, owner: info.owner }, status: 'unread' });
+        return { ok: true, status: 'accepted' };
+      }
+      const DB = await ensureSchema(env);
+      const pending = await DB.prepare(`SELECT COUNT(*) AS n FROM friends WHERE status = 'pending'`).first();
+      if (!known && Number(pending?.n || 0) >= MAX_PENDING) throw new HttpError(429, 'Too many friend requests waiting');
+      await saveFriend(env, { ...info, id: known?.id, status: 'pending' });
+      await addInbox(env, { id: msg.id, from, kind: msg.kind, payload: { name: info.name, owner: info.owner, note: str(msg.note, 500) } });
+      return { ok: true, status: 'pending' };
+    }
+    case 'friend-accept': {
+      if (known?.status !== 'requested' && known?.status !== 'accepted') throw new HttpError(403, 'No friend request to accept');
+      await saveFriend(env, { ...known, name: msg.name ?? known.name, owner: msg.owner ?? known.owner, status: 'accepted' });
+      await addInbox(env, { id: msg.id, from, kind: msg.kind, payload: { name: str(msg.name, 80) || known.name, owner: str(msg.owner, 80) || known.owner } });
+      return { ok: true };
+    }
+    case 'friend-remove': {
+      if (known) await deleteFriend(env, known.id);
+      return { ok: true };
+    }
+  }
+
+  // Everything else is only accepted from friends.
+  if (known?.status !== 'accepted') throw new HttpError(403, 'You aren’t friends with this site');
+
+  if (msg.kind === 'recommend') {
+    const it = msg.item || {};
+    const payload = {
+      note: str(msg.note, 1000),
+      item: {
+        title: str(it.title, 200), type: str(it.type, 20), creator: str(it.creator, 200), year: str(it.year, 10),
+        cover: safeUrl(it.cover), url: safeUrl(it.url), sourceUrl: safeUrl(it.sourceUrl), extKey: str(it.extKey, 200),
+        source: it.source && typeof it.source === 'object' ? { name: str(it.source.name, 40), id: str(it.source.id, 80), url: safeUrl(it.source.url) } : undefined,
+      },
+    };
+    if (!payload.item.title) throw new HttpError(400, 'A recommendation needs a title');
+    if (payload.item.extKey) {
+      const DB = await ensureSchema(env);
+      const mine = await DB.prepare('SELECT slug FROM items WHERE ext_key = ?').bind(payload.item.extKey).first();
+      if (mine) payload.alreadyHave = mine.slug;
+    }
+    await addInbox(env, { id: msg.id, from, kind: msg.kind, payload });
+    return { ok: true };
+  }
+
+  if (msg.kind === 'borrow-request') {
+    const row = await getItemByUid(env, str(msg.item?.uid, 40));
+    if (!row || row.item.visibility === 'private' || !row.item.owned) throw new HttpError(404, 'That item isn’t available to borrow');
+    await addInbox(env, {
+      id: msg.id, from, kind: msg.kind,
+      payload: { note: str(msg.note, 1000), item: { uid: row.uid, slug: row.slug, title: row.item.title, type: row.item.type }, lentTo: row.item.lentTo || '' },
+    });
+    return { ok: true };
+  }
+
+  if (msg.kind === 'borrow-reply') {
+    await addInbox(env, {
+      id: msg.id, from, kind: msg.kind,
+      payload: { answer: msg.answer === 'yes' ? 'yes' : 'no', note: str(msg.note, 1000), requestId: str(msg.requestId, 40), title: str(msg.title, 200) },
+    });
+    return { ok: true };
+  }
+
+  throw new HttpError(400, 'Unknown message');
+}
+
+function safeUrl(v) {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    return ['https:', 'http:'].includes(u.protocol) ? u.href.slice(0, 500) : '';
+  } catch {
+    return '';
+  }
+}
+
+// ───────── shelf feed ─────────
+
+/** What a friend (or anyone) sees: items as plain JSON with absolute cover links. */
+function feedItem(row, origin, forFriend) {
+  const it = row.item;
+  const abs = (u) => (u && u.startsWith('/') ? origin + u : u || '');
+  const out = {
+    uid: row.uid,
+    title: it.title, type: it.type, creator: it.creator || '', year: it.year || '',
+    cover: abs(it.cover), status: it.status, rating: it.rating ?? null,
+    dateFinished: it.dateFinished || null,
+    extKey: row.extKey || null,
+    source: it.source?.url ? { name: it.source.name, id: it.source.id, url: it.source.url } : null,
+    url: (it.visibility || 'public') === 'public' ? `${origin}/item/${row.slug}/` : null,
+    visibility: it.visibility || 'public',
+  };
+  if (forFriend) {
+    out.owned = it.owned === true;
+    out.available = it.owned === true && !it.lentTo;
+  }
+  return out;
+}
+
+/** GET /federation/v1/shelf — public items for anyone, friends-only items too when signed by a friend. */
+export async function shelfFeed(env, request) {
+  let friend = null;
+  if (request.headers.get('myshelf-signature')) {
+    const origins = await selfOrigins(env, request.url);
+    const { from } = await verifyRequest(request, '', origins, async (from) => {
+      const f = await friendByUrl(env, from);
+      return f?.status === 'accepted' ? f.publicKey : null;
+    });
+    friend = from;
+  }
+  const origin = await selfOrigin(env, request.url);
+  const rows = await listItemsWithKeys(env, friend ? ['public', 'friends'] : ['public']);
+  const site = await getSite(env);
+  return {
+    software: SOFTWARE, protocol: PROTOCOL, url: origin, name: site.title, owner: site.owner,
+    friend: Boolean(friend),
+    items: rows.map((r) => feedItem(r, origin, Boolean(friend))),
+  };
+}
+
+async function listItemsWithKeys(env, visibility) {
+  const DB = await ensureSchema(env);
+  const where = visibility ? `WHERE visibility IN (${visibility.map(() => '?').join(', ')})` : '';
+  const { results } = await DB.prepare(`SELECT slug, uid, ext_key, data FROM items ${where}`).bind(...(visibility || [])).all();
+  return (results || []).map((r) => ({ slug: r.slug, uid: r.uid, extKey: r.ext_key, item: JSON.parse(r.data) }));
+}
+
+// ───────── admin actions (behind your token) ─────────
+
+export async function overview(env, requestUrl) {
+  const DB = await ensureSchema(env);
+  const [me, friends, inbox] = await Promise.all([
+    wellKnown(env, requestUrl),
+    DB.prepare('SELECT * FROM friends ORDER BY status, name').all(),
+    DB.prepare('SELECT * FROM inbox ORDER BY created_at DESC LIMIT 200').all(),
+  ]);
+  const byUrl = new Map((friends.results || []).map((r) => [r.url, rowToFriend(r)]));
+  return {
+    me: { url: me.url, name: me.name, owner: me.owner },
+    friends: [...byUrl.values()].map(publicFriend),
+    inbox: (inbox.results || []).map((r) => {
+      const f = byUrl.get(r.from_url);
+      return { id: r.id, from: r.from_url, fromName: f?.owner || f?.name || r.from_url, friendId: f?.id || null, kind: r.kind, payload: JSON.parse(r.payload), status: r.status, createdAt: r.created_at };
+    }),
+    unread: (inbox.results || []).filter((r) => r.status === 'unread').length,
+  };
+}
+
+export async function addFriend(env, requestUrl, url, note = '', fetcher = fetch) {
+  const target = cleanSiteUrl(url);
+  if ((await selfOrigins(env, requestUrl)).includes(target)) throw new HttpError(400, 'That’s your own site.');
+  const existing = await friendByUrl(env, target);
+  if (existing?.status === 'accepted') return { friend: publicFriend(existing), status: 'accepted' };
+  if (existing?.status === 'pending') return acceptFriend(env, requestUrl, existing.id, fetcher);
+  const info = await discover(target, fetcher);
+  // Save first, so their automatic reply (if they'd already asked us) finds the request.
+  const friend = await saveFriend(env, { ...info, id: existing?.id, status: 'requested' });
+  const site = await getSite(env);
+  let reply;
+  try {
+    ({ reply } = await send(env, requestUrl, target, 'friend-request', { name: site.title, owner: site.owner, note: str(note, 500) }, fetcher));
+  } catch (err) {
+    if (!existing) await deleteFriend(env, friend.id);
+    throw err;
+  }
+  // They'd already asked us, so their site accepted on the spot.
+  if (reply?.status === 'accepted') await saveFriend(env, { ...friend, status: 'accepted' });
+  const current = await friendByUrl(env, target);
+  return { friend: publicFriend(current), status: current.status };
+}
+
+export async function acceptFriend(env, requestUrl, id, fetcher = fetch) {
+  const f = await friendById(env, id);
+  if (f.status !== 'pending') throw new HttpError(400, 'There’s no request from this site to accept.');
+  const site = await getSite(env);
+  await send(env, requestUrl, f.url, 'friend-accept', { name: site.title, owner: site.owner }, fetcher);
+  await saveFriend(env, { ...f, status: 'accepted' });
+  await markRequestsDone(env, f.url, 'accepted');
+  return { friend: publicFriend(await friendById(env, id)), status: 'accepted' };
+}
+
+export async function declineFriend(env, id) {
+  const f = await friendById(env, id);
+  await deleteFriend(env, f.id);
+  await markRequestsDone(env, f.url, 'declined');
+  return { ok: true };
+}
+
+export async function blockFriend(env, id) {
+  const f = await friendById(env, id);
+  await saveFriend(env, { ...f, status: 'blocked' });
+  await markRequestsDone(env, f.url, 'declined');
+  return { ok: true };
+}
+
+export async function removeFriend(env, requestUrl, id, fetcher = fetch) {
+  const f = await friendById(env, id);
+  await deleteFriend(env, f.id);
+  // Let them know, but don't fail if their site is down.
+  if (f.status === 'accepted' || f.status === 'requested') await send(env, requestUrl, f.url, 'friend-remove', {}, fetcher).catch(() => {});
+  return { ok: true };
+}
+
+async function markRequestsDone(env, url, status) {
+  const DB = await ensureSchema(env);
+  await DB.prepare(`UPDATE inbox SET status = ? WHERE from_url = ? AND kind = 'friend-request' AND status IN ('unread', 'read')`).bind(status, url).run();
+}
+
+async function acceptedFriend(env, id) {
+  const f = await friendById(env, id);
+  if (f.status !== 'accepted') throw new HttpError(400, `You aren’t friends with ${f.owner || f.name || f.url} yet.`);
+  return f;
+}
+
+/** Recommend one of your items to one or more friends. */
+export async function recommend(env, requestUrl, { slug, friendIds, note }, fetcher = fetch) {
+  const row = await getItem(env, String(slug || ''));
+  if (!row) throw new HttpError(404, 'Item not found');
+  const ids = [...new Set(Array.isArray(friendIds) ? friendIds : [friendIds])].filter(Boolean).slice(0, 50);
+  if (!ids.length) throw new HttpError(400, 'Pick at least one friend');
+  const origin = await selfOrigin(env, requestUrl);
+  const keys = await listItemsWithKeys(env, null);
+  const full = keys.find((r) => r.slug === row.slug);
+  const it = row.item;
+  const item = {
+    title: it.title, type: it.type, creator: it.creator || '', year: it.year || '',
+    cover: it.cover?.startsWith('/') ? origin + it.cover : it.cover || '',
+    url: (it.visibility || 'public') === 'public' ? `${origin}/item/${row.slug}/` : '',
+    extKey: full?.extKey || '',
+    source: it.source?.name ? { name: it.source.name, id: it.source.id ?? '', url: it.source.url || '' } : undefined,
+  };
+  const results = [];
+  for (const id of ids) {
+    const f = await acceptedFriend(env, id);
+    try {
+      await send(env, requestUrl, f.url, 'recommend', { item, note: str(note, 1000) }, fetcher);
+      results.push({ id, ok: true });
+    } catch (err) {
+      results.push({ id, ok: false, error: err.message });
+    }
+  }
+  return { results };
+}
+
+/** Ask a friend to borrow something from their shelf (uid from their shelf feed). */
+export async function askToBorrow(env, requestUrl, { friendId, uid, title, note }, fetcher = fetch) {
+  const f = await acceptedFriend(env, friendId);
+  await send(env, requestUrl, f.url, 'borrow-request', { item: { uid: str(uid, 40), title: str(title, 200) }, note: str(note, 1000) }, fetcher);
+  return { ok: true };
+}
+
+/** Answer a borrow request. Saying yes marks your item as lent to them. */
+export async function replyToBorrow(env, requestUrl, { inboxId, answer, note }, fetcher = fetch) {
+  const msg = await inboxById(env, inboxId);
+  if (msg.kind !== 'borrow-request') throw new HttpError(400, 'That message isn’t a borrow request');
+  const f = await acceptedFriend(env, (await friendByUrl(env, msg.from))?.id);
+  const yes = answer === 'yes';
+  await send(env, requestUrl, f.url, 'borrow-reply', { requestId: msg.id, answer: yes ? 'yes' : 'no', title: msg.payload.item?.title, note: str(note, 1000) }, fetcher);
+  if (yes) {
+    const row = await getItemByUid(env, msg.payload.item?.uid);
+    if (row) await putItem(env, row.slug, { ...row.item, lentTo: f.owner || f.name || f.url, lentSince: new Date().toISOString().slice(0, 10) }, row.body);
+  }
+  await setInboxStatus(env, msg.id, yes ? 'accepted' : 'declined');
+  return { ok: true };
+}
+
+export async function markMessage(env, id, status) {
+  if (!['read', 'unread', 'done'].includes(status)) throw new HttpError(400, 'Unknown status');
+  await inboxById(env, id);
+  await setInboxStatus(env, id, status);
+  return { ok: true };
+}
+
+/** A friend's shelf, fetched with a signed request so their friends-only items are included. */
+export async function friendShelf(env, requestUrl, id, fetcher = fetch) {
+  const f = await acceptedFriend(env, id);
+  const [identity, from] = await Promise.all([getIdentity(env), selfOrigin(env, requestUrl)]);
+  const url = f.url + SHELF_PATH;
+  let res;
+  try {
+    res = await fetcher(url, { headers: { accept: 'application/json', ...(await signedHeaders(identity, { method: 'GET', url, from })) }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch {
+    throw new HttpError(502, `Couldn’t reach ${f.url}`);
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new HttpError(502, data.error || `Their site answered ${res.status}`);
+  const mine = new Set((await listItemsWithKeys(env, null)).map((r) => r.extKey).filter(Boolean));
+  return {
+    friend: { id: f.id, url: f.url, name: f.name, owner: f.owner },
+    items: (Array.isArray(data.items) ? data.items : []).slice(0, 5000).map((i) => ({ ...i, youHave: Boolean(i.extKey && mine.has(i.extKey)) })),
+  };
+}

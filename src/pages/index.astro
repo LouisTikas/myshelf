@@ -3,13 +3,13 @@ import Base from '../layouts/Base.astro';
 import Shelf from '../components/Shelf.astro';
 import JournalCard from '../components/JournalCard.astro';
 import CopyLink from '../components/CopyLink.astro';
-import site from '../data/site.json';
+import { getSite } from '../../server/site.js';
 import { getItems, getShelves } from '../lib/items.js';
 import { sortShelf, inShelf, showsOnHome } from '../lib/sorting.js';
 import { TYPES, TYPE_KEYS } from '../lib/types.js';
 
 const env = Astro.locals.runtime.env;
-const [items, shelves] = await Promise.all([getItems(env), getShelves(env)]);
+const [items, shelves, site] = await Promise.all([getItems(env), getShelves(env), getSite(env)]);
 // "My Ramblings": the entry marked Featured in the editor, or else the most recent journal entry
 // (items are already sorted newest first).
 const hasNotes = (e) => e.body && e.body.trim();

@@ -1,13 +1,11 @@
 import { route } from '../../../server/util.js';
-import { listItems } from '../../../server/db.js';
-import { getCollections, getArrangements } from '../../../server/settings.js';
+import { exportBackup } from '../../../server/backup.js';
 
-// GET /api/export → a full JSON backup of your shelf (items, notes, collections, arrangements).
-// Cover images stay in KV; entries keep their cover paths.
-export const GET = route(async ({ env }) => {
-  const [items, collections, arrangements] = await Promise.all([listItems(env), getCollections(env), getArrangements(env)]);
-  const date = new Date().toISOString().slice(0, 10);
-  const data = { exportedAt: new Date().toISOString(), items: items.sort((a, b) => a.slug.localeCompare(b.slug)), collections, arrangements };
+// GET /api/export → a full JSON backup of your shelf (items, notes, collections, arrangements, site settings).
+// Cover images stay in KV; restoring on another site copies them from this site's address.
+export const GET = route(async ({ env, url }) => {
+  const data = await exportBackup(env, url.origin);
+  const date = data.exportedAt.slice(0, 10);
   return new Response(JSON.stringify(data, null, 2), {
     headers: {
       'content-type': 'application/json; charset=utf-8',

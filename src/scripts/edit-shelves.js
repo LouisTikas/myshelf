@@ -4,6 +4,7 @@ import { sortShelf, inShelf } from '../lib/sorting.js';
 
 const TOKEN_KEY = 'myshelf_token';
 const token = (() => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } })();
+const libraryHeaders = () => (token ? { authorization: `Bearer ${token}` } : {});
 
 async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(`/api/${path}`, {
@@ -114,7 +115,7 @@ if (token) {
       try {
         const [mod, lib] = await Promise.all([
           import('./arrange.js'),
-          fetch('/library.json', { cache: 'no-store' }).then((r) => r.json()),
+          fetch('/library.json', { cache: 'no-store', headers: libraryHeaders() }).then((r) => r.json()),
         ]);
         if (btn.dataset.arrangeKey) {
           const title = btn.dataset.title || btn.closest('.shelf-head')?.querySelector('h2')?.textContent.trim() || 'this shelf';

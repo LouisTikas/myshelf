@@ -23,13 +23,16 @@ export const sortDate = (e) => {
 
 export const byRecent = (a, b) => sortDate(b) - sortDate(a);
 
-export async function getItems(env) {
-  return (await listItems(env)).map(toEntry).sort(byRecent);
+/** Items for the public pages. Friends-only and private items stay out unless { all: true }. */
+export async function getItems(env, { all = false } = {}) {
+  return (await listItems(env, all ? {} : { visibility: ['public'] })).map(toEntry).sort(byRecent);
 }
 
+/** One item for its public page, or null if it doesn't exist or isn't public. */
 export async function getEntry(env, slug) {
   const row = await getRow(env, slug);
-  return row ? toEntry(row) : null;
+  if (!row || (row.item.visibility && row.item.visibility !== 'public')) return null;
+  return toEntry(row);
 }
 
 export function getShelves(env) {

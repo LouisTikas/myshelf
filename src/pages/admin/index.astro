@@ -126,6 +126,16 @@ const typesJson = JSON.stringify(TYPES);
             </label>
             <label>Started <span class="date-field"><input name="dateStarted" type="date" /><button type="button" class="date-clear" data-clear-date="dateStarted" aria-label="Clear started date" title="Clear date">×</button></span></label>
             <label>Finished <span class="date-field"><input name="dateFinished" type="date" /><button type="button" class="date-clear" data-clear-date="dateFinished" aria-label="Clear finished date" title="Clear date">×</button></span></label>
+            <label>Who can see it
+              <select name="visibility">
+                <option value="public">Everyone</option>
+                <option value="friends">Friends only</option>
+                <option value="private">Only me</option>
+              </select>
+            </label>
+            <label class="check own-field"><input type="checkbox" name="owned" /> I own a copy <span class="muted small">(friends can ask to borrow it)</span></label>
+            <label>Lent to <input name="lentTo" placeholder="Nobody right now" /></label>
+            <label>Lent since <span class="date-field"><input name="lentSince" type="date" /><button type="button" class="date-clear" data-clear-date="lentSince" aria-label="Clear lent date" title="Clear date">×</button></span></label>
             <fieldset class="span2">
               <legend>Collections</legend>
               <div id="editor-collections" class="checks"></div>

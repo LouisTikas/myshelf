@@ -1,4 +1,5 @@
-// Lock down /api/* with the admin token. Public pages and /img/* are open.
+// Lock down /api/* with the admin token. Public pages, /img/*, /federation/* and /.well-known/myshelf are open
+// (federation messages carry their own signatures).
 import { defineMiddleware } from 'astro:middleware';
 import { checkAuth } from '../server/auth.js';
 import { envOf } from '../server/util.js';

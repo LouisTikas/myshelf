@@ -44,6 +44,8 @@ const navItems = [
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MyShelf" />
+    <!-- Shelf effects can be turned off (footer toggle); applied before the page draws so nothing jumps. -->
+    <script is:inline>try { if (localStorage.getItem('myshelf_motion') === 'off') document.documentElement.classList.add('flat-shelves'); } catch {}</script>
   </head>
   <body>
     <header class="site-header">
@@ -99,11 +101,35 @@ const navItems = [
     </script>
     <footer class="site-footer">
       <p>{site.title} · <a href="/admin/" class="quiet">Manage</a>{site.source && <> · <a href={site.source} class="quiet" rel="noopener">Source</a></>}</p>
+      <p class="motion-pref">
+        <button type="button" class="motion-toggle" id="motion-toggle" aria-pressed="true">Shelf effects: <span class="motion-state">On</span></button>
+      </p>
+      {site.kofi && (
+        <div class="kofi">
+          <script is:inline src="https://storage.ko-fi.com/cdn/widget/Widget_2.js"></script>
+          <script is:inline define:vars={{ kofi: site.kofi }}>if (window.kofiwidget2) { kofiwidget2.init('Any Support is Appreciated!', '#d99a4e', kofi); kofiwidget2.draw(); }</script>
+        </div>
+      )}
       <p class="attrib">
         Metadata from Open Library, Google Books, Spotify, MusicBrainz, IGDB, and
         <a href="https://boardgamegeek.com" rel="noopener">BoardGameGeek</a> (Powered by BGG).
         This product uses the TMDB API but is not endorsed or certified by TMDB.
       </p>
     </footer>
+    <script is:inline>
+      // Shelf effects toggle: remembered on this device. Reloads so shelves redraw in the chosen style.
+      (() => {
+        const btn = document.getElementById('motion-toggle');
+        if (!btn) return;
+        const off = document.documentElement.classList.contains('flat-shelves');
+        btn.setAttribute('aria-pressed', String(!off));
+        btn.querySelector('.motion-state').textContent = off ? 'Off' : 'On';
+        btn.title = off ? 'Turn the turning and sliding shelf effects back on' : 'Show every cover side by side, without the turning and sliding effects';
+        btn.addEventListener('click', () => {
+          try { off ? localStorage.removeItem('myshelf_motion') : localStorage.setItem('myshelf_motion', 'off'); } catch {}
+          location.reload();
+        });
+      })();
+    </script>
   </body>
 </html>

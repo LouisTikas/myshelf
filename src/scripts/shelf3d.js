@@ -22,7 +22,12 @@ function revealX(b) {
   box.scrollTo({ left: Math.max(0, Math.min(box.scrollWidth - box.clientWidth, left)), behavior: 'smooth' });
 }
 
+// Shelf effects turned off (footer toggle): covers all face front and links just open, so none of
+// the turning, swiping or row-locking below is needed. Shelves scroll and wrap like normal.
+const FLAT = document.documentElement.classList.contains('flat-shelves');
+
 function initShelf(shelf) {
+  if (FLAT) return;
   let books = [...shelf.querySelectorAll('.book3d')];
   if (!books.length) return;
   let active = books.find((b) => b.classList.contains('is-front')) || books[0];
@@ -262,4 +267,4 @@ function lockRows(shelf) {
     if (e.propertyName === 'width' && e.target.classList?.contains('book3d')) reveal();
   });
 }
-document.querySelectorAll('.shelf-3d:not(.shelf-scroll)').forEach(lockRows);
+if (!FLAT) document.querySelectorAll('.shelf-3d:not(.shelf-scroll)').forEach(lockRows);

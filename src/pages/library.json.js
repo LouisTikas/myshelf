@@ -22,6 +22,7 @@ export async function GET({ locals, request }) {
     dateStarted: e.data.dateStarted || null,
     dateFinished: e.data.dateFinished || null,
     featured: e.data.featured === true,
+    createdAt: e.createdAt,
     ...(all ? { visibility: e.data.visibility || 'public', owned: e.data.owned === true, lentTo: e.data.lentTo || '' } : {}),
   }));
   return new Response(JSON.stringify({ items, collections }), {

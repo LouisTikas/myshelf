@@ -9,11 +9,11 @@ const DEFAULTS = {
 };
 
 /** Same shape the pages used with Astro content collections: { id, data, body }. */
-export function toEntry({ slug, item, body }) {
+export function toEntry({ slug, item, body, createdAt }) {
   const data = { ...DEFAULTS, ...Object.fromEntries(Object.entries(item || {}).filter(([, v]) => v != null)) };
   data.year = data.year == null ? '' : String(data.year);
   if (data.rating === '' || data.rating == null) data.rating = null;
-  return { id: slug, data, body: body || '' };
+  return { id: slug, data, body: body || '', createdAt: createdAt || null };
 }
 
 export const sortDate = (e) => {

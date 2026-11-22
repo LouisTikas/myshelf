@@ -92,6 +92,12 @@ const typesJson = JSON.stringify(TYPES);
         <div class="panel">
           <h2>Friends</h2>
           <p class="muted">Connect with friends who run their own MyShelf. Friends can see items you mark <em>Friends only</em>, send you recommendations, and ask to borrow things you own.</p>
+          <h3>Inbox</h3>
+          <ul id="inbox-list" class="inbox-list"></ul>
+          <h3>Your friends</h3>
+          <ul id="friend-list" class="friend-list"></ul>
+          <div id="friend-shelf" class="friend-shelf" hidden></div>
+          <h3>Connect with a friend</h3>
           <div class="my-address">
             <span class="muted small">Your address — send this to friends:</span>
             <code id="my-address">…</code>
@@ -102,11 +108,6 @@ const typesJson = JSON.stringify(TYPES);
             <button class="btn primary" type="submit">Add friend</button>
           </form>
           <p id="friend-msg" class="muted small"></p>
-          <h3>Inbox</h3>
-          <ul id="inbox-list" class="inbox-list"></ul>
-          <h3>Your friends</h3>
-          <ul id="friend-list" class="friend-list"></ul>
-          <div id="friend-shelf" class="friend-shelf" hidden></div>
         </div>
       </div>
 
@@ -123,6 +124,9 @@ const typesJson = JSON.stringify(TYPES);
             </label>
             <label class="span2">Source code link <span class="muted small">(the footer’s “Source” link — if you change the code, point this at your own repository, as the AGPL license asks)</span>
               <input name="source" placeholder="https://github.com/you/myshelf" />
+            </label>
+            <label class="span2">Ko-fi page <span class="muted small">(the “Support” button in the footer — your Ko-fi username or page ID; leave blank to hide it)</span>
+              <input name="kofi" placeholder="e.g. K0A32B3009" maxlength="40" />
             </label>
             <div class="row span2"><button class="btn primary" type="submit">Save</button><span id="site-msg" class="muted small"></span></div>
           </form>
@@ -184,7 +188,7 @@ const typesJson = JSON.stringify(TYPES);
                 <option value="private">Only me</option>
               </select>
             </label>
-            <label class="check span2"><input type="checkbox" name="owned" /> I own a copy <span class="muted small">(friends can ask to borrow it)</span></label>
+            <label class="check span2"><input type="checkbox" name="owned" /> <span>I own a copy <span class="muted small">(friends can ask to borrow it)</span></span></label>
             <label>Lent to <input name="lentTo" placeholder="Nobody right now" /></label>
             <label>Lent since <span class="date-field"><input name="lentSince" type="date" /><button type="button" class="date-clear" data-clear-date="lentSince" aria-label="Clear lent date" title="Clear date">×</button></span></label>
             <fieldset class="span2">
@@ -211,7 +215,7 @@ const typesJson = JSON.stringify(TYPES);
               <textarea name="body" rows="8" placeholder="What did you think?"></textarea>
             </label>
             <div class="span2 featured-field">
-              <label class="check"><input type="checkbox" name="featured" /> <strong>Featured</strong> — show these notes in <em>My Ramblings</em> on the home page</label>
+              <label class="check"><input type="checkbox" name="featured" /> <span><strong>Featured</strong> — show these notes in <em>My Ramblings</em> on the home page</span></label>
               <p id="featured-hint" class="muted small"></p>
             </div>
             <details class="span2">

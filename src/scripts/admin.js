@@ -80,6 +80,7 @@ async function boot() {
     renderStorage(ping);
     await Promise.all([loadLibrary(), loadCollections()]);
     handleHash();
+    document.dispatchEvent(new CustomEvent('myshelf:ready'));
   } catch (e) {
     if (e.message !== 'Unauthorized') showLogin(e.message.includes('Failed to fetch') ? 'Could not reach the API.' : e.message);
   }
@@ -146,7 +147,17 @@ $('#logout').addEventListener('click', () => { setToken(''); showLogin(); });
 function showTab(name) {
   $$('.tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tabpanel').forEach((p) => (p.hidden = p.dataset.panel !== name));
+  document.dispatchEvent(new CustomEvent('myshelf:tab', { detail: name }));
 }
+// From the Friends tab: "Add it" on a recommendation searches for it here.
+document.addEventListener('myshelf:search', (e) => {
+  const { type, title } = e.detail || {};
+  showTab('add');
+  if (type && TYPES[type]) $(`.type-btn[data-type="${type}"]`)?.click();
+  $('#search-q').value = title || '';
+  $('#search-form').requestSubmit();
+});
+document.addEventListener('myshelf:library-changed', () => Promise.all([loadLibrary(), loadCollections()]));
 $$('.tab').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
 // ───────── search ─────────
@@ -612,6 +623,7 @@ function renderLibrary() {
         <span class="lib-actions">
           <a class="btn ghost small" href="/item/${esc(i.slug)}/" target="_blank">View</a>
           <button class="btn ghost small" data-edit="${esc(i.slug)}">Edit</button>
+          <button class="btn ghost small" data-recommend="${esc(i.slug)}" data-title="${esc(i.title)}" title="Recommend to friends">Recommend</button>
           <button class="btn ghost small danger" data-del="${esc(i.slug)}">Delete</button>
         </span>
       </li>`)

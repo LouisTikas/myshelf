@@ -189,7 +189,6 @@ details label { margin-bottom: 10px; }
 .featured-field p:empty { display: none; }
 .featured-badge { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; vertical-align: middle; color: var(--accent-ink); background: rgba(217, 154, 78, 0.18); }
 .vis-badge { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; vertical-align: middle; color: var(--muted, #aaa); border: 1px solid currentColor; opacity: 0.85; }
-.own-field { align-self: end; }
 
 /* "Adding to <collection>" banner (from ＋ Add more in the arrange dialog) */
 .adding-to { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--accent); background: rgba(217, 154, 78, 0.12); font-size: 0.92rem; }
@@ -201,3 +200,31 @@ details label { margin-bottom: 10px; }
 .date-field input { flex: 1 1 auto; min-width: 0; }
 .date-clear { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid #d5c6a8; background: transparent; color: var(--ink-soft); font-size: 1.1rem; line-height: 1; cursor: pointer; }
 .date-clear:hover { border-color: var(--ink); color: var(--ink); }
+
+/* Friends + Settings tabs */
+.tab-count { display: inline-block; min-width: 1.4em; margin-left: 4px; padding: 0 5px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; line-height: 1.4; text-align: center; background: var(--accent); color: var(--panel); }
+.tab.active .tab-count { background: var(--panel); color: var(--accent); }
+.panel h3 { margin: 22px 0 6px; color: var(--ink); }
+.panel h4 { margin: 16px 0 4px; color: var(--ink); }
+.my-address { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--accent); }
+.my-address code { font-size: 0.95rem; word-break: break-all; }
+.inbox-list, .friend-list { list-style: none; padding: 0; margin: 6px 0 0; }
+.inbox-row, .friend-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #e2d6bd; }
+.inbox-row.unread { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; }
+.inbox-text { flex: 1 1 320px; }
+.inbox-item { display: inline-flex; align-items: center; gap: 10px; vertical-align: middle; }
+.inbox-note { margin: 6px 0 0; font-style: italic; color: var(--ink-soft); }
+.inbox-actions, .friend-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.friend-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.friend-shelf { margin-top: 20px; padding-top: 6px; border-top: 2px solid var(--accent); }
+.friend-shelf-head { display: flex; align-items: center; justify-content: space-between; }
+.site-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-bottom: 18px; }
+.site-form label { display: flex; flex-direction: column; gap: 4px; }
+.site-form .span2 { grid-column: 1 / -1; }
+@media (max-width: 640px) { .site-form { grid-template-columns: 1fr; } }
+.file-btn { cursor: pointer; }
+.recommend { max-width: 460px; }
+.rec-body { display: flex; flex-direction: column; gap: 12px; padding: 4px 24px 12px; }
+.rec-body label { display: flex; flex-direction: column; gap: 4px; }
+.tab-count[hidden] { display: none; }
+#friend-url { flex: 1 1 320px; width: auto; }

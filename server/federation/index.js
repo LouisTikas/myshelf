@@ -322,9 +322,36 @@ async function listItemsWithKeys(env, visibility) {
   return (results || []).map((r) => ({ slug: r.slug, uid: r.uid, extKey: r.ext_key, item: JSON.parse(r.data) }));
 }
 
+// ───────── keeping friends' names current ─────────
+
+const NAME_REFRESH_MS = 15 * 60 * 1000; // re-check each friend's name and owner at most every 15 minutes
+const NAME_WAIT_MS = 3000;              // never hold a page up longer than this for it
+
+/**
+ * A friend's name and owner are first saved when you connect. If they change them later in their
+ * Settings (or set them for the first time), re-read their /.well-known/myshelf and update ours.
+ * Only a site still holding the key we know can change its name. Failures are ignored.
+ */
+export async function refreshFriendNames(env, { force = false, fetcher = fetch } = {}) {
+  const DB = await ensureSchema(env);
+  const cutoff = force ? '9999' : new Date(Date.now() - NAME_REFRESH_MS).toISOString();
+  const { results } = await DB.prepare(`SELECT * FROM friends WHERE status IN ('accepted', 'requested', 'pending') AND updated_at < ?`).bind(cutoff).all();
+  const work = Promise.all((results || []).map(async (r) => {
+    let name = r.name, owner = r.owner;
+    try {
+      const info = await discover(r.url, fetcher);
+      if (info.publicKey === r.public_key) ({ name, owner } = info);
+    } catch {}
+    // Stamp the check even when it failed, so a site that's down isn't retried on every page load.
+    await DB.prepare('UPDATE friends SET name = ?, owner = ?, updated_at = ? WHERE id = ?').bind(str(name, 80), str(owner, 80), now(), r.id).run();
+  }));
+  await Promise.race([work, new Promise((r) => setTimeout(r, NAME_WAIT_MS))]).catch(() => {});
+}
+
 // ───────── admin actions (behind your token) ─────────
 
 export async function overview(env, requestUrl) {
+  await refreshFriendNames(env);
   const DB = await ensureSchema(env);
   const [me, friends, inbox] = await Promise.all([
     wellKnown(env, requestUrl),
@@ -461,6 +488,20 @@ export async function replyToBorrow(env, requestUrl, { inboxId, answer, note }, 
   return { ok: true };
 }
 
+/**
+ * Empty the inbox, except messages still waiting on an answer: friend requests you haven't
+ * accepted or declined, and borrow requests you haven't replied to.
+ */
+export async function clearInbox(env) {
+  const DB = await ensureSchema(env);
+  const res = await DB.prepare(
+    `DELETE FROM inbox WHERE NOT (status IN ('unread', 'read') AND (
+       kind = 'borrow-request' OR
+       (kind = 'friend-request' AND from_url IN (SELECT url FROM friends WHERE status = 'pending'))))`,
+  ).run();
+  return { ok: true, cleared: res.meta?.changes ?? 0 };
+}
+
 export async function markMessage(env, id, status) {
   if (!['read', 'unread', 'done'].includes(status)) throw new HttpError(400, 'Unknown status');
   await inboxById(env, id);
@@ -492,6 +533,7 @@ export async function friendShelf(env, requestUrl, id, fetcher = fetch) {
 
 /** Accepted friends, safe to show anyone: name, owner and address. */
 export async function publicFriends(env) {
+  await refreshFriendNames(env);
   const DB = await ensureSchema(env);
   const { results } = await DB.prepare(`SELECT url, name, owner FROM friends WHERE status = 'accepted' ORDER BY owner, name`).all();
   return (results || []).map((r) => ({ url: r.url, name: r.name, owner: r.owner }));

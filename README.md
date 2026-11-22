@@ -61,6 +61,7 @@ Add each one in your Worker → **Settings → Variables and Secrets** → **Add
 | Open Library | No key needed. | |
 | Google Books | Optional. Works without a key at low volume. | `GOOGLE_BOOKS_KEY` |
 | Contact email | Optional. Sent to Open Library and MusicBrainz, as they request. | `CONTACT_EMAIL` |
+| GitHub (updates, optional) | Forks only. github.com/settings/personal-access-tokens → **Generate new token** → *Only select repositories*: your fork → **Repository permissions → Contents: Read and write**. Lets **Manage → Settings → Updates** pull in new versions for you. | `GITHUB_TOKEN` |
 
 Without Spotify, or if it ever fails, music search uses **MusicBrainz + Cover Art Archive** automatically.
 
@@ -96,7 +97,7 @@ Friends are other people running their own MyShelf. There's no central server: y
 
 ## Getting updates
 
-- **Forked (Option A):** on GitHub, open your fork and click **Sync fork → Update branch**. Cloudflare redeploys automatically.
+- **Forked (Option A):** in **Manage → Settings → Updates**, click **Update now** (needs the optional `GITHUB_TOKEN` secret, and **Source code link** set to your fork). Or on GitHub, open your fork and click **Sync fork → Update branch**. Either way, Cloudflare redeploys automatically.
 - **One-click (Option B):** run this once on your computer:
   ```bash
   git clone https://github.com/YOUR-USERNAME/YOUR-REPO.git && cd YOUR-REPO

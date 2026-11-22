@@ -208,6 +208,13 @@ details label { margin-bottom: 10px; }
 .panel h4 { margin: 16px 0 4px; color: var(--ink); }
 .my-address { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--accent); }
 .my-address code { font-size: 0.95rem; word-break: break-all; }
+.updates { margin: 6px 0 4px; }
+.updates p { margin: 0 0 10px; }
+.updates-list { margin: 0 0 12px; padding-left: 20px; }
+.updates-list li { margin: 2px 0; }
+.updates .row { gap: 10px; align-items: center; }
+#inbox-clear[hidden] { display: none; }
+.inbox-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .inbox-list, .friend-list { list-style: none; padding: 0; margin: 6px 0 0; }
 .inbox-row, .friend-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #e2d6bd; }
 .inbox-row.unread { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; }

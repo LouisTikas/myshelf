@@ -28,7 +28,7 @@ export function hasDb(env) {
 
 function db(env) {
   if (!env?.DB) {
-    throw new HttpError(500, 'The D1 database is not connected. In Cloudflare Pages → Settings → Bindings, add a D1 database binding named DB, then redeploy.');
+    throw new HttpError(500, 'The D1 database is not connected. Your Worker has no D1 database binding named DB. Check the d1_databases entry in wrangler.jsonc (or Worker → Settings → Bindings), then redeploy.');
   }
   return env.DB;
 }

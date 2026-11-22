@@ -1,4 +1,4 @@
-// Small helpers shared by the Pages Functions.
+// Small helpers shared by the API routes.
 
 export const TYPE_KEYS = ['book', 'movie', 'tv', 'music', 'videogame', 'boardgame'];
 

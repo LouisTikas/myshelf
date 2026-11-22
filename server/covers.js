@@ -13,7 +13,7 @@ export const hasCovers = (env) => Boolean(env?.COVERS);
 
 function kv(env) {
   if (!env?.COVERS) {
-    throw new HttpError(500, 'Cover storage is not connected. In Cloudflare Pages → Settings → Bindings, add a KV namespace binding named COVERS, then redeploy.');
+    throw new HttpError(500, 'Cover storage is not connected. Your Worker has no KV namespace binding named COVERS. Check the kv_namespaces entry in wrangler.jsonc (or Worker → Settings → Bindings), then redeploy.');
   }
   return env.COVERS;
 }

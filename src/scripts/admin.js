@@ -90,7 +90,7 @@ function renderConfig(c) {
   if (!c.bgg) missing.push('BGG');
   if (!c.spotify) missing.push('Spotify (using MusicBrainz)');
   $('#config-status').innerHTML = missing.length
-    ? `<span class="warn" title="Set these in Cloudflare Pages → Settings → Variables">Missing keys: ${esc(missing.join(', '))}</span>`
+    ? `<span class="warn" title="Add these as secrets: Worker → Settings → Variables and Secrets">Missing keys: ${esc(missing.join(', '))}</span>`
     : '<span class="okay">All sources connected</span>';
 }
 // Storage status + one-time import of the old Git-based entries.
@@ -99,7 +99,7 @@ function renderStorage(ping) {
   const s = ping.storage || {};
   const missing = [!s.db && 'a D1 database binding named <code>DB</code>', !s.covers && 'a KV namespace binding named <code>COVERS</code>'].filter(Boolean);
   if (missing.length) {
-    el.innerHTML = `<strong>Storage isn’t connected yet.</strong> In Cloudflare Pages → Settings → Bindings, add ${missing.join(' and ')}, then redeploy.`;
+    el.innerHTML = `<strong>Storage isn’t connected yet.</strong> Your Worker is missing ${missing.join(' and ')}. Check wrangler.jsonc (or Worker → Settings → Bindings), then redeploy.`;
     el.className = 'storage-banner warn';
     el.hidden = false;
     return;

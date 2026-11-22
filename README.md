@@ -4,6 +4,10 @@ A self-hosted media journal and virtual bookshelf for books, movies, TV, music, 
 
 **Cost: $0.** Everything runs on Cloudflare's free plan (one Worker, a D1 database and KV storage, no credit card needed). Your copy of the code lives in a free GitHub account. Everyone runs their own copy, so your shelf and your data stay in your own accounts.
 
+If MyShelf is useful to you, you can support its development on Ko-fi:
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K0A32B3009)
+
 ## How it works
 
 ```

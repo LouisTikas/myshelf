@@ -16,9 +16,6 @@ const typesJson = JSON.stringify(TYPES);
         <button class="btn primary" type="submit">Unlock</button>
       </form>
       <p id="login-error" class="error" hidden></p>
-      <div class="login-prefs">
-        <label class="check"><input type="checkbox" class="shelf-effects" checked /> <span><strong>Shelf effects</strong> — items turn to face you and shelves slide in as you scroll. Turn off to show every cover side by side. <span class="muted small">Saved in this browser only, no login needed.</span></span></label>
-      </div>
     </section>
 
     <!-- App -->
@@ -130,8 +127,6 @@ const typesJson = JSON.stringify(TYPES);
             </label>
             <div class="row span2"><button class="btn primary" type="submit">Save</button><span id="site-msg" class="muted small"></span></div>
           </form>
-          <h2>On this device</h2>
-          <label class="check effects-pref"><input type="checkbox" class="shelf-effects" checked /> <span><strong>Shelf effects</strong> — items turn to face you and shelves slide in as you scroll. Turn off to show every cover side by side. <span class="muted small">Saved in this browser only.</span></span></label>
           <h2>Backup &amp; restore</h2>
           <p class="muted">A backup is one JSON file with all your entries, notes, collections, shelf orders and site settings. Restoring adds those to this site, replacing entries with the same name. Moving to a new site? Restore here while the old site is still online and the covers are copied over from it.</p>
           <div class="row">
@@ -142,6 +137,11 @@ const typesJson = JSON.stringify(TYPES);
         </div>
       </div>
     </section>
+
+    <!-- Shown whether or not you're logged in: a per-browser display preference. -->
+    <div class="device-prefs">
+      <label class="pref-switch"><input type="checkbox" class="shelf-effects" checked /> <span><strong>Shelf effects</strong> — items turn to face you and shelves slide in as you scroll. Turn off to show every cover side by side. <span class="pref-note">Saved in this browser only.</span></span></label>
+    </div>
 
     <!-- Editor (modal) -->
     <dialog id="editor" class="editor">

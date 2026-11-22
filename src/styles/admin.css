@@ -251,5 +251,9 @@ details label { margin-bottom: 10px; }
   .tab { white-space: nowrap; flex: 0 0 auto; padding: 8px 13px; }
   .admin-status { justify-content: space-between; }
 }
-.effects-pref { margin: 6px 0 22px; max-width: 70ch; }
-.login-prefs { margin-top: 22px; padding-top: 16px; border-top: 1px solid #e2d6bd; }
+.device-prefs { max-width: 520px; margin: 18px auto 0; padding: 0 4px; }
+#app:not([hidden]) ~ .device-prefs { max-width: none; margin: 18px 0 0; }
+.pref-switch { display: flex; gap: 10px; align-items: flex-start; color: var(--cream-soft); font-size: 0.9rem; line-height: 1.45; cursor: pointer; }
+.pref-switch strong { color: var(--cream); }
+.pref-switch input { width: auto; margin-top: 0.25em; accent-color: var(--accent); flex: 0 0 auto; }
+.pref-note { opacity: 0.75; font-size: 0.8rem; }

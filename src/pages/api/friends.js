@@ -3,7 +3,7 @@ import * as fed from '../../../server/federation/index.js';
 
 // GET  /api/friends            → { me, friends, inbox, unread }
 // GET  /api/friends?shelf=<id> → that friend's shelf (including their friends-only items)
-// POST /api/friends { action, ... } → add | accept | decline | block | remove | recommend | borrow | reply | mark
+// POST /api/friends { action, ... } → add | accept | decline | block | remove | recommend | borrow | reply | mark | clear-inbox
 export const GET = route(async ({ env, url }) => {
   const shelf = url.searchParams.get('shelf');
   return json(shelf ? await fed.friendShelf(env, url.href, shelf) : await fed.overview(env, url.href));
@@ -22,6 +22,7 @@ export const POST = route(async ({ request, env, url }) => {
     case 'borrow': return json(await fed.askToBorrow(env, at, b));
     case 'reply': return json(await fed.replyToBorrow(env, at, b));
     case 'mark': return json(await fed.markMessage(env, b.id, b.status));
+    case 'clear-inbox': return json(await fed.clearInbox(env));
     default: throw new HttpError(400, 'Unknown action');
   }
 });

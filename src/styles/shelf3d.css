@@ -339,3 +339,20 @@ html.flat-shelves .shelf.shelf-3d { touch-action: auto; }
 }
 .shelf-scroll.is-dragging { scroll-behavior: auto !important; cursor: grabbing; user-select: none; }
 .shelf-scroll.is-dragging .book3d { cursor: grabbing; }
+
+/* Shelf effects off, on phones: board game boxes are drawn smaller so about three fit across a shelf
+   instead of one or two. (--w0 etc. are the original sizes; !important beats the inline sizes.) */
+@media (max-width: 760px) {
+  html.flat-shelves { --box-s: 0.42; }
+  html.flat-shelves .book3d.kind-box {
+    --u: calc(var(--u0) * var(--box-s)) !important;
+    --bh: calc(var(--bh0) * var(--box-s)) !important;
+    --w: calc(var(--w0) * var(--box-s)) !important;
+    --d: calc(var(--d0) * var(--box-s)) !important;
+  }
+  /* Rows get shorter to match: as tall as the other items on the shelf, or the smaller boxes. */
+  html.flat-shelves .shelf-3d:has(.kind-box),
+  html.flat-shelves .shelf-3d:has(.kind-box) .book3d {
+    --h: max(var(--hb), calc(var(--h0) * var(--box-s) * 1.15)) !important;
+  }
+}

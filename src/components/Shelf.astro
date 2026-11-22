@@ -13,6 +13,9 @@ const shown = limit ? items.slice(0, limit) : items;
 // grows to fit the tallest type on the shelf, with a little headroom.
 const ROW_SCALE = { boardgame: 1.35, movie: 1.15, tv: 1.15 };
 const rowHeight = Math.round(height * Math.max(1, ...shown.map((e) => ROW_SCALE[e.data.type] || 1)));
+// Row height without board games (0 if it's all board games): used when phones draw boxes smaller.
+const others = shown.filter((e) => e.data.type !== 'boardgame');
+const rowHeightNoBoxes = others.length ? Math.round(height * Math.max(1, ...others.map((e) => ROW_SCALE[e.data.type] || 1))) : 0;
 ---
 <section class="shelf-section">
   {title && (
@@ -28,7 +31,7 @@ const rowHeight = Math.round(height * Math.max(1, ...shown.map((e) => ROW_SCALE[
     </div>
   )}
   {description && <p class="shelf-desc">{description}</p>}
-  <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${rowHeight}px`} data-collection={collection} data-arrange-key={arrangeKey}>
+  <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${rowHeight}px; --h0:${rowHeight}px; --hb:${rowHeightNoBoxes}px`} data-collection={collection} data-arrange-key={arrangeKey}>
     {shown.length === 0 && <p class="shelf-empty">{empty}</p>}
     {shown.map((e, i) => (
       <div class="shelf-slot" data-f={filterable ? JSON.stringify(filterData(e.data)) : undefined}>

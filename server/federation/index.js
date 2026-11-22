@@ -306,8 +306,8 @@ export async function shelfFeed(env, request) {
     friend = from;
   }
   const origin = await selfOrigin(env, request.url);
-  const rows = await listItemsWithKeys(env, friend ? ['public', 'friends'] : ['public']);
   const site = await getSite(env);
+  const rows = (await listItemsWithKeys(env, friend ? ['public', 'friends'] : ['public'])).filter((r) => site.types.includes(r.item.type));
   return {
     software: SOFTWARE, protocol: PROTOCOL, url: origin, name: site.title, owner: site.owner,
     friend: Boolean(friend),

@@ -1,4 +1,5 @@
 ---
+import { enabledTypes } from '../../../server/site.js';
 import Base from '../../layouts/Base.astro';
 import Shelf from '../../components/Shelf.astro';
 import CopyLink from '../../components/CopyLink.astro';
@@ -9,7 +10,7 @@ import { TYPES, TYPE_KEYS, STATUS_LABEL } from '../../lib/types.js';
 import { sortShelf, inShelf, showsOnType } from '../../lib/sorting.js';
 
 const { type } = Astro.params;
-if (!TYPE_KEYS.includes(type)) return new Response(null, { status: 404, statusText: 'Not found' });
+if (!TYPE_KEYS.includes(type) || !(await enabledTypes(Astro.locals.runtime.env)).includes(type)) return new Response(null, { status: 404, statusText: 'Not found' });
 const env = Astro.locals.runtime.env;
 const t = TYPES[type];
 const [items, shelves, arrangements] = await Promise.all([getItems(env), getShelves(env), getArrangements(env)]);

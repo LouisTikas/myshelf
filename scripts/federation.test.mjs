@@ -221,3 +221,19 @@ test('friends: forged, replayed, stranger and self messages are refused', async 
   const notOwned = await post(a, A, B, { id: crypto.randomUUID(), kind: 'borrow-request', item: { uid: crypto.randomUUID() } });
   assert.equal(notOwned.status, 404);
 });
+
+test('turning off a media type hides it from public pages and the public feed, but keeps the entries', async () => {
+  const env = fakeEnv();
+  await saveItem(env, { item: { title: 'Dune', type: 'book', status: 'finished' }, body: '' });
+  await saveItem(env, { item: { title: 'Heat', type: 'movie', status: 'finished' }, body: '' });
+  await saveSite(env, { title: 'S', types: ['movie'] });
+  assert.deepEqual((await getItems(env)).map((e) => e.data.title), ['Heat']);
+  assert.equal((await getItems(env, { all: true })).length, 2);
+  assert.equal(await getEntry(env, 'book-dune'), null);
+  const feed = await fed.shelfFeed(env, new Request('https://s.example/federation/v1/shelf'));
+  assert.deepEqual(feed.items.map((i) => i.title), ['Heat']);
+  // Saving other settings without a types list keeps the choice; at least one type must stay on.
+  await saveSite(env, { title: 'S2' });
+  assert.deepEqual((await getItems(env)).map((e) => e.data.title), ['Heat']);
+  await assert.rejects(saveSite(env, { title: 'S', types: [] }), /at least one/);
+});

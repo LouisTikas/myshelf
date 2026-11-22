@@ -25,7 +25,7 @@ const ICONS = {
 };
 const navItems = [
   { href: '/', label: 'Shelves', icon: 'shelves', active: path === '/' },
-  ...TYPE_KEYS.map((t) => ({ href: `/type/${t}/`, label: TYPES[t].plural, icon: t, active: path.startsWith(`/type/${t}`) })),
+  ...site.types.map((t) => ({ href: `/type/${t}/`, label: TYPES[t].plural, icon: t, active: path.startsWith(`/type/${t}`) })),
   { href: '/friends/', label: 'Friends', icon: 'friends', active: path.startsWith('/friends') },
   { href: '/journal/', label: 'Journal', icon: 'journal', active: path.startsWith('/journal') },
 ];

@@ -96,8 +96,8 @@ Friends are other people running their own MyShelf. There's no central server: y
 
 ## Getting updates
 
-- **Forked (Option B):** on GitHub, open your fork and click **Sync fork → Update branch**. Cloudflare redeploys automatically.
-- **One-click (Option A):** run this once on your computer:
+- **Forked (Option A):** on GitHub, open your fork and click **Sync fork → Update branch**. Cloudflare redeploys automatically.
+- **One-click (Option B):** run this once on your computer:
   ```bash
   git clone https://github.com/YOUR-USERNAME/YOUR-REPO.git && cd YOUR-REPO
   git remote add upstream https://github.com/lexjudex/myshelf.git

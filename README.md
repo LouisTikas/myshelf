@@ -106,18 +106,6 @@ Friends are other people running their own MyShelf. There's no central server: y
 
 Database changes in new versions apply themselves on the next page load.
 
-## Moving from the older Cloudflare Pages version
-
-Older copies of MyShelf ran on Cloudflare Pages. To move to a Worker:
-
-1. Update your repository to this version. Your Pages site rebuilds and keeps working.
-2. On the old site: **Manage → Settings → Download backup**.
-3. Create the new Worker (Option B above, pointing at your existing repository) and add your secrets to it.
-4. On the new site: **Manage → Settings → Restore from backup**. Leave the old site up until this finishes: the covers are copied over from it.
-5. Check the new site, then delete the old Pages project (and its D1 database and KV namespace, if you want).
-
-The very oldest version kept entries as Markdown files in `src/content/items/`. If you still have those, the admin page offers to **Import** them.
-
 ## Optional: make the site private
 
 By default your public items are visible to anyone with the URL, but only you can add or edit. To hide everything, use **Cloudflare Zero Trust → Access → Applications → Add → Self-hosted**: enter your site's domain and add a policy that allows only your email. It's free for up to 50 users. To protect only the admin page, use the path `admin*` (the `/api` is already locked by your token).

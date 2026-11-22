@@ -125,6 +125,13 @@ const typesJson = JSON.stringify(TYPES);
             <label class="span2">Source code link <span class="muted small">(the footer’s “Source” link — if you change the code, point this at your own repository, as the AGPL license asks)</span>
               <input name="source" placeholder="https://github.com/you/myshelf" />
             </label>
+            <fieldset class="span2 media-types">
+              <legend>Media on your site</legend>
+              <p class="muted small">Uncheck anything you don’t track. It disappears from the menu, its pages and your shelves. Nothing is deleted: check it again and it all comes back.</p>
+              <div class="checks">
+                {TYPE_KEYS.map((t) => <label class="check"><input type="checkbox" name="types" value={t} checked /> <span>{TYPES[t].plural}</span></label>)}
+              </div>
+            </fieldset>
             <div class="row span2"><button class="btn primary" type="submit">Save</button><span id="site-msg" class="muted small"></span></div>
           </form>
           <h2>Backup &amp; restore</h2>

@@ -257,3 +257,7 @@ details label { margin-bottom: 10px; }
 .pref-switch strong { color: var(--cream); }
 .pref-switch input { width: auto; margin-top: 0.25em; accent-color: var(--accent); flex: 0 0 auto; }
 .pref-note { opacity: 0.75; font-size: 0.8rem; }
+.media-types { border: 1px solid #e2d6bd; border-radius: 10px; padding: 10px 14px 14px; }
+.media-types legend { font-weight: 600; padding: 0 6px; }
+.media-types p { margin: 0 0 8px; }
+.site-nav a[hidden], .fab-menu li[hidden], .type-btn[hidden] { display: none !important; }

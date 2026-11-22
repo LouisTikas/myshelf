@@ -314,18 +314,43 @@ async function loadSite() {
   try {
     const { site } = await api('site');
     for (const k of ['title', 'tagline', 'owner', 'url', 'source']) siteForm[k].value = site[k] || '';
+    $$('input[name="types"]', siteForm).forEach((cb) => (cb.checked = site.types.includes(cb.value)));
+    applyTypes(site.types);
   } catch (err) {
     $('#site-msg').textContent = err.message;
   }
 }
+
+// Hide turned-off media types around the admin page (this page is built ahead of time, so it starts with all of them).
+let enabled = null;
+const isOn = (t) => !enabled || enabled.includes(t);
+const typeSelect = $('#editor-form select[name="type"]');
+// The editor keeps an item's own type available even if that type is turned off.
+const refreshEditorTypes = () => $$('option', typeSelect).forEach((o) => (o.hidden = !isOn(o.value) && o.value !== typeSelect.value));
+new MutationObserver(refreshEditorTypes).observe($('#editor'), { attributes: true, attributeFilter: ['open'] });
+function applyTypes(types) {
+  enabled = types;
+  $$('.type-btn').forEach((b) => (b.hidden = !isOn(b.dataset.type)));
+  if ($('.type-btn.active')?.hidden) $$('.type-btn').find((b) => !b.hidden)?.click();
+  $$('#lib-type option').forEach((o) => (o.hidden = Boolean(o.value) && !isOn(o.value)));
+  refreshEditorTypes();
+  $$('.site-nav a, .fab-menu a').forEach((a) => {
+    const m = a.getAttribute('href').match(/^\/type\/([a-z]+)\//);
+    if (m) (a.closest('li') || a).hidden = !isOn(m[1]);
+  });
+}
+document.addEventListener('myshelf:ready', loadSite);
 document.addEventListener('myshelf:tab', (e) => { if (e.detail === 'settings') loadSite(); });
 siteForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const body = Object.fromEntries(['title', 'tagline', 'owner', 'url', 'source'].map((k) => [k, siteForm[k].value]));
+  body.types = $$('input[name="types"]:checked', siteForm).map((cb) => cb.value);
+  if (!body.types.length) { $('#site-msg').textContent = 'Keep at least one kind of media turned on.'; return; }
   try {
     const { site } = await api('site', { method: 'POST', body });
     siteForm.url.value = site.url || '';
     siteForm.source.value = site.source || '';
+    applyTypes(site.types);
     $('#site-msg').textContent = 'Saved. Your public pages show it right away.';
   } catch (err) {
     $('#site-msg').textContent = err.message;

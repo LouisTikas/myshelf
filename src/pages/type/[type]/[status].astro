@@ -1,5 +1,6 @@
 ---
 // Full view of one status shelf on a media page, e.g. /type/boardgame/finished/ → every board game you've Played.
+import { enabledTypes } from '../../../../server/site.js';
 import Base from '../../../layouts/Base.astro';
 import Shelf from '../../../components/Shelf.astro';
 import CopyLink from '../../../components/CopyLink.astro';
@@ -11,7 +12,7 @@ import { sortShelf } from '../../../lib/sorting.js';
 
 const { type, status } = Astro.params;
 const STATUSES = ['in-progress', 'finished', 'want', 'abandoned'];
-if (!TYPE_KEYS.includes(type) || !STATUSES.includes(status)) return new Response(null, { status: 404, statusText: 'Not found' });
+if (!TYPE_KEYS.includes(type) || !(await enabledTypes(Astro.locals.runtime.env)).includes(type) || !STATUSES.includes(status)) return new Response(null, { status: 404, statusText: 'Not found' });
 const env = Astro.locals.runtime.env;
 const t = TYPES[type];
 const [items, arrangements] = await Promise.all([getItems(env), getArrangements(env)]);

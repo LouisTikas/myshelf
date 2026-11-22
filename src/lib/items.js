@@ -2,6 +2,7 @@
 import { marked } from 'marked';
 import { listItems, getItem as getRow } from '../../server/db.js';
 import { getCollections, getArrangements as loadArrangements } from '../../server/settings.js';
+import { enabledTypes } from '../../server/site.js';
 
 const DEFAULTS = {
   creator: '', year: '', cover: '', status: 'finished', rating: null,
@@ -25,13 +26,16 @@ export const byRecent = (a, b) => sortDate(b) - sortDate(a);
 
 /** Items for the public pages. Friends-only and private items stay out unless { all: true }. */
 export async function getItems(env, { all = false } = {}) {
-  return (await listItems(env, all ? {} : { visibility: ['public'] })).map(toEntry).sort(byRecent);
+  if (all) return (await listItems(env)).map(toEntry).sort(byRecent);
+  const [rows, types] = await Promise.all([listItems(env, { visibility: ['public'] }), enabledTypes(env)]);
+  return rows.filter((r) => types.includes(r.item.type)).map(toEntry).sort(byRecent);
 }
 
 /** One item for its public page, or null if it doesn't exist or isn't public. */
 export async function getEntry(env, slug) {
   const row = await getRow(env, slug);
   if (!row || (row.item.visibility && row.item.visibility !== 'public')) return null;
+  if (!(await enabledTypes(env)).includes(row.item.type)) return null;
   return toEntry(row);
 }
 

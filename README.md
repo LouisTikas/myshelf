@@ -71,7 +71,7 @@ Without Spotify, or if it ever fails, music search uses **MusicBrainz + Cover Ar
 - **Library:** edit, delete, or **Recommend** anything to friends.
 - **Collections:** create, rename, reorder and remove shelves.
 - **Friends:** your address to share, friend requests, your inbox, and your friends' shelves.
-- **Settings:** site name, your name, public address, shelf effects on this device, backup and restore.
+- **Settings:** site name, your name, public address, which kinds of media your site shows, backup and restore. (The shelf effects switch is under the Manage card, for anyone.)
 - Every item page has a small **Edit** link that goes straight to the editor.
 
 In the editor, **Who can see it** sets each item to *Everyone*, *Friends only*, or *Only me*. Only *Everyone* items appear on your public pages. **I own a copy** lets friends ask to borrow it, and **Lent to** tracks who has it.

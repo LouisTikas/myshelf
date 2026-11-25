@@ -102,6 +102,8 @@ function renderConfig(c, types) {
   if (!c.igdb && on('videogame')) missing.push('IGDB');
   if (!c.bgg && on('boardgame')) missing.push('BGG');
   if (!c.spotify && on('music')) missing.push('Spotify (using MusicBrainz)');
+  // Optional, but it keeps book search working when Open Library is down.
+  if (c.googleBooks === false && on('book')) missing.push('Google Books (optional)');
   $('#config-status').innerHTML = missing.length
     ? `<a class="warn" href="#api-keys" data-goto-keys title="Add them in Settings → API keys">Missing keys: ${esc(missing.join(', '))}</a>`
     : '<span class="okay">All sources connected</span>';
@@ -199,8 +201,13 @@ $$('.type-btn').forEach((b) =>
   }),
 );
 
-// "Paste a link" — BoardGameGeek for board games, Spotify for music, YouTube for videos and channels.
+// "Paste a link" — Open Library for books, BoardGameGeek for board games, Spotify for music, YouTube for videos and channels.
 const LINK_FORMS = {
+  book: {
+    placeholder: 'Can\'t find it? Paste an Open Library link…',
+    ok: (url) => /openlibrary\.org\/(works\/OL\d+W|books\/OL\d+M|isbn\/[\dXx-]{10,17})/i.test(url),
+    error: 'That doesn\'t look like an Open Library book link (openlibrary.org/works/… or openlibrary.org/books/…).',
+  },
   boardgame: {
     placeholder: 'Can\'t find it? Paste a BoardGameGeek link…',
     ok: (url) => /boardgamegeek\.com\/(boardgame|boardgameexpansion|thing)\/\d+/i.test(url),
@@ -854,8 +861,8 @@ async function makeCoverCopies() {
       try {
         const img = await loadImage(item.cover);
         for (const kind of missing(item)) {
-          const image = shrink(img, item, COPY_SIZES[kind][item.type] || COPY_SIZES[kind].default);
-          const res = await api('cover-copy', { method: 'POST', body: { slug: item.slug, cover: item.cover, kind, image } });
+          const image = await shrink(img, item, COPY_SIZES[kind][item.type] || COPY_SIZES[kind].default);
+          const res = await uploadCopy(item, kind, image);
           item[COPY_FIELDS[kind]] = res[COPY_FIELDS[kind]];
           made++;
         }
@@ -887,7 +894,21 @@ function shrink(img, item, long) {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.85);
+  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode the image'))), 'image/jpeg', 0.85));
+}
+// Sent as raw bytes: decoding base64 on the Worker costs more CPU than the free plan allows a request.
+async function uploadCopy(item, kind, blob) {
+  const q = new URLSearchParams({ slug: item.slug, kind, cover: item.cover });
+  const res = await fetch(`/api/cover-copy?${q}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${getToken()}`, 'content-type': 'image/jpeg' },
+    body: blob,
+  });
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (res.status === 401) { showLogin('Your token was rejected.'); throw new Error('Unauthorized'); }
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
 }
 function libraryItems() {
   return state.library;

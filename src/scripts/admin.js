@@ -65,7 +65,7 @@ function coverThumb(item, size = 64) {
   const w = Math.round(size * t.aspect);
   const ph = `<span class="thumb-ph" style="width:${w}px;height:${size}px;background:${t.color}">${esc((item.title || '?').slice(0, 1))}</span>`;
   if (!item.cover) return ph;
-  return `<span class="thumb-wrap"><img class="thumb" src="${esc(item.cover)}" alt="" style="height:${size}px" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(this.nextElementSibling.content.cloneNode(true))"><template>${ph}</template></span>`;
+  return `<span class="thumb-wrap"><img class="thumb" src="${esc(item.shelfCover || item.cover)}" alt="" style="height:${size}px" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(this.nextElementSibling.content.cloneNode(true))"><template>${ph}</template></span>`;
 }
 const SOURCE_NAMES = { openlibrary: 'Open Library', googlebooks: 'Google Books', tmdb: 'TMDB', spotify: 'Spotify', musicbrainz: 'MusicBrainz', igdb: 'IGDB', bgg: 'BoardGameGeek', youtube: 'YouTube', manual: 'Manual' };
 
@@ -827,6 +827,67 @@ async function loadLibrary() {
     state.library = [];
   }
   renderLibrary();
+  makeCoverCopies();
+}
+
+// ───────── shelf copies of the covers ─────────
+// The shelves draw small copies of each cover (full-size covers made iPhones crash the page): one for the front
+// (item.shelfCover) and one for the spine (item.spine). Workers can't resize images on the free plan, so this page
+// does it: any stored cover missing a copy gets them, one item at a time in the background.
+// Sizes are the longest side in px: enough for sharp covers on phone screens, a fraction of the originals.
+const COPY_SIZES = {
+  shelf: { boardgame: 900, music: 640, default: 600 },
+  spine: { boardgame: 480, videogame: 360, default: 160 }, // more detail where little blur is applied
+};
+const COPY_FIELDS = { shelf: 'shelfCover', spine: 'spine' };
+let copiesRunning = false;
+async function makeCoverCopies() {
+  if (copiesRunning || !getToken()) return;
+  copiesRunning = true;
+  let made = 0;
+  const failed = new Set();
+  const missing = (i) => Object.entries(COPY_FIELDS).filter(([, f]) => !i[f]).map(([kind]) => kind);
+  try {
+    for (;;) {
+      const item = state.library.find((i) => /^\/img\//.test(i.cover || '') && missing(i).length && !failed.has(i.slug));
+      if (!item) break;
+      try {
+        const img = await loadImage(item.cover);
+        for (const kind of missing(item)) {
+          const image = shrink(img, item, COPY_SIZES[kind][item.type] || COPY_SIZES[kind].default);
+          const res = await api('cover-copy', { method: 'POST', body: { slug: item.slug, cover: item.cover, kind, image } });
+          item[COPY_FIELDS[kind]] = res[COPY_FIELDS[kind]];
+          made++;
+        }
+        img.src = '';
+      } catch (err) {
+        if (err.message === 'Unauthorized') break;
+        failed.add(item.slug); // a broken image: skip it this time, try again next visit
+        console.warn(`Couldn't make shelf copies of the cover for ${item.title}:`, err);
+      }
+    }
+  } finally {
+    copiesRunning = false;
+  }
+  if (made) console.info(`Made ${made} shelf cop${made === 1 ? 'y' : 'ies'} of covers.`);
+}
+async function loadImage(src) {
+  const img = new Image();
+  img.src = src; // same site, so the canvas stays readable
+  await img.decode();
+  return img;
+}
+function shrink(img, item, long) {
+  const scale = Math.min(1, long / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = (TYPES[item.type] || TYPES.book).color || '#333'; // behind transparent PNGs
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.85);
 }
 function libraryItems() {
   return state.library;

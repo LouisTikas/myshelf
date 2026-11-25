@@ -739,3 +739,42 @@ test('API keys saved in Settings: encrypted, laid over Worker secrets, never sen
   await assert.rejects(testKeys(env, 'tmdb', async () => new Response('no', { status: 401 })), /rejected/);
   await assert.rejects(testKeys(env, 'spotify', async () => new Response('{}')), /Add SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET/);
 });
+
+test('progress: saved tidy, drawn only for books, TV and legacy games in progress', async () => {
+  const { progressOf, isLegacy } = await import('../src/lib/types.js');
+  // Saving keeps whole numbers and drops empty progress; board-game units only when not the default.
+  assert.deepEqual(normalizeItem({ title: 'x', type: 'book', progress: { at: '212.7', of: '412', unit: 'games' } }).progress, { at: 212, of: 412 });
+  assert.equal(normalizeItem({ title: 'x', type: 'book', progress: { at: '', of: '412' } }).progress, undefined);
+  assert.deepEqual(normalizeItem({ title: 'x', type: 'boardgame', legacy: 'on', progress: { at: 3, of: 12, unit: 'months' } }).progress, { at: 3, of: 12, unit: 'months' });
+  assert.equal(normalizeItem({ title: 'x', type: 'boardgame', legacy: false }).legacy, undefined);
+
+  // Books: the total falls back to the page count.
+  const book = { type: 'book', status: 'in-progress', details: { pages: 400 }, progress: { at: 100 } };
+  assert.deepEqual(progressOf(book), { at: 100, of: 400, pct: 25, text: 'Page 100 of 400' });
+  assert.equal(progressOf({ ...book, status: 'finished' }), null);
+  assert.equal(progressOf({ ...book, progress: undefined }), null);
+  assert.equal(progressOf({ type: 'tv', status: 'abandoned', details: { episodes: 10 }, progress: { at: 4 } }).text, 'Episode 4 of 10');
+  assert.equal(progressOf({ type: 'movie', status: 'in-progress', progress: { at: 4, of: 10 } }), null);
+
+  // Board games only when they're legacy / campaign games.
+  const game = { type: 'boardgame', status: 'in-progress', progress: { at: 5, of: 12, unit: 'months' } };
+  assert.equal(progressOf(game), null);
+  assert.equal(progressOf({ ...game, legacy: true }).text, '5 of 12 months');
+  assert.ok(isLegacy({ type: 'boardgame', details: { mechanics: ['Legacy Game', 'Cooperative Game'] } }));
+  assert.equal(progressOf({ ...game, details: { mechanics: ['Legacy Game'] } }).pct, 42);
+});
+
+test('local dates: the browser’s day, not UTC’s', async () => {
+  const { localDate, localDaysAgo } = await import('../src/lib/dates.js');
+  // 9:30 pm on Nov 24 in New York is already Nov 25 in UTC.
+  const prev = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  try {
+    const evening = new Date('2026-11-25T02:30:00Z');
+    assert.equal(evening.toISOString().slice(0, 10), '2026-11-25');
+    assert.equal(localDate(evening), '2026-11-24');
+    assert.match(localDaysAgo(366), /^\d{4}-\d{2}-\d{2}$/);
+  } finally {
+    if (prev === undefined) delete process.env.TZ; else process.env.TZ = prev;
+  }
+});

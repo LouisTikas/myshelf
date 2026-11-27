@@ -2,6 +2,7 @@
 import Book3D from './Book3D.astro';
 import { filterData } from '../lib/filters.js';
 import { isVinyl } from '../lib/types.js';
+import { shelfInfo } from '../lib/shelf-info.js';
 import '../styles/shelf3d.css';
 import '../styles/arrange.css';
 // shelfId ('c:<collection>' or 's:<status>'): lets "Edit shelves" on the page move or remove this shelf.
@@ -41,7 +42,7 @@ const rowHeightNoBoxes = others.length ? Math.round(height * Math.max(1, ...othe
   <div class:list={['shelf', 'shelf-3d', { 'shelf-scroll': scroll }]} style={`--h:${rowHeight}px; --h0:${rowHeight}px; --hb:${rowHeightNoBoxes}px`} data-collection={collection} data-arrange-key={arrangeKey}>
     {shown.length === 0 && <p class="shelf-empty">{empty}</p>}
     {shown.map((e, i) => (
-      <div class="shelf-slot" data-f={filterable ? JSON.stringify(filterData(e.data)) : undefined}>
+      <div class="shelf-slot" data-f={filterable ? JSON.stringify(filterData(e.data)) : undefined} data-info={JSON.stringify(shelfInfo(e))}>
         <Book3D item={e.data} height={rowHeight} unit={height} href={`/item/${e.id}/`} front={i === 0} />
       </div>
     ))}

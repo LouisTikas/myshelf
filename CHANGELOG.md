@@ -13,6 +13,7 @@ The version number lives in `package.json` and shows in **Manage → Settings �
 - **Hear about reactions.** When someone reacts to a comment you wrote, it shows up in your Friends inbox, on your items and on friends' items.
 - **Comment counts in the journal.** Journal entries with comments show how many, on the Journal page and in *My Ramblings* on the home page. Tap the count to jump to the comments.
 - **Add to my journal, from friends' items.** Next to *Add to my shelf* on the Friends page and on friends' shelves, *Add to my journal* opens the editor already filled in, with the cursor in the notes box, so you can start writing straight away.
+- **Shelf info bar.** Every shelf now has a little info panel that slides out underneath it, pushing the shelves below down. On a computer it opens while you hover over a shelf and closes a moment after you move away. On a phone, tap a spine (or the cover facing you) to turn it and slide the panel out, tap the cover again to open the item, or tap ✕ to close the panel. It shows the item's type and year, title, who made it, your status, your progress (if you're partway through), one key fact (pages, runtime, platforms, players and so on), your rating, a line from your review if you wrote one, and an Open button. It follows your light or dark choice and your accent colour, and progress stays hidden from visitors when Progress bars is set to Only me. It also works with Shelf effects turned off (hover or Tab to an item).
 
 ## 0.9.6 (Nov 2026)
 

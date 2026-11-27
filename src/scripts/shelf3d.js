@@ -1,6 +1,8 @@
 // One front-facing item per shelf.
 // Mouse: hover turns an item. Keyboard: Tab turns it. Touch: tap a spine to turn it
 // (tap again to open), or swipe sideways to flip through the shelf (up/down swipes just scroll the page).
+import { infoBar } from './shelf-info.js';
+
 const SWIPE_STEP = 26;      // px of finger travel per item while swiping
 const SWIPE_LOCK = 6;       // px of finger travel before we decide which way the gesture goes
 const SWIPE_RATIO = 0.85;   // sideways wins unless the finger is moving mostly up/down (up to ~50° off horizontal still counts)
@@ -30,8 +32,11 @@ const FLAT = document.documentElement.classList.contains('flat-shelves');
 // pages) is split into row strips by lockRows() below, and each strip keeps its own front item, so moving down
 // the page never flips back the item you turned on the row above.
 function initShelf(shelf) {
-  if (FLAT) return;
   if (!shelf.querySelector('.book3d')) return;
+  // The info bar under the shelf (src/scripts/shelf-info.js).
+  const info = infoBar(shelf);
+  const showInfo = (b, opts) => { if (b && !info.isOpenFor(b)) info.show(b, opts); };
+  if (FLAT) return flatInfo(shelf, showInfo);
   const groupOf = (b) => b.closest('.shelf-track') || shelf;
   const visible = (b) => !b.closest('.shelf-slot')?.hidden;
   const groupBooks = (g) => [...g.querySelectorAll('.book3d')].filter(visible);
@@ -69,7 +74,7 @@ function initShelf(shelf) {
     if (e.pointerType !== 'mouse' || shelf.classList.contains('is-dragging')) return;
     mouse = { x: e.clientX, y: e.clientY };
     const b = e.target.closest?.('.book3d');
-    if (b && shelf.contains(b)) setActive(b);
+    if (b && shelf.contains(b)) { setActive(b); showInfo(b); }
   }, { passive: true });
   shelf.addEventListener('pointerleave', () => (mouse = null));
 
@@ -80,7 +85,7 @@ function initShelf(shelf) {
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
       const el = document.elementFromPoint(mouse.x, mouse.y)?.closest('.book3d');
-      if (el && shelf.contains(el)) setActive(el);
+      if (el && shelf.contains(el)) { setActive(el); showInfo(el); }
     });
   }, { passive: true });
 
@@ -88,7 +93,7 @@ function initShelf(shelf) {
   // to that turned the item before the tap was handled, so a single tap opened it.)
   shelf.addEventListener('focusin', (e) => {
     const b = e.target.closest?.('.book3d');
-    if (b && b.matches(':focus-visible')) setActive(b, { reveal: true });
+    if (b && b.matches(':focus-visible')) { setActive(b, { reveal: true }); showInfo(b); }
   });
 
   // ── Touch: swipe sideways to flip through the row you're touching.
@@ -98,9 +103,11 @@ function initShelf(shelf) {
   // Safari cancels pointer events as soon as it starts scrolling the page, which killed swipes.
   let start = null;        // { x, y, list, idx, dir: null | 'x' | 'y' }
   let suppressClick = false;
+  let lastTouch = 0;       // when a finger last landed on this shelf: the click that follows is a tap
 
   shelf.addEventListener('touchstart', (e) => {
     suppressClick = false; // a new touch starts fresh
+    lastTouch = performance.now();
     if (e.touches.length !== 1) { start = null; return; } // pinch etc.: not ours
     const t = e.touches[0];
     const catchingScroll = performance.now() - lastPageScroll < SCROLL_SETTLE;
@@ -124,6 +131,7 @@ function initShelf(shelf) {
     const steps = Math.trunc(-dx / SWIPE_STEP);
     const idx = Math.max(0, Math.min(start.list.length - 1, Math.max(0, start.idx) + steps));
     setActive(start.list[idx], { reveal: true });
+    showInfo(start.list[idx], { touch: true });
   }, { passive: false });
   const end = () => {
     if (start?.dir === 'x') {
@@ -136,12 +144,35 @@ function initShelf(shelf) {
   shelf.addEventListener('touchend', end);
   shelf.addEventListener('touchcancel', end);
 
-  // ── Taps/clicks: a spine turns to face you first; the front-facing item opens.
+  // ── Taps/clicks: a spine turns to face you first (and opens the info bar); the front-facing item opens.
+  // On touch, a tap on the front item opens the info bar first, and a second tap opens the item.
   shelf.addEventListener('click', (e) => {
     const b = e.target.closest?.('.book3d');
     if (!b) return;
     if (suppressClick) { e.preventDefault(); suppressClick = false; return; }
-    if (!b.classList.contains('is-front')) { e.preventDefault(); setActive(b, { reveal: true }); }
+    const touch = performance.now() - lastTouch < 1000;
+    if (!b.classList.contains('is-front')) {
+      e.preventDefault();
+      setActive(b, { reveal: true });
+      showInfo(b, { touch });
+    } else if (touch && !info.isOpenFor(b)) {
+      e.preventDefault();
+      info.show(b, { touch: true });
+    }
+  });
+}
+
+// Shelf effects off: covers already face front and taps just open them, so only the mouse and keyboard
+// open the info bar (hover or Tab to an item).
+function flatInfo(shelf, showInfo) {
+  shelf.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse' || shelf.classList.contains('is-dragging')) return;
+    const b = e.target.closest?.('.book3d');
+    if (b && shelf.contains(b)) showInfo(b);
+  }, { passive: true });
+  shelf.addEventListener('focusin', (e) => {
+    const b = e.target.closest?.('.book3d');
+    if (b && b.matches(':focus-visible')) showInfo(b);
   });
 }
 

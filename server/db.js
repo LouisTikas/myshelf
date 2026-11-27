@@ -130,6 +130,32 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 8, // the debug log in Manage → Settings: recent errors and auto-update runs (see server/logs.js)
+    sql: [
+      `CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        at TEXT NOT NULL,
+        level TEXT NOT NULL,               -- error | warn | info
+        source TEXT NOT NULL DEFAULT '',   -- where it happened, e.g. "POST /api/save" or "auto-update"
+        message TEXT NOT NULL,
+        detail TEXT NOT NULL DEFAULT ''    -- stack trace or extra context
+      )`,
+    ],
+  },
+  {
+    version: 9, // emoji reactions on comments (stored with the comments, on the site whose item it is)
+    sql: [
+      `CREATE TABLE IF NOT EXISTS comment_reactions (
+        comment_id TEXT NOT NULL,
+        from_url TEXT NOT NULL DEFAULT '', -- the friend's site; '' means you
+        emoji TEXT NOT NULL,
+        inbox_id TEXT,                     -- the inbox note it made, removed again if they take it back
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (comment_id, from_url, emoji)
+      )`,
+    ],
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

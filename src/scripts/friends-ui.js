@@ -3,6 +3,7 @@
 // Astro pages can also call them while rendering on the server.
 
 import { mentionsText, mentionsPlain } from '../lib/mentions.js';
+import { firstEmoji } from '../lib/emoji.js';
 export { mentionsPlain };
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -76,6 +77,12 @@ export function setNicknames(nicknames, root = document) {
     const n = nick(el.closest('.comment').dataset.authorUrl);
     if (n) el.textContent = n;
   });
+  // Reaction tooltips: swap in nicknames for the friends who have one.
+  root.querySelectorAll('.react-chip[data-who]').forEach((chip) => {
+    let urls = [], names = [];
+    try { urls = JSON.parse(chip.dataset.who || '[]'); names = JSON.parse(chip.dataset.names || '[]'); } catch {}
+    chip.title = whoLabel(urls.map((url, i) => ({ url, name: names[i] || '' })));
+  });
 }
 
 export function commentHtml(c) {
@@ -84,7 +91,71 @@ export function commentHtml(c) {
       <span class="c-when">${esc(fmt(c.createdAt))}</span>
       <button type="button" class="c-del" data-del-comment hidden>Delete</button></p>
     <p class="c-text">${mentionsText(esc(c.text))}</p>
+    ${Array.isArray(c.reactions) ? `<div class="c-reacts${c.reactions.length ? '' : ' none'}">${reactionsHtml(c.reactions)}</div>` : ''}
   </li>`;
+}
+
+// ───────── emoji reactions on comments ─────────
+// Shown to everyone; signed in, tap a chip to add or take back yours, or the smiley to pick any emoji.
+// Comments from a friend's site that doesn't know about reactions yet have no reactions list, so no bar.
+
+const SMILE = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="2.6"/></svg>';
+const QUICK = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+const whoNames = (who) => who.map((w) => nick(w.url) || w.name || host(w.url));
+
+/** Names for a chip's tooltip: "Bea, Cy and 2 others". */
+function whoLabel(who) {
+  const names = whoNames(who);
+  if (names.length <= 3) return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0] || '';
+  return `${names.slice(0, 3).join(', ')} and ${names.length - 3} other${names.length === 4 ? '' : 's'}`;
+}
+
+export function reactionsHtml(reactions = []) {
+  const chips = reactions.map((r) => {
+    const who = Array.isArray(r.who) ? r.who : [];
+    return `<button type="button" class="react-chip" data-emoji="${esc(r.emoji)}" data-who="${esc(JSON.stringify(who.map((w) => w.url)))}" data-names="${esc(JSON.stringify(who.map((w) => w.name || '')))}" title="${esc(whoLabel(who))}" aria-pressed="false"><span class="rc-emoji">${esc(r.emoji)}</span><span class="rc-n">${Number(r.count) || who.length}</span></button>`;
+  }).join('');
+  return `${chips}<button type="button" class="react-add" data-react-add title="Add a reaction" aria-label="Add a reaction" hidden>${SMILE}<span class="ra-plus" aria-hidden="true">+</span></button>`;
+}
+
+let picker = null;
+let pickerCallback = null;
+function closePicker() {
+  if (!picker || picker.hidden) return;
+  picker.hidden = true;
+  pickerCallback = null;
+  picker.querySelector('input').value = '';
+}
+function openPicker(anchor, onPick) {
+  if (!picker) {
+    picker = document.createElement('div');
+    picker.className = 'react-picker';
+    picker.setAttribute('role', 'dialog');
+    picker.setAttribute('aria-label', 'Pick a reaction');
+    picker.hidden = true;
+    picker.innerHTML = `<div class="rp-quick">${QUICK.map((e) => `<button type="button" data-pick="${e}" aria-label="React ${e}">${e}</button>`).join('')}</div>
+      <label class="rp-any"><span class="rp-label">Any emoji</span>
+        <input type="text" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Tap, then your emoji key 😀" aria-label="Type any emoji"></label>`;
+    document.body.appendChild(picker);
+    const pick = (e) => { const cb = pickerCallback; closePicker(); if (cb && e) cb(e); };
+    picker.addEventListener('click', (e) => { const b = e.target.closest('[data-pick]'); if (b) pick(b.dataset.pick); });
+    const input = picker.querySelector('input');
+    input.addEventListener('input', () => { const e = firstEmoji(input.value); if (e) pick(e); });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); pick(firstEmoji(input.value)); } });
+    document.addEventListener('pointerdown', (e) => { if (!picker.hidden && !picker.contains(e.target) && !e.target.closest('[data-react-add]')) closePicker(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePicker(); });
+    window.addEventListener('resize', () => { if (!picker.hidden && document.activeElement !== input) closePicker(); });
+  }
+  if (!picker.hidden && pickerCallback && picker.dataset.for === anchor.closest('.comment')?.dataset.id) return closePicker();
+  pickerCallback = onPick;
+  picker.dataset.for = anchor.closest('.comment')?.dataset.id || '';
+  picker.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  const w = picker.offsetWidth;
+  const left = Math.max(8, Math.min(r.left, document.documentElement.clientWidth - w - 8));
+  picker.style.left = `${left + window.scrollX}px`;
+  picker.style.top = `${r.bottom + window.scrollY + 6}px`;
+  picker.querySelector('[data-pick]').focus({ preventScroll: true });
 }
 
 const countLabel = (n) => (n ? `${n} ${n === 1 ? 'comment' : 'comments'}` : 'Comment');
@@ -114,6 +185,9 @@ export function threadHtml(comments, { friendUrl = '', uid = '', ownSlug = '', o
  */
 export function bindThreads(root, { me = '', toast = () => {} } = {}) {
   const signedIn = Boolean(me);
+  // Pages bind once as a visitor, then again once they know you're signed in. The click and submit handlers
+  // are only added the first time, so they read the newest call's settings from here.
+  const latest = () => root._threads;
   const refresh = (thread) => {
     const n = thread.querySelectorAll('.comment').length;
     thread.querySelector('.thread-count').textContent = countLabel(n);
@@ -125,8 +199,38 @@ export function bindThreads(root, { me = '', toast = () => {} } = {}) {
     const own = Boolean(thread.dataset.ownSlug);
     thread.querySelectorAll('.comment').forEach((c) => {
       c.querySelector('.c-del').hidden = !signedIn || !(own || c.dataset.authorUrl === me);
+      const bar = c.querySelector('.c-reacts');
+      if (!bar) return;
+      bar.querySelector('[data-react-add]').hidden = !signedIn;
+      bar.querySelectorAll('.react-chip').forEach((chip) => {
+        let who = [];
+        try { who = JSON.parse(chip.dataset.who || '[]'); } catch {}
+        const mine = signedIn && who.includes(me);
+        chip.classList.toggle('mine', mine);
+        chip.setAttribute('aria-pressed', String(mine));
+        chip.disabled = !signedIn;
+      });
     });
   };
+  const react = async (li, emoji, on) => {
+    const thread = li.closest('.thread');
+    const bar = li.querySelector('.c-reacts');
+    bar.classList.add('busy');
+    try {
+      const body = thread.dataset.ownSlug
+        ? { action: 'react-own', commentId: li.dataset.id, emoji, on }
+        : { action: 'react', friendUrl: thread.dataset.friend, commentId: li.dataset.id, emoji, on };
+      const { reactions = [] } = await api('friends', { method: 'POST', body });
+      bar.innerHTML = reactionsHtml(reactions);
+      bar.classList.toggle('none', !reactions.length);
+      latest().decorate(thread);
+    } catch (err) {
+      latest().toast(err.message, 'error');
+    } finally {
+      bar.classList.remove('busy');
+    }
+  };
+  root._threads = { me, signedIn, toast, decorate };
   root.querySelectorAll('.thread').forEach(decorate);
   if (root.dataset.threadsBound) return { decorate };
   root.dataset.threadsBound = '1';
@@ -138,6 +242,23 @@ export function bindThreads(root, { me = '', toast = () => {} } = {}) {
       body.hidden = !body.hidden;
       toggle.setAttribute('aria-expanded', String(!body.hidden));
       if (!body.hidden) body.querySelector('textarea:not([hidden])')?.focus({ preventScroll: true });
+      return;
+    }
+    const add = e.target.closest('[data-react-add]');
+    if (add && add.closest('.thread')) {
+      const li = add.closest('.comment');
+      openPicker(add, (emoji) => {
+        // Picking one you've already used leaves it on (tap its chip to take it back).
+        const chip = [...li.querySelectorAll('.react-chip')].find((c) => c.dataset.emoji === emoji);
+        if (chip?.classList.contains('mine')) return;
+        react(li, emoji, true);
+      });
+      return;
+    }
+    const chip = e.target.closest('.react-chip');
+    if (chip && chip.closest('.thread')) {
+      if (!latest().signedIn || chip.closest('.c-reacts').classList.contains('busy')) return;
+      react(chip.closest('.comment'), chip.dataset.emoji, !chip.classList.contains('mine'));
       return;
     }
     const del = e.target.closest('[data-del-comment]');
@@ -160,7 +281,7 @@ export function bindThreads(root, { me = '', toast = () => {} } = {}) {
       refresh(thread);
     } catch (err) {
       del.disabled = false;
-      toast(err.message, 'error');
+      latest().toast(err.message, 'error');
     }
   });
 
@@ -178,12 +299,12 @@ export function bindThreads(root, { me = '', toast = () => {} } = {}) {
         ? { action: 'comment-own', slug: thread.dataset.ownSlug, text }
         : { action: 'comment', friendUrl: thread.dataset.friend, uid: thread.dataset.uid, text, item: (() => { try { return JSON.parse(thread.dataset.item || 'null'); } catch { return null; } })() };
       const { comment } = await api('friends', { method: 'POST', body });
-      thread.querySelector('.comments').insertAdjacentHTML('beforeend', commentHtml(comment || { id: '', author: 'You', authorUrl: me, text, createdAt: new Date().toISOString() }));
+      thread.querySelector('.comments').insertAdjacentHTML('beforeend', commentHtml(comment || { id: '', author: 'You', authorUrl: latest().me, text, createdAt: new Date().toISOString(), reactions: null }));
       form.reset();
-      decorate(thread);
+      latest().decorate(thread);
       refresh(thread);
     } catch (err) {
-      toast(err.message, 'error');
+      latest().toast(err.message, 'error');
     } finally {
       btn.disabled = false;
     }
@@ -198,7 +319,7 @@ export const waiting = (m, friends) => ['unread', 'read'].includes(m.status) && 
   || (m.kind === 'friend-request' && friends.find((f) => f.id === m.friendId)?.status === 'pending'));
 
 export function inboxHtml(inbox, friends, TYPES) {
-  if (!inbox.length) return '<li class="muted">Nothing yet. Friend requests, recommendations, borrow requests, hearts, comments and mentions show up here.</li>';
+  if (!inbox.length) return '<li class="muted">Nothing yet. Friend requests, recommendations, borrow requests, hearts, comments, reactions and mentions show up here.</li>';
   const typeLabel = (t) => TYPES[t]?.label || t || '';
   return inbox.map((m) => {
     const who = `<strong>${esc(m.fromName)}</strong>`;
@@ -251,6 +372,21 @@ export function inboxHtml(inbox, friends, TYPES) {
       body = `<span class="inbox-item">${thumb(TYPES, it.cover, it.title, it.type)}<span><strong>${esc(author)}</strong> also commented on ${whose} <strong>${title}</strong></span></span>`;
       if (p.text) body += `<p class="inbox-note">“${mentionsText(esc(p.text))}”</p>`;
       if (it.url) actions = `<a class="btn ghost small" href="${esc(it.url)}" target="_blank" rel="noopener">View thread</a>`;
+    } else if (m.kind === 'reaction') {
+      const it = p.item || {};
+      const emoji = `<span class="inbox-emoji">${esc(p.emoji)}</span>`;
+      if (p.reactor) {
+        // From a friend's site: someone reacted to your comment on their item.
+        const reactor = nick(p.reactor.url) || p.reactor.name || host(p.reactor.url) || 'Someone';
+        const whose = p.reactor.url === m.from ? 'their' : `${esc(m.fromName)}’s`;
+        const title = it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a>` : esc(it.title);
+        body = `<span class="inbox-item">${thumb(TYPES, it.cover, it.title, it.type)}<span><strong>${esc(reactor)}</strong> reacted ${emoji} to your comment on ${whose} <strong>${title}</strong></span></span>`;
+        if (it.url) actions = `<a class="btn ghost small" href="${esc(it.url)}" target="_blank" rel="noopener">View thread</a>`;
+      } else {
+        body = `<span class="inbox-item">${thumb(TYPES, it.cover, it.title, it.type)}<span>${who} reacted ${emoji} to your comment on <strong>${yourItem(it)}</strong></span></span>`;
+        if (it.visibility === 'public' && it.slug) actions = `<a class="btn ghost small" href="/item/${esc(it.slug)}/#comments" target="_blank">View thread</a>`;
+      }
+      if (p.text) body += `<p class="inbox-note">“${mentionsText(esc(p.text))}”</p>`;
     } else if (m.kind === 'mention') {
       const it = p.item || {};
       const title = it.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a>` : esc(it.title);
@@ -262,7 +398,7 @@ export function inboxHtml(inbox, friends, TYPES) {
       body = `${who} ${p.answer === 'yes' ? 'said <strong>yes</strong> to' : 'can’t lend you'} <strong>${esc(p.title)}</strong>${p.answer === 'yes' ? '.' : ' right now.'}`;
     }
     return `<li class="inbox-row${m.status === 'unread' ? ' unread' : ''}">
-      <div class="inbox-text">${body} ${when}${['comment', 'comment-reply', 'mention'].includes(m.kind) ? '' : note}</div>
+      <div class="inbox-text">${body} ${when}${['comment', 'comment-reply', 'mention', 'reaction'].includes(m.kind) ? '' : note}</div>
       <div class="inbox-actions">${actions}${done ? `<span class="muted small">${done}</span>` : ''}
         <span class="inbox-ctls">
           <button type="button" class="inbox-ctl" data-inbox-del="${esc(m.id)}" title="Delete this notification" aria-label="Delete this notification">✕</button>
@@ -287,13 +423,18 @@ export function markSeen(inbox) {
 
 // ───────── adding a friend's item to your own shelf ─────────
 
-/** Link that opens Manage's editor already filled in with this item (from a friend's shelf or a recommendation). */
-export function addItemHref(i = {}) {
-  const ref = { title: i.title, type: i.type, creator: i.creator || '', year: i.year || '', cover: i.cover || '', source: i.source || null };
+/**
+ * Link that opens Manage's editor already filled in with this item (from a friend's shelf or a recommendation).
+ * journal: start in the notes box, so it goes straight into your journal.
+ */
+export function addItemHref(i = {}, { journal = false } = {}) {
+  const ref = { title: i.title, type: i.type, creator: i.creator || '', year: i.year || '', cover: i.cover || '', source: i.source || null, ...(journal ? { journal: true } : {}) };
   return `/admin/#add-item=${encodeURIComponent(JSON.stringify(ref))}`;
 }
+export const PEN = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 const PLUS = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 export const addItemBtn = (i, cls = 'btn ghost small') => `<a class="${cls} add-mine" href="${esc(addItemHref(i))}" title="Open it in your editor, ready to save to your shelf">${PLUS} Add to my shelf</a>`;
+export const addJournalBtn = (i, cls = 'btn ghost small') => `<a class="${cls} add-mine" href="${esc(addItemHref(i, { journal: true }))}" title="Add it to your shelf and start writing about it">${PEN} Add to my journal</a>`;
 
 // ───────── a friend's shelf ─────────
 
@@ -320,7 +461,7 @@ export function shelfHtml({ friend, items }, TYPES, { me = '', filter = '' } = {
           ${threadHtml(i.comments, { friendUrl: friend.url, uid: i.uid, item: i })}
         </span>
         ${signedIn ? `<span class="lib-actions">
-          ${i.youHave ? '' : addItemBtn(i)}
+          ${i.youHave ? '' : addItemBtn(i) + addJournalBtn(i)}
           ${heartBtn(i.hearted, `data-heart="${esc(i.uid)}" data-friend="${esc(friend.id)}" data-title="${esc(i.title)}"`)}
           <button type="button" class="btn ghost small" data-rec-uid="${esc(i.uid)}" data-rec-friend="${esc(friend.url)}" data-rec-friend-id="${esc(friend.id)}" data-rec-title="${esc(i.title)}" title="Recommend this to another friend">Recommend</button>
           ${i.available ? `<button class="btn ghost small" data-ask="${esc(i.uid)}" data-friend="${esc(friend.id)}" data-title="${esc(i.title)}">Ask to borrow</button>` : i.owned ? '<span class="muted small">Lent out</span>' : ''}

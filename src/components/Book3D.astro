@@ -93,6 +93,7 @@ const onErr = "this.closest('.book3d').classList.remove('has-cover','has-spine')
       )}
       <span class="b3-gloss"></span>
       {prog?.pct != null && <span class="b3-progress" title={`${prog.text} (${prog.pct}%)`}><span style={`width:${prog.pct}%`}></span></span>}
+      {s.kind === 'cd' && item.cover && <span class="cd-label"><span>{item.title}</span></span>}
       {s.kind === 'vhs' && <span class="vhs-notch"></span>}
       {s.kind === 'bluray' && <span class="br-band"></span>}
     </span>

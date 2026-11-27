@@ -8,6 +8,7 @@ import * as fed from '../../../server/federation/index.js';
 // GET  /api/friends?nicknames=1 → { nicknames: { friendUrl: nickname } } (your private nicknames)
 // POST /api/friends { action, ... } → add | accept | decline | block | remove | recommend | borrow | reply | heart | mark | mark-all-read | delete-message | clear-inbox
 //   | comment (on a friend's item) | uncomment (take yours back) | comment-own (reply on your item) | delete-comment (on your item)
+//   | react ({ friendUrl, commentId, emoji, on }: on a comment on a friend's item) | react-own ({ commentId, emoji, on }: on your item)
 //   | groups ({ groups: [{ id, name, members: [friendUrl] }] }) | nickname ({ id, nickname })
 export const GET = route(async ({ env, url }) => {
   const shelf = url.searchParams.get('shelf');
@@ -38,6 +39,8 @@ export const POST = route(async ({ request, env, url }) => {
     case 'uncomment': return json(await fed.deleteFriendComment(env, at, b));
     case 'comment-own': return json(await fed.commentOwn(env, at, b));
     case 'delete-comment': return json(await fed.deleteComment(env, b.id));
+    case 'react': return json(await fed.reactOnFriend(env, at, b));
+    case 'react-own': return json(await fed.reactOwn(env, at, b));
     case 'groups': return json(await fed.saveGroups(env, b.groups));
     case 'nickname': return json(await fed.setNickname(env, b.id, b.nickname));
     default: throw new HttpError(400, 'Unknown action');

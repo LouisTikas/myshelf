@@ -8,6 +8,7 @@ import { getSite } from '../../server/site.js';
 import { getDecor } from '../../server/decor.js';
 import { decorStyle, decorClasses, decorInner, decorMaxStyle } from '../lib/decor.js';
 import { getItems, getShelves } from '../lib/items.js';
+import { commentCounts } from '../../server/federation/index.js';
 import { sortShelf, inShelf, showsOnHome, isAutoShelf, STARTER_SHELVES, findStarter } from '../lib/sorting.js';
 import ShelfEditor from '../components/ShelfEditor.astro';
 import { TYPES, TYPE_KEYS } from '../lib/types.js';
@@ -24,6 +25,7 @@ const [items, shelves, site, decor] = decorPreview
 // (items are already sorted newest first).
 const hasNotes = (e) => e.body && e.body.trim();
 const latestThought = items.find((e) => e.data.featured === true && hasNotes(e)) || items.find(hasNotes);
+const thoughtComments = latestThought?.uid ? (await commentCounts(env).catch(() => new Map())).get(latestThought.uid) || 0 : 0;
 // "Edit shelves" (signed in): shelves that could be put on this page.
 const addable = decorPreview ? [] : [
   ...shelves.filter((s) => !showsOnHome(s)).map((s) => ({ id: `c:${s.slug}`, name: s.name, note: isAutoShelf(s) ? 'Fills itself' : 'Your collection' })),
@@ -58,7 +60,7 @@ const addable = decorPreview ? [] : [
       <div class="my-thoughts-head">
         <h2>My Ramblings</h2>
       </div>
-      <JournalCard entry={latestThought} clamp />
+      <JournalCard entry={latestThought} clamp comments={thoughtComments} />
       <div class="my-thoughts-foot">
         <a class="btn-see-all" href="/journal/">See all</a>
       </div>

@@ -20,6 +20,11 @@ const typesJson = JSON.stringify(TYPES);
         <button class="btn primary" type="submit">Unlock</button>
       </form>
       <p id="login-error" class="error" hidden></p>
+      <!-- Signed out: health checks and this browser's own log (src/scripts/debug-log.js). -->
+      <details id="login-debug" class="login-debug">
+        <summary class="muted small">Having trouble? View debug log</summary>
+        <div id="login-debug-body" class="debug-log"></div>
+      </details>
     </section>
 
     <!-- App -->
@@ -159,6 +164,10 @@ const typesJson = JSON.stringify(TYPES);
           <h2 id="updates-heading">Updates</h2>
           <p id="version" class="version"></p>
           <div id="updates" class="updates"><p class="muted">Checking for a new version…</p></div>
+          <div id="auto-update" class="auto-update">
+            <label class="look-mode"><input type="checkbox" id="auto-update-on" /> Update automatically <span class="muted small">(checks once a day and installs new versions)</span></label>
+            <p id="auto-update-last" class="muted small"></p>
+          </div>
           <div id="your-version-notes" class="your-version-notes"></div>
           <h2>Your site</h2>
           <form id="site-form" class="site-form">
@@ -241,6 +250,9 @@ const typesJson = JSON.stringify(TYPES);
             <label class="btn ghost file-btn">⤒ Restore from backup… <input id="restore-file" type="file" accept="application/json,.json" hidden /></label>
           </div>
           <p id="restore-msg" class="muted small"></p>
+          <h2 id="debug-heading">Debug log</h2>
+          <p class="muted">Recent errors on your site and in this browser, for troubleshooting. <strong>Copy all</strong> gives you text to paste into a bug report. If you can’t sign in, the sign-in screen has a <em>Having trouble?</em> link with the health check and this browser’s log.</p>
+          <div id="debug-log" class="debug-log"></div>
         </div>
       </div>
     </section>
@@ -377,6 +389,7 @@ const typesJson = JSON.stringify(TYPES);
     import '../../scripts/decor-settings.js';
     import '../../scripts/api-keys.js';
     import '../../scripts/update-banner.js';
+    import '../../scripts/debug-log.js';
     import { enableMentionPicker } from '../../scripts/mention-picker.js';
     enableMentionPicker();
   </script>

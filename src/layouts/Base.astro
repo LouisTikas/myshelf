@@ -87,6 +87,53 @@ const fabItems = [...navItems, { href: '/admin/', label: 'Manage', icon: 'manage
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="MyShelf" />
+    <!-- This device's debug log (Manage → Settings → Debug log, or "Having trouble?" on the sign-in screen):
+         page crashes and failed requests to this site, kept in this browser only. Runs first so it catches early errors. -->
+    <script is:inline>
+      (function () {
+        var KEY = 'myshelf_debug', MAX = 100;
+        function list() { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } }
+        function add(e) {
+          try {
+            var all = list();
+            all.push({ at: new Date().toISOString(), level: e.level || 'error', page: location.pathname, message: String(e.message || '').slice(0, 1000), detail: String(e.detail || '').slice(0, 3000) });
+            localStorage.setItem(KEY, JSON.stringify(all.slice(-MAX)));
+          } catch (x) {}
+        }
+        window.myshelfDebug = { list: list, add: add, clear: function () { try { localStorage.removeItem(KEY); } catch (e) {} } };
+        window.addEventListener('error', function (e) {
+          if (/ResizeObserver loop/.test(e.message || '')) return; // harmless browser noise, not a crash
+          add({ message: e.message || 'Script error', detail: (e.filename ? e.filename + ':' + e.lineno + ':' + e.colno + '\n' : '') + ((e.error && e.error.stack) || '') });
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e.reason;
+          add({ message: 'Unhandled: ' + ((r && r.message) || String(r)), detail: (r && r.stack) || '' });
+        });
+        // Requests to this site that fail: no answer at all, or a server error (5xx). Only the address and the
+        // error message are kept, never headers or what was sent.
+        var origFetch = window.fetch;
+        if (!origFetch) return;
+        window.fetch = function (input, init) {
+          var url = typeof input === 'string' ? input : (input && input.url) || '';
+          var method = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+          var ours = false, path = url;
+          try { var u = new URL(url, location.href); ours = u.origin === location.origin; path = u.pathname; } catch (x) {}
+          var p = origFetch.apply(this, arguments);
+          if (!ours) return p;
+          return p.then(function (res) {
+            if (res.status >= 500) {
+              res.clone().json().then(function (d) { return d && d.error; }, function () { return ''; }).then(function (msg) {
+                add({ message: method + ' ' + path + ' answered ' + res.status + (msg ? ': ' + msg : '') });
+              });
+            }
+            return res;
+          }, function (err) {
+            if (!(err && err.name === 'AbortError')) add({ level: 'warn', message: method + ' ' + path + ' failed: ' + ((err && err.message) || err) + (navigator.onLine === false ? ' (offline)' : '') });
+            throw err;
+          });
+        };
+      })();
+    </script>
     <!-- Per-browser display choices, applied before the page draws so nothing jumps:
          shelf effects off (footer / menu switch) and a visitor's own light or dark choice. Pages built ahead of time
          (Manage, 404) don't know the site's look, so they reuse the one saved the last time a live page was opened. -->

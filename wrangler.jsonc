@@ -29,5 +29,8 @@
   "previews": {},
   // Keep variables you add in the Cloudflare dashboard when the site redeploys.
   "keep_vars": true,
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Once a day, check for a new MyShelf version and install it (src/worker.js). Turn it off in
+  // Manage → Settings → Updates. The minute is arbitrary; it's spread out so copies don't all ask GitHub at once.
+  "triggers": { "crons": ["23 9 * * *"] }
 }

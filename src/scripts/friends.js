@@ -374,7 +374,30 @@ document.addEventListener('click', async (e) => {
     toast(err.message, 'error');
   }
 });
-document.addEventListener('myshelf:tab', (e) => { if (e.detail === 'settings') loadUpdates(); });
+document.addEventListener('myshelf:tab', (e) => { if (e.detail === 'settings') { loadUpdates(); loadAutoUpdate(); } });
+
+// Automatic updates: on unless turned off here. The site checks once a day (src/worker.js).
+const AUTO_RESULTS = { updated: '✓', failed: '✕', 'bad-token': '✕', 'no-token': '!', 'not-found': '✕' };
+function renderAutoUpdate(a) {
+  $('#auto-update-on').checked = a.enabled;
+  const l = a.last;
+  $('#auto-update-last').textContent = !a.enabled ? 'Off. Use Update now above when a new version is out.'
+    : l ? `Last check ${new Date(l.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}: ${AUTO_RESULTS[l.result] ? `${AUTO_RESULTS[l.result]} ` : ''}${l.message}`
+      : 'Hasn’t run yet. The first check happens within a day.';
+}
+async function loadAutoUpdate() {
+  try { renderAutoUpdate(await api('auto-update')); } catch (err) { $('#auto-update-last').textContent = err.message; }
+}
+$('#auto-update-on')?.addEventListener('change', async (e) => {
+  const on = e.target.checked;
+  try {
+    renderAutoUpdate(await api('auto-update', { method: 'POST', body: { enabled: on } }));
+    toast(on ? 'Automatic updates on.' : 'Automatic updates off.');
+  } catch (err) {
+    e.target.checked = !on;
+    toast(err.message, 'error');
+  }
+});
 
 document.addEventListener('myshelf:ready', loadSite);
 document.addEventListener('myshelf:tab', (e) => { if (e.detail === 'settings') loadSite(); });

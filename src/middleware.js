@@ -6,17 +6,31 @@ import { defineMiddleware } from 'astro:middleware';
 import { checkAuth } from '../server/auth.js';
 import { envOf } from '../server/util.js';
 import { withStoredKeys } from '../server/apikeys.js';
+import { logEvent } from '../server/logs.js';
 import { isCacheable, cachedPage, keepPage, clearPages } from '../server/page-cache.js';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
   if (ctx.isPrerendered) return next();
   const env = envOf(ctx.locals);
   const waitUntil = (p) => { try { ctx.locals.runtime.ctx.waitUntil(p); } catch { return p; } };
+  // Pages that crash or fail go in the debug log (API routes catch and log their own errors in server/util.js).
+  const where = `${ctx.request.method} ${ctx.url.pathname}`;
+  const logged = async () => {
+    let res;
+    try {
+      res = await next();
+    } catch (err) {
+      await logEvent(env, { level: 'error', source: where, message: err });
+      throw err;
+    }
+    if (res.status >= 500 && !ctx.url.pathname.startsWith('/api/')) await logEvent(env, { level: 'error', source: where, message: `The page answered ${res.status}` });
+    return res;
+  };
 
   if (isCacheable(ctx.request, ctx.url)) {
     const hit = await cachedPage(env, ctx.url);
     if (hit) return hit;
-    const res = await next();
+    const res = await logged();
     if (res.status === 200) await waitUntil(keepPage(env, ctx.url, res.clone()));
     return res;
   }
@@ -28,9 +42,10 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       ctx.locals.myshelfEnv = await withStoredKeys(env);
     } catch (err) {
       console.error('Could not load saved API keys:', err); // fall back to the Worker secrets
+      await logEvent(env, { level: 'warn', source: 'saved API keys', message: err });
     }
   }
-  const res = await next();
+  const res = await logged();
   // Saves, deletes, settings, friends' messages…: kept pages may be out of date now.
   if (!['GET', 'HEAD', 'OPTIONS'].includes(ctx.request.method) && res.status < 400) await clearPages(env);
   return res;

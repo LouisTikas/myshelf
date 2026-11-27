@@ -114,7 +114,9 @@ Open Library and MusicBrainz ask apps to include an email so they can reach you 
 
 ## Keeping up to date
 
-When a new version is out, a small **Update available** pill appears next to your name at the top of your site, and a banner at the top of Manage shows **What's new** (only you see either). Click **Update**, or open **Manage → Settings → Updates**, and click **Update now**. Cloudflare redeploys your site in a minute or two, and any database changes apply themselves. This needs your GitHub token (Step 4) and Source code link (Step 5, filled in for you).
+Your site updates itself. Once a day it checks for a new version of MyShelf and installs it, Cloudflare redeploys your site in a minute or two, and any database changes apply themselves. It only installs finished versions. This needs your GitHub token (Step 4) and Source code link (Step 5, filled in for you). To turn it off, untick **Update automatically** in **Manage → Settings → Updates**; that page also shows when it last checked.
+
+To update sooner (or with automatic updates off): when a new version is out, a small **Update available** pill appears next to your name at the top of your site, and a banner at the top of Manage shows **What's new** (only you see either). Click **Update**, or open **Manage → Settings → Updates**, and click **Update now**.
 
 You can also update on GitHub: open `github.com/YOUR-USERNAME/myshelf` and click **Sync fork → Update branch**.
 

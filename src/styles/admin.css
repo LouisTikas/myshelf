@@ -464,3 +464,28 @@ html.embed .editor::backdrop { background: transparent; }
    an unticked box came out as a solid dark square, which read as ticked). */
 .panel { color-scheme: light; }
 .panel input[type='checkbox'], .panel input[type='radio'] { accent-color: var(--accent); }
+
+/* Automatic updates toggle (Settings → Updates) */
+.auto-update { margin: 4px 0 18px; }
+.auto-update p { margin: 4px 0 0; }
+
+/* Debug log (Settings, and "Having trouble?" on the sign-in screen) */
+.login-debug { margin-top: 18px; }
+.login-debug summary { cursor: pointer; }
+.debug-log { margin: 8px 0 4px; }
+.debug-log h3 { font-size: 0.95rem; margin: 16px 0 6px; }
+.debug-log h3:first-child { margin-top: 4px; }
+.debug-health { list-style: none; margin: 0 0 6px; padding: 0; }
+.debug-health li { margin: 3px 0; }
+.debug-health .ok > span:first-child { color: var(--ok); }
+.debug-health .bad > span:first-child { color: var(--danger); }
+.debug-entries { list-style: none; margin: 0 0 10px; padding: 0; max-height: 420px; overflow: auto; border: 1px solid #d5c6a8; border-radius: 8px; }
+.debug-entries li { padding: 8px 10px; border-top: 1px solid #d5c6a8; }
+.debug-entries li:first-child { border-top: 0; }
+.debug-level { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; border: 1px solid currentColor; }
+.debug-error .debug-level { color: var(--danger); }
+.debug-warn .debug-level { color: #b07a1a; }
+.debug-info .debug-level { color: var(--ok); }
+.debug-msg { margin-top: 3px; overflow-wrap: anywhere; }
+.debug-entries pre { margin: 4px 0 0; padding: 8px; font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; background: rgba(127, 127, 127, 0.1); border-radius: 6px; }
+.debug-log .row { gap: 8px; align-items: center; flex-wrap: wrap; }

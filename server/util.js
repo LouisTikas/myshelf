@@ -1,4 +1,5 @@
 // Small helpers shared by the API routes.
+import { logEvent } from './logs.js';
 
 export const TYPE_KEYS = ['book', 'movie', 'tv', 'music', 'videogame', 'boardgame', 'video'];
 
@@ -24,6 +25,11 @@ export function handler(fn) {
     } catch (err) {
       const status = err instanceof HttpError ? err.status : 500;
       console.error(err);
+      // Server-side failures go in the debug log (Settings → Debug log). 4xx are answers like "needs a name", not faults.
+      if (status >= 500 && ctx?.env) {
+        const where = ctx.request ? `${ctx.request.method} ${new URL(ctx.request.url).pathname}` : '';
+        await logEvent(ctx.env, { level: 'error', source: where, message: err });
+      }
       return json({ error: err.message || 'Unexpected error' }, status);
     }
   };

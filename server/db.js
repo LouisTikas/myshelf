@@ -130,6 +130,19 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 8, // the debug log in Manage → Settings: recent errors and auto-update runs (see server/logs.js)
+    sql: [
+      `CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        at TEXT NOT NULL,
+        level TEXT NOT NULL,               -- error | warn | info
+        source TEXT NOT NULL DEFAULT '',   -- where it happened, e.g. "POST /api/save" or "auto-update"
+        message TEXT NOT NULL,
+        detail TEXT NOT NULL DEFAULT ''    -- stack trace or extra context
+      )`,
+    ],
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

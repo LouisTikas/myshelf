@@ -2,6 +2,11 @@
 
 The version number lives in `package.json` and shows in **Manage → Settings → Updates**. Bump it with each release.
 
+## 0.9.7 (Nov 2026)
+
+- **Automatic updates.** Once a day your site checks for a new version of MyShelf and installs it, the same as clicking **Update now**. It only installs finished versions, never half-done changes in between. It's on unless you turn it off: Manage → Settings → Updates → *Update automatically*. That page also shows when it last checked and what happened. It needs your GitHub token (setup Step 4), like Update now does. This is the last version you'll have to install by hand.
+- **Debug log.** New at the bottom of Manage → Settings. It lists recent errors on your site (failed saves, lookups that broke, pages that wouldn't load) and what automatic updates did, plus errors in the browser you're using. **Copy all** gives you text to paste into a bug report. If you can't sign in, the sign-in screen has a *Having trouble? View debug log* link with a health check (database, cover storage, admin password) and that browser's errors. The site's own log needs sign-in, so visitors can't read it. Keys and passwords are blanked out of everything logged.
+
 ## 0.9.6 (Nov 2026)
 
 - **Fixed: blank pages and "This promise was created by a request that has since ended" when signing in.** When a site starts up, it makes sure its database is up to date. If the first visitor left while that was still running, every later visit to that copy of the site could fail until Cloudflare restarted it: blank pages, and that error on the Manage sign-in. Each visit now checks for itself, so one visitor leaving can't break the site for the rest.

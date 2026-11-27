@@ -28,6 +28,8 @@ export default defineConfig({
   adapter: cloudflare({
     imageService: 'passthrough',
     platformProxy: { enabled: true },
+    // Adds a `scheduled` handler for the daily auto-update (cron trigger in wrangler.jsonc).
+    workerEntryPoint: { path: 'src/worker.js' },
   }),
   trailingSlash: 'ignore',
   build: { format: 'directory' },

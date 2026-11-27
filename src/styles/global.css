@@ -457,7 +457,7 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
 
 /* On phones, keep pop-up messages above the menu button so they're never hidden behind it */
 @media (max-width: 760px) {
-  .toast, .ar-toast { bottom: calc(146px + env(safe-area-inset-bottom)) !important; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
+  .toast, .ar-toast, .fr-toast { bottom: calc(146px + env(safe-area-inset-bottom)) !important; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
   .publish-pill { right: calc(18px + env(safe-area-inset-right)) !important; bottom: calc(92px + env(safe-area-inset-bottom)) !important; }
 }
 

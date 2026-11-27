@@ -117,6 +117,8 @@
 .fr-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; margin: 0; padding: 10px 16px; border-radius: 10px; background: #1d1d1f; border: 1px solid var(--accent); color: var(--cream); font-size: 0.9rem; box-shadow: 0 8px 24px rgba(0,0,0,0.45); max-width: 90vw; }
 .fr-toast.error { border-color: #d9534f; }
 .fr-toast[hidden] { display: none; }
+/* Light mode: --cream turns dark brown there, so the dark box would hide its own text. Use paper and ink instead. */
+html[data-theme='light'] .fr-toast { background: var(--paper); color: var(--ink); box-shadow: 0 8px 24px rgba(60, 40, 20, 0.25); }
 
 /* Item pages sit on a paper card: dark ink instead of cream */
 .item-page .comments-section .c-meta, .item-page .comments-section .c-del { color: var(--ink-soft); }

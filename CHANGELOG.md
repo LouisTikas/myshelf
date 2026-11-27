@@ -2,6 +2,12 @@
 
 The version number lives in `package.json` and shows in **Manage → Settings → Updates**. Bump it with each release.
 
+## 0.9.7 (Nov 2026)
+
+- **Fixed: some pop-up messages were invisible in light mode.** The message that pops up on the Friends page and an item's page (like "Sent. They'll see you enjoyed it too." after you send a heart) had a dark box with text that turns dark in light mode. In light mode it's now a light box with dark text. On phones it also sits above the menu button instead of behind it.
+- **Save from anywhere in the item editor.** On phones, **Save to shelf** now floats in the bottom-right corner, so you can save without scrolling to the end of the form. The editor also fits the part of the screen you can actually see, so the browser's address bar no longer pushes Save off the bottom.
+- **CDs show their title on the front.** A CD case with cover art now has a small printed label with the title along the bottom of the front, so you can tell your CDs apart at a glance.
+
 ## 0.9.6 (Nov 2026)
 
 - **Fixed: blank pages and "This promise was created by a request that has since ended" when signing in.** When a site starts up, it makes sure its database is up to date. If the first visitor left while that was still running, every later visit to that copy of the site could fail until Cloudflare restarted it: blank pages, and that error on the Manage sign-in. Each visit now checks for itself, so one visitor leaving can't break the site for the rest.

@@ -369,7 +369,8 @@ async function addFromRef(ref = {}) {
       });
     } catch (err) { console.warn(err); }
   }
-  openEditor(item);
+  // "Add to my journal": start in the notes box.
+  openEditor(item, null, { notes: ref.journal === true });
 }
 document.addEventListener('myshelf:add-item', (e) => addFromRef(e.detail || {}));
 
@@ -465,7 +466,7 @@ $('#editor-forget').addEventListener('click', () => {
   $('#editor-remembered').hidden = true;
 });
 
-function openEditor(item, slug = null) {
+function openEditor(item, slug = null, { notes = false } = {}) {
   let remembered = false;
   if (!slug) ({ item, used: remembered } = withLastSettings(item));
   if (!slug && state.addTo && !(item.collections || []).includes(state.addTo)) item = { ...item, collections: [...(item.collections || []), state.addTo] };
@@ -515,7 +516,12 @@ function openEditor(item, slug = null) {
   renderCoverPreview();
   showEditorTakes(item, slug);
   editor.showModal();
-  form.title.focus();
+  if (notes) {
+    form.body.focus({ preventScroll: true });
+    form.body.scrollIntoView({ block: 'center' });
+  } else {
+    form.title.focus();
+  }
 }
 
 // In the editor: what friends thought of this, while you write your own (new entries and edits alike).

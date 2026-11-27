@@ -350,6 +350,12 @@ a.expansion:hover .expansion-title { color: var(--accent-ink); text-decoration: 
 .btn-see-all:hover, .btn-see-all:focus-visible { transform: translateY(-1px); filter: brightness(1.08); outline: none; }
 .keep-reading { display: inline-block; margin-top: 6px; font-size: 0.9rem; font-weight: 600; color: var(--accent-ink); text-decoration: none; }
 .keep-reading:hover, .keep-reading:focus-visible { text-decoration: underline; }
+/* Journal cards: "Keep reading" and the comment count share a line. */
+.je-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 6px 0 0; }
+.je-foot .keep-reading { margin-top: 0; }
+.je-comments { display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; font-weight: 600; color: var(--ink-soft); text-decoration: none; }
+.je-comments svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.je-comments:hover, .je-comments:focus-visible { color: var(--accent-ink); text-decoration: underline; }
 
 /* ───────── Copy-link button next to page titles ───────── */
 .copy-link {

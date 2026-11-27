@@ -7,6 +7,7 @@ import { getSite } from '../site.js';
 import { getIdentity } from './crypto.js';
 import { VERSION } from '../version.js';
 import { resolveMentions, mentionedUrls, plainMentions } from './mentions.js';
+import { oneEmoji } from '../../src/lib/emoji.js';
 import {
   PROTOCOL, SOFTWARE, WELL_KNOWN, INBOX_PATH, SHELF_PATH, MAX_BODY, KINDS,
   cleanSiteUrl, signedHeaders, verifyRequest,
@@ -17,6 +18,8 @@ const MAX_INBOX = 2000;  // oldest read messages are trimmed past this
 const TIMEOUT_MS = 8000;
 const MAX_COMMENT = 1000;            // characters in one comment
 const MAX_COMMENTS_PER_ITEM = 500;
+const MAX_REACTIONS_EACH = 10;       // different emoji one person can put on one comment
+const MAX_EMOJI_PER_COMMENT = 40;    // different emoji on one comment, from everyone
 const now = () => new Date().toISOString();
 const str = (v, n) => String(v ?? '').trim().slice(0, n);
 
@@ -82,11 +85,12 @@ async function deleteFriend(env, id) {
   const DB = await ensureSchema(env);
   const f = await DB.prepare('SELECT url FROM friends WHERE id = ?').bind(id).first();
   await DB.prepare('DELETE FROM friends WHERE id = ?').bind(id).run();
-  // Hearts only mean something between friends.
+  // Hearts and reactions only mean something between friends.
   if (f) {
     await DB.batch([
       DB.prepare('DELETE FROM hearts_sent WHERE friend_url = ?').bind(f.url),
       DB.prepare('DELETE FROM hearts_received WHERE from_url = ?').bind(f.url),
+      DB.prepare('DELETE FROM comment_reactions WHERE from_url = ?').bind(f.url),
     ]);
   }
 }
@@ -311,7 +315,7 @@ export async function receive(env, request, fetcher = fetch, { waitUntil = null 
       const work = notifyThread(env, request.url, row, { id: msg.id, author, authorUrl: from, text }, fetcher);
       if (waitUntil) waitUntil(work); else await work;
     }
-    return { ok: true, comment: { id: msg.id, author, authorUrl: from, text, createdAt: t } };
+    return { ok: true, comment: { id: msg.id, author, authorUrl: from, text, createdAt: t, reactions: [] } };
   }
 
   if (msg.kind === 'comment-delete') {
@@ -319,7 +323,12 @@ export async function receive(env, request, fetcher = fetch, { waitUntil = null 
     const DB = await ensureSchema(env);
     // Only the friend who wrote a comment can take it back; its unread inbox note goes with it.
     const res = await DB.prepare('DELETE FROM comments WHERE id = ? AND from_url = ?').bind(id, from).run();
-    if (res.meta?.changes) await DB.prepare(`DELETE FROM inbox WHERE id = ? AND kind = 'comment' AND status = 'unread'`).bind(id).run();
+    if (res.meta?.changes) {
+      await DB.batch([
+        DB.prepare(`DELETE FROM inbox WHERE id = ? AND kind = 'comment' AND status = 'unread'`).bind(id),
+        DB.prepare('DELETE FROM comment_reactions WHERE comment_id = ?').bind(id),
+      ]);
+    }
     return { ok: true };
   }
 
@@ -349,6 +358,29 @@ export async function receive(env, request, fetcher = fetch, { waitUntil = null 
         where: msg.where === 'comment' ? 'comment' : 'notes', text,
         item: { uid: str(it.uid, 40), title: str(it.title, 200), type: str(it.type, 20), cover: safeUrl(it.cover), url: safeUrl(it.url) },
         ...(owner?.url ? { owner } : {}),
+      },
+    });
+    return { ok: true };
+  }
+
+  if (msg.kind === 'comment-react') {
+    const work = [];
+    const reactions = await applyReaction(env, request.url, { commentId: msg.commentId, emoji: msg.emoji, on: msg.on !== false, from, msgId: msg.id }, fetcher, (p) => work.push(p));
+    if (work.length) { if (waitUntil) work.forEach((p) => waitUntil(p)); else await Promise.all(work); }
+    return { ok: true, reactions };
+  }
+
+  if (msg.kind === 'reaction') {
+    // From a friend: someone reacted to a comment you left on one of their items.
+    const it = msg.item || {};
+    const emoji = oneEmoji(msg.emoji);
+    if (!emoji || !str(it.title, 200)) throw new HttpError(400, 'Incomplete reaction notice');
+    const reactor = msg.reactor && typeof msg.reactor === 'object' ? { name: str(msg.reactor.name, 80), url: safeOrigin(msg.reactor.url) } : { name: '', url: '' };
+    await addInbox(env, {
+      id: msg.id, from, kind: 'reaction',
+      payload: {
+        emoji, commentId: str(msg.commentId, 40), text: str(plainMentions(msg.text), 200), reactor,
+        item: { uid: str(it.uid, 40), title: str(it.title, 200), type: str(it.type, 20), cover: safeUrl(it.cover), url: safeUrl(it.url) },
       },
     });
     return { ok: true };
@@ -857,8 +889,12 @@ async function commentsByUid(env, origin, uid = null) {
   const q = uid
     ? DB.prepare('SELECT * FROM comments WHERE uid = ? ORDER BY created_at').bind(uid)
     : DB.prepare('SELECT * FROM comments ORDER BY created_at');
-  const [{ results }, { results: fr }] = await Promise.all([q.all(), DB.prepare('SELECT url, name, owner FROM friends').all()]);
+  const rq = uid
+    ? DB.prepare('SELECT r.comment_id, r.from_url, r.emoji FROM comment_reactions r JOIN comments c ON c.id = r.comment_id WHERE c.uid = ? ORDER BY r.created_at').bind(uid)
+    : DB.prepare('SELECT comment_id, from_url, emoji FROM comment_reactions ORDER BY created_at');
+  const [{ results }, { results: fr }, { results: rr }] = await Promise.all([q.all(), DB.prepare('SELECT url, name, owner FROM friends').all(), rq.all()]);
   const names = new Map((fr || []).map((f) => [f.url, f.owner || f.name]));
+  const reactions = groupReactions(rr, names, site, origin);
   const out = new Map();
   for (const r of results || []) {
     const mine = !r.from_url;
@@ -868,6 +904,8 @@ async function commentsByUid(env, origin, uid = null) {
       authorUrl: mine ? origin : r.from_url,
       text: r.text,
       createdAt: r.created_at,
+      // Always an array, so a friend's site can tell this one takes reactions.
+      reactions: reactions.get(r.id) || [],
     };
     if (!out.has(r.uid)) out.set(r.uid, []);
     out.get(r.uid).push(c);
@@ -980,6 +1018,7 @@ export async function deleteComment(env, id) {
   await DB.batch([
     DB.prepare('DELETE FROM comments WHERE id = ?').bind(cid),
     DB.prepare(`DELETE FROM inbox WHERE id = ? AND kind = 'comment'`).bind(cid),
+    DB.prepare('DELETE FROM comment_reactions WHERE comment_id = ?').bind(cid),
   ]);
   return { ok: true };
 }
@@ -1026,6 +1065,131 @@ export async function deleteFriendComment(env, requestUrl, { friendId, friendUrl
   await send(env, requestUrl, f.url, 'comment-delete', { commentId: str(commentId, 40) }, fetcher);
   await dropCachedShelf(f.url);
   return { ok: true };
+}
+
+// ───────── reactions on comments ─────────
+// Like comments, reactions live on the site of the person whose item it is. Friends send theirs as signed
+// 'comment-react' messages; yours are stored directly. Whoever wrote the comment hears about new ones: you
+// get an inbox note, and a friend gets a 'reaction' notice from your site.
+
+/** Reaction rows → Map commentId → [{ emoji, count, who: [{ name, url }] }], each emoji in the order first used. */
+function groupReactions(rows, names, site, origin) {
+  const out = new Map();
+  for (const r of rows || []) {
+    if (!out.has(r.comment_id)) out.set(r.comment_id, []);
+    const list = out.get(r.comment_id);
+    let g = list.find((x) => x.emoji === r.emoji);
+    if (!g) list.push((g = { emoji: r.emoji, count: 0, who: [] }));
+    g.count += 1;
+    g.who.push(r.from_url
+      ? { name: names.get(r.from_url) || r.from_url.replace(/^https?:\/\//, ''), url: r.from_url }
+      : { name: site.owner || site.title, url: origin });
+  }
+  return out;
+}
+
+async function reactionsOn(env, requestUrl, commentId) {
+  const DB = await ensureSchema(env);
+  const [site, origin] = await Promise.all([getSite(env), selfOrigin(env, requestUrl)]);
+  const [{ results }, { results: fr }] = await Promise.all([
+    DB.prepare('SELECT comment_id, from_url, emoji FROM comment_reactions WHERE comment_id = ? ORDER BY created_at').bind(commentId).all(),
+    DB.prepare('SELECT url, name, owner FROM friends').all(),
+  ]);
+  const names = new Map((fr || []).map((f) => [f.url, f.owner || f.name]));
+  return groupReactions(results, names, site, origin).get(commentId) || [];
+}
+
+/**
+ * Add or take back one emoji on a comment on one of your items. from: the friend's site, or '' for you.
+ * background(promise): where to put the notice to a friend whose comment it is (so a reply isn't held up).
+ * Returns the comment's reactions afterwards.
+ */
+async function applyReaction(env, requestUrl, { commentId, emoji, on = true, from = '', msgId = null }, fetcher = fetch, background = null) {
+  const DB = await ensureSchema(env);
+  const id = str(commentId, 40);
+  const e = oneEmoji(emoji);
+  if (!e) throw new HttpError(400, 'Pick one emoji.');
+  const c = await DB.prepare('SELECT * FROM comments WHERE id = ?').bind(id).first();
+  if (!c) throw new HttpError(404, 'That comment isn’t there any more.');
+  const row = await getItemByUid(env, c.uid);
+  // Friends can see public and friends-only items, so those are the ones they can react on.
+  if (!row || (from && row.item.visibility === 'private')) throw new HttpError(404, 'That item isn’t on this shelf');
+  const had = await DB.prepare('SELECT inbox_id FROM comment_reactions WHERE comment_id = ? AND from_url = ? AND emoji = ?').bind(id, from, e).first();
+
+  if (!on) {
+    if (had) {
+      await DB.batch([
+        DB.prepare('DELETE FROM comment_reactions WHERE comment_id = ? AND from_url = ? AND emoji = ?').bind(id, from, e),
+        // Take the inbox note away too, unless it's already been read.
+        DB.prepare(`DELETE FROM inbox WHERE id = ? AND status = 'unread'`).bind(had.inbox_id || ''),
+      ]);
+    }
+    return reactionsOn(env, requestUrl, id);
+  }
+  if (had) return reactionsOn(env, requestUrl, id);
+
+  const mine = await DB.prepare('SELECT COUNT(*) AS n FROM comment_reactions WHERE comment_id = ? AND from_url = ?').bind(id, from).first();
+  if (Number(mine?.n || 0) >= MAX_REACTIONS_EACH) throw new HttpError(429, 'That’s plenty of reactions on one comment.');
+  const used = await DB.prepare('SELECT COUNT(DISTINCT emoji) AS n, SUM(emoji = ?) AS here FROM comment_reactions WHERE comment_id = ?').bind(e, id).first();
+  if (Number(used?.n || 0) >= MAX_EMOJI_PER_COMMENT && !Number(used?.here || 0)) throw new HttpError(429, 'That comment has all the reactions it can take.');
+
+  // Whose comment it is decides who hears about it (nobody, when you react to your own).
+  const author = c.from_url || '';
+  const noteHere = Boolean(from) && !author;        // a friend reacted to your comment: inbox note here
+  const noteThere = Boolean(author) && author !== from; // someone reacted to a friend's comment: tell their site
+  const inboxId = noteHere ? msgId || crypto.randomUUID() : null;
+  const res = await DB.prepare('INSERT OR IGNORE INTO comment_reactions (comment_id, from_url, emoji, inbox_id, created_at) VALUES (?, ?, ?, ?, ?)')
+    .bind(id, from, e, inboxId, now()).run();
+  if (res.meta?.changes !== 0) {
+    const it = row.item;
+    const text = str(plainMentions(c.text), 200);
+    if (noteHere) {
+      await addInbox(env, {
+        id: inboxId, from, kind: 'reaction',
+        payload: { emoji: e, commentId: id, text, item: { uid: row.uid, slug: row.slug, title: it.title, type: it.type, creator: it.creator || '', cover: it.cover || '', visibility: it.visibility || 'public' } },
+      });
+    }
+    if (noteThere) {
+      const work = (async () => {
+        const f = await friendByUrl(env, author);
+        if (f?.status !== 'accepted') return; // only friends get notices
+        const [site, origin] = await Promise.all([getSite(env), selfOrigin(env, requestUrl)]);
+        const rf = from ? await friendByUrl(env, from) : null;
+        const reactor = from ? { name: rf?.owner || rf?.name || '', url: from } : { name: site.owner || site.title, url: origin };
+        await send(env, requestUrl, author, 'reaction', { emoji: e, commentId: id, text, reactor, item: itemRef(row, origin, '#comments') }, fetcher);
+      })().catch(() => {}); // a friend on an older MyShelf, or offline, just doesn't hear about it
+      if (background) background(work); else await work;
+    }
+  }
+  return reactionsOn(env, requestUrl, id);
+}
+
+/** React to (or, with on: false, un-react from) a comment on one of your own items. */
+export async function reactOwn(env, requestUrl, { commentId, emoji, on = true }, fetcher = fetch) {
+  return { reactions: await applyReaction(env, requestUrl, { commentId, emoji, on: on !== false, from: '' }, fetcher) };
+}
+
+/** React to a comment on a friend's item (the comment id is from their shelf feed). */
+export async function reactOnFriend(env, requestUrl, { friendId, friendUrl, commentId, emoji, on = true }, fetcher = fetch) {
+  const f = await friendFromFields(env, { friendId, friendUrl });
+  const e = oneEmoji(emoji);
+  if (!e) throw new HttpError(400, 'Pick one emoji.');
+  let reply;
+  try {
+    ({ reply } = await send(env, requestUrl, f.url, 'comment-react', { commentId: str(commentId, 40), emoji: e, on: on !== false }, fetcher));
+  } catch (err) {
+    if (/Unknown message/.test(err.message)) throw needsUpdate(f, 'reactions');
+    throw err;
+  }
+  await dropCachedShelf(f.url);
+  return { reactions: Array.isArray(reply.reactions) ? reply.reactions : [] };
+}
+
+/** How many comments each of your items has: Map uid → count. */
+export async function commentCounts(env) {
+  const DB = await ensureSchema(env);
+  const { results } = await DB.prepare('SELECT uid, COUNT(*) AS n FROM comments GROUP BY uid').all();
+  return new Map((results || []).map((r) => [r.uid, Number(r.n)]));
 }
 
 // ───────── friend groups ─────────

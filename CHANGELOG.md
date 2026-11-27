@@ -9,6 +9,10 @@ The version number lives in `package.json` and shows in **Manage → Settings �
 - **Fixed: some pop-up messages were invisible in light mode.** The message that pops up on the Friends page and an item's page (like "Sent. They'll see you enjoyed it too." after you send a heart) had a dark box with text that turns dark in light mode. In light mode it's now a light box with dark text. On phones it also sits above the menu button instead of behind it.
 - **Save from anywhere in the item editor.** On phones, **Save to shelf** now floats in the bottom-right corner, so you can save without scrolling to the end of the form. The editor also fits the part of the screen you can actually see, so the browser's address bar no longer pushes Save off the bottom.
 - **CDs show their title on the front.** A CD case with cover art now has a small printed label with the title along the bottom of the front, so you can tell your CDs apart at a glance.
+- **React to comments with any emoji.** Every comment now has a small smiley button. Tap it for a quick 👍 ❤️ 😂 😮 😢 🔥, or tap *Any emoji* and use your keyboard's emoji key to pick any emoji your phone or computer has, skin tones and flags included. Reactions show under the comment with a count. Tap one to add yours or take it back, and hold the pointer over it to see who reacted. Works on your own items and on friends' items. Your friends need 0.9.7 too before you can react on their items.
+- **Hear about reactions.** When someone reacts to a comment you wrote, it shows up in your Friends inbox, on your items and on friends' items.
+- **Comment counts in the journal.** Journal entries with comments show how many, on the Journal page and in *My Ramblings* on the home page. Tap the count to jump to the comments.
+- **Add to my journal, from friends' items.** Next to *Add to my shelf* on the Friends page and on friends' shelves, *Add to my journal* opens the editor already filled in, with the cursor in the notes box, so you can start writing straight away.
 
 ## 0.9.6 (Nov 2026)
 

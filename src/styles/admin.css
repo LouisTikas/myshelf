@@ -86,8 +86,11 @@ textarea { resize: vertical; line-height: 1.5; }
 
 /* Editor modal */
 .editor { border: 0; padding: 0; border-radius: 14px; background: var(--paper); color: var(--ink); width: min(980px, 96vw); max-height: 94vh; box-shadow: 0 40px 80px rgba(0,0,0,0.6); }
+/* dvh: on phones, vh is measured with the address bar hidden, which pushed the bottom of the editor (and Save) off screen. */
+.editor { max-height: 94dvh; }
 .editor::backdrop { background: rgba(15,9,5,0.75); }
 .editor form { display: flex; flex-direction: column; max-height: 94vh; }
+.editor form { max-height: 94dvh; }
 .editor-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px 10px; }
 .editor-head h2 { margin: 0; font-size: 1.4rem; color: var(--ink); }
 .editor-grid { display: grid; grid-template-columns: 260px 1fr; gap: 24px; padding: 6px 24px 18px; overflow-y: auto; }
@@ -117,6 +120,14 @@ details label { margin-bottom: 10px; }
 @media (max-width: 760px) {
   .editor-grid { grid-template-columns: 1fr; }
   .editor-fields { grid-template-columns: 1fr; }
+  /* Save floats in the bottom-right corner, so you can save from anywhere in the form. It's pinned to the
+     screen itself, not the editor, so it stays in reach whatever the browser's toolbars are doing. */
+  .editor-foot { padding-right: 176px; }
+  #editor-save {
+    position: fixed; z-index: 5;
+    right: calc(2vw + 20px + env(safe-area-inset-right)); bottom: calc(3dvh + 13px + env(safe-area-inset-bottom));
+    border-radius: 999px; padding: 12px 20px; box-shadow: 0 8px 22px rgba(43, 33, 26, 0.35);
+  }
   .lib-row { flex-wrap: wrap; }
 }
 

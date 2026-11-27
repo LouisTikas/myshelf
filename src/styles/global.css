@@ -585,4 +585,5 @@ a.mention:hover { text-decoration: underline; }
 
 /* Progress bars set to "Only me" (Settings): hidden unless this browser is signed in to Manage. */
 html[data-progress='owner']:not(.signed-in) .b3-progress,
-html[data-progress='owner']:not(.signed-in) .item-progress { display: none; }
+html[data-progress='owner']:not(.signed-in) .item-progress,
+html[data-progress='owner']:not(.signed-in) .si-progress { display: none; }

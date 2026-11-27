@@ -2,6 +2,10 @@
 
 The version number lives in `package.json` and shows in **Manage → Settings → Updates**. Bump it with each release.
 
+## 0.9.7 (Nov 2026)
+
+- **Shelf info bar.** Every shelf now has a little info panel that slides out underneath it, pushing the shelves below down. On a computer it opens while you hover over a shelf and closes a moment after you move away. On a phone, tap a spine (or the cover facing you) to turn it and slide the panel out, tap the cover again to open the item, or tap ✕ to close the panel. It shows the item's type and year, title, who made it, your status, your progress (if you're partway through), one key fact (pages, runtime, platforms, players and so on), your rating, a line from your review if you wrote one, and an Open button. It follows your light or dark choice and your accent colour, and progress stays hidden from visitors when Progress bars is set to Only me. It also works with Shelf effects turned off (hover or Tab to an item).
+
 ## 0.9.6 (Nov 2026)
 
 - **Fixed: blank pages and "This promise was created by a request that has since ended" when signing in.** When a site starts up, it makes sure its database is up to date. If the first visitor left while that was still running, every later visit to that copy of the site could fail until Cloudflare restarted it: blank pages, and that error on the Manage sign-in. Each visit now checks for itself, so one visitor leaving can't break the site for the rest.

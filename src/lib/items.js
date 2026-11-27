@@ -11,11 +11,11 @@ const DEFAULTS = {
 };
 
 /** Same shape the pages used with Astro content collections: { id, data, body }. */
-export function toEntry({ slug, item, body, createdAt, updatedAt }) {
+export function toEntry({ slug, uid, item, body, createdAt, updatedAt }) {
   const data = { ...DEFAULTS, ...Object.fromEntries(Object.entries(item || {}).filter(([, v]) => v != null)) };
   data.year = data.year == null ? '' : String(data.year);
   if (data.rating === '' || data.rating == null) data.rating = null;
-  return { id: slug, data, body: body || '', createdAt: createdAt || null, updatedAt: updatedAt || null };
+  return { id: slug, uid: uid || null, data, body: body || '', createdAt: createdAt || null, updatedAt: updatedAt || null };
 }
 
 /** When the notes were last written or changed. Older entries (before this was kept) use the last save. */

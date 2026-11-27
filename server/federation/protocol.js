@@ -29,7 +29,11 @@ const MAX_SKEW_MS = 5 * 60 * 1000;
 //   owner to everyone else who has commented on it, when someone adds to the thread.
 // mention: { where: 'notes' | 'comment', text, item: { uid, title, type, cover, url }, owner?: { name, url } } — the
 //   sender tagged you (@[Name](your site)) in their notes on an item, or in a comment; owner is whose item the comment is on.
-export const KINDS = ['friend-request', 'friend-accept', 'friend-remove', 'recommend', 'borrow-request', 'borrow-reply', 'heart', 'comment', 'comment-delete', 'comment-reply', 'mention'];
+// comment-react: { commentId, emoji, on: true|false } — an emoji reaction on a comment on one of the receiver's items
+//   (on: false takes it back). emoji is one emoji, as the sender's keyboard typed it.
+// reaction: { emoji, commentId, text, reactor: { name, url }, item: { uid, title, type, cover, url } } — sent by an item's
+//   owner to a friend whose comment on it someone reacted to. text: the start of that comment.
+export const KINDS = ['friend-request', 'friend-accept', 'friend-remove', 'recommend', 'borrow-request', 'borrow-reply', 'heart', 'comment', 'comment-delete', 'comment-reply', 'mention', 'comment-react', 'reaction'];
 
 export async function signingString({ method, path, to, from, date, body }) {
   return ['myshelf-1', method.toUpperCase(), path, to, from, date, await sha256hex(body || '')].join('\n');

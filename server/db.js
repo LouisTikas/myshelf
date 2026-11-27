@@ -130,6 +130,19 @@ const MIGRATIONS = [
       )`,
     ],
   },
+  {
+    version: 8, // emoji reactions on comments (stored with the comments, on the site whose item it is)
+    sql: [
+      `CREATE TABLE IF NOT EXISTS comment_reactions (
+        comment_id TEXT NOT NULL,
+        from_url TEXT NOT NULL DEFAULT '', -- the friend's site; '' means you
+        emoji TEXT NOT NULL,
+        inbox_id TEXT,                     -- the inbox note it made, removed again if they take it back
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (comment_id, from_url, emoji)
+      )`,
+    ],
+  },
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

@@ -4,8 +4,9 @@ import Cover from './Cover.astro';
 import { fmtDate, renderBody, mentionsHtml } from '../lib/items.js';
 import { TYPES, STATUS_LABEL, stars } from '../lib/types.js';
 
-interface Props { entry: any; clamp?: boolean; edited?: string | null }
-const { entry: e, clamp = false, edited = null } = Astro.props;
+// comments: how many comments the item has (shown as a link to them when there are any).
+interface Props { entry: any; clamp?: boolean; edited?: string | null; comments?: number }
+const { entry: e, clamp = false, edited = null, comments = 0 } = Astro.props;
 const d = e.data;
 const date = (d.status === 'finished' && d.dateFinished) || d.dateStarted || d.dateAdded;
 const html = renderBody(e.body);
@@ -18,6 +19,16 @@ const href = `/item/${e.id}/`;
     <h2><a href={href}>{d.title}</a> {d.rating != null && <span class="rating">{stars(d.rating)}</span>}</h2>
     {d.creator && <p class="creator">{d.creator}</p>}
     <div class="prose" set:html={mentionsHtml(html)} />
-    {clamp && <a class="keep-reading" href={href}>Keep reading →</a>}
+    {(clamp || comments > 0) && (
+      <p class="je-foot">
+        {clamp && <a class="keep-reading" href={href}>Keep reading →</a>}
+        {comments > 0 && (
+          <a class="je-comments" href={`${href}#comments`} aria-label={`${comments} ${comments === 1 ? 'comment' : 'comments'} on ${d.title}`}>
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12z"/></svg>
+            {comments} {comments === 1 ? 'comment' : 'comments'}
+          </a>
+        )}
+      </p>
+    )}
   </div>
 </article>

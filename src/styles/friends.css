@@ -100,6 +100,31 @@
 .c-del:hover { color: #e8907f; opacity: 1; }
 .c-del.confirm { color: #fff; background: var(--danger); border-radius: 4px; text-decoration: none; }
 .c-del[hidden] { display: none; }
+/* Emoji reactions on comments */
+.c-reacts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.c-reacts.none:not(:has(.react-add:not([hidden]))) { display: none; } /* visitors: nothing to show */
+.c-reacts.busy { opacity: 0.6; pointer-events: none; }
+.react-chip, .react-add { font: inherit; font-size: 0.8rem; line-height: 1; display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 2px 8px; border-radius: 999px; cursor: pointer; color: var(--cream-soft); background: color-mix(in srgb, var(--cream) 7%, transparent); border: 1px solid color-mix(in srgb, var(--cream) 16%, transparent); transition: border-color 0.15s, background 0.15s, color 0.15s; }
+.react-chip:disabled { cursor: default; opacity: 1; }
+.react-chip:not(:disabled):hover, .react-add:hover { border-color: var(--accent); color: var(--cream); }
+.react-chip.mine { color: var(--cream); background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: color-mix(in srgb, var(--accent) 70%, transparent); }
+.rc-emoji, .react-picker [data-pick], .inbox-emoji { font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', sans-serif; }
+.rc-emoji { font-size: 0.95rem; }
+.rc-n { font-weight: 700; font-variant-numeric: tabular-nums; }
+.react-add { padding: 2px 7px; gap: 1px; background: transparent; }
+.react-add[hidden] { display: none; }
+.react-add svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.ra-plus { font-weight: 700; font-size: 0.75rem; margin-top: -6px; }
+.react-picker { position: absolute; z-index: 1000; width: min(300px, calc(100vw - 16px)); padding: 8px; border-radius: 12px; background: var(--wall-2); color: var(--cream); border: 1px solid color-mix(in srgb, var(--cream) 18%, transparent); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+.react-picker[hidden] { display: none; }
+.rp-quick { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
+.rp-quick button { font-size: 1.4rem; line-height: 1; padding: 6px 0; border-radius: 8px; cursor: pointer; background: none; border: 0; transition: background 0.12s, transform 0.12s; }
+.rp-quick button:hover, .rp-quick button:focus-visible { background: color-mix(in srgb, var(--cream) 12%, transparent); transform: scale(1.12); outline: none; }
+.rp-any { display: grid; gap: 4px; margin-top: 8px; font-size: 0.75rem; font-weight: 600; color: var(--cream-soft); }
+.rp-any input { font: inherit; font-size: 1rem; width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--cream) 20%, transparent); background: color-mix(in srgb, var(--wall) 70%, transparent); color: var(--cream); }
+.rp-any input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+.inbox-emoji { font-size: 1.05em; }
+
 .comment-form { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
 .comment-form[hidden] { display: none; }
 .comment-form textarea { flex: 1; font: inherit; font-size: 0.9rem; min-height: 40px; padding: 8px 10px; border-radius: 8px; resize: vertical; border: 1px solid color-mix(in srgb, var(--cream) 20%, transparent); background: rgba(0,0,0,0.25); color: var(--cream); }
@@ -125,6 +150,10 @@
 .item-page .comments-section .comment-form textarea { background: #fffaf0; color: var(--ink); border-color: #d5c6a8; }
 .item-page .comments-section .comments { padding-bottom: 2px; }
 .item-page .comments-section .comment { padding: 8px 0; border-bottom: 1px solid #e2d6bd; }
+.item-page .comments-section .react-chip, .item-page .comments-section .react-add { color: var(--ink-soft); background: #efe5d0; border-color: #d5c6a8; }
+.item-page .comments-section .react-add { background: transparent; }
+.item-page .comments-section .react-chip:not(:disabled):hover, .item-page .comments-section .react-add:hover { color: var(--ink); border-color: var(--accent-ink); }
+.item-page .comments-section .react-chip.mine { color: var(--ink); background: color-mix(in srgb, var(--accent) 28%, #fffaf0); border-color: var(--accent-ink); }
 
 /* Per-message delete */
 .inbox-ctls { display: inline-flex; gap: 2px; margin-left: 4px; }

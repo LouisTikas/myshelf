@@ -387,6 +387,100 @@ test('friends: a friend on an older MyShelf explains why a comment didn’t go t
   await assert.rejects(fed.commentOnFriend(a, `${A}/api/friends`, { friendUrl: B, uid: crypto.randomUUID(), text: 'hi' }, old), /Bo’s MyShelf needs an update before it can get comments/);
 });
 
+test('friends: emoji reactions on comments, with notes to whoever wrote the comment', async () => {
+  const A = 'https://alex.example', B = 'https://bea.example', C = 'https://cy.example';
+  const alex = fakeEnv(), bea = fakeEnv(), cy = fakeEnv();
+  await saveSite(alex, { title: 'Alex Shelf', owner: 'Alex' });
+  await saveSite(bea, { title: 'Bea Shelf', owner: 'Bea' });
+  await saveSite(cy, { title: 'Cy Shelf', owner: 'Cy' });
+  const net = network({ [A]: alex, [B]: bea, [C]: cy });
+  await saveItem(bea, { item: { title: 'Dune', type: 'book', status: 'finished' }, body: 'Great.' });
+  const uid = (await getItem(bea, 'book-dune')).uid;
+  for (const [env, at] of [[alex, A], [cy, C]]) {
+    await fed.addFriend(env, `${at}/api/friends`, B, '', net);
+    const pending = (await fed.overview(bea, `${B}/api/friends`)).friends.find((f) => f.url === at);
+    await fed.acceptFriend(bea, `${B}/api/friends`, pending.id, net);
+  }
+  const notes = async (env, at) => (await fed.overview(env, `${at}/api/friends`)).inbox.filter((m) => m.kind === 'reaction');
+  const { comment: alexs } = await fed.commentOnFriend(alex, `${A}/api/friends`, { friendUrl: B, uid, text: 'So good' }, net);
+  const { comment: beas } = await fed.commentOwn(bea, `${B}/api/friends`, { slug: 'book-dune', text: 'Right?' }, net);
+  assert.deepEqual(alexs.reactions, []);
+
+  // Cy reacts to Alex's comment with a skin-toned thumbs up: the reply has the new count, Alex gets a notice from Bea's site.
+  const { reactions } = await fed.reactOnFriend(cy, `${C}/api/friends`, { friendUrl: B, commentId: alexs.id, emoji: '👍🏽' }, net);
+  assert.deepEqual(reactions, [{ emoji: '👍🏽', count: 1, who: [{ name: 'Cy', url: C }] }]);
+  let a = await notes(alex, A);
+  assert.equal(a.length, 1);
+  assert.equal(a[0].payload.emoji, '👍🏽');
+  assert.deepEqual(a[0].payload.reactor, { name: 'Cy', url: C });
+  assert.equal(a[0].payload.text, 'So good');
+  assert.equal(a[0].payload.item.url, `${B}/item/book-dune/#comments`);
+  assert.equal(a[0].fromName, 'Bea');
+
+  // Bea reacts on her own item too; same emoji stacks up. Reacting twice changes nothing.
+  await fed.reactOwn(bea, `${B}/api/friends`, { commentId: alexs.id, emoji: '👍🏽' }, net);
+  await fed.reactOwn(bea, `${B}/api/friends`, { commentId: alexs.id, emoji: '👍🏽' }, net);
+  a = await notes(alex, A);
+  assert.equal(a.length, 2);
+  assert.deepEqual(a.map((m) => m.payload.reactor.name).sort(), ['Bea', 'Cy']);
+  // Alex reacting to his own comment tells nobody.
+  await fed.reactOnFriend(alex, `${A}/api/friends`, { friendUrl: B, commentId: alexs.id, emoji: '🔥' }, net);
+  assert.equal((await notes(alex, A)).length, 2);
+
+  // Everyone sees the reactions in the feed and on the item page.
+  const pub = await (await net(`${B}/federation/v1/shelf`)).json();
+  assert.deepEqual(pub.items[0].comments[0].reactions.map((r) => [r.emoji, r.count]), [['👍🏽', 2], ['🔥', 1]]);
+  assert.deepEqual(pub.items[0].comments[0].reactions[0].who.map((w) => w.url), [C, B]);
+  assert.deepEqual((await fed.itemComments(bea, `${B}/item/book-dune/`, 'book-dune'))[1].reactions, []);
+
+  // A friend reacting to Bea's own comment: Bea gets an inbox note, which goes away if they take it back unread.
+  await fed.reactOnFriend(cy, `${C}/api/friends`, { friendUrl: B, commentId: beas.id, emoji: '❤️‍🔥' }, net);
+  let b = await notes(bea, B);
+  assert.equal(b.length, 1);
+  assert.equal(b[0].payload.emoji, '❤️‍🔥');
+  assert.equal(b[0].payload.item.slug, 'book-dune');
+  assert.equal(b[0].fromName, 'Cy');
+  const off = await fed.reactOnFriend(cy, `${C}/api/friends`, { friendUrl: B, commentId: beas.id, emoji: '❤️‍🔥', on: false }, net);
+  assert.deepEqual(off.reactions, []);
+  assert.equal((await notes(bea, B)).length, 0);
+
+  // Only single emoji; strangers, made-up comments and too many reactions are refused.
+  for (const bad of ['', 'hi', '👍👍', '1', '<b>']) {
+    await assert.rejects(fed.reactOwn(bea, `${B}/api/friends`, { commentId: alexs.id, emoji: bad }), /Pick one emoji/);
+  }
+  await assert.rejects(fed.reactOnFriend(cy, `${C}/api/friends`, { friendUrl: B, commentId: crypto.randomUUID(), emoji: '👍' }, net), /isn’t there any more/);
+  const many = ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉'];
+  for (const e of many) await fed.reactOwn(bea, `${B}/api/friends`, { commentId: alexs.id, emoji: e });
+  await assert.rejects(fed.reactOwn(bea, `${B}/api/friends`, { commentId: alexs.id, emoji: '😊' }), /plenty of reactions/);
+
+  // Deleting the comment takes its reactions with it.
+  await fed.deleteComment(bea, alexs.id);
+  assert.equal((await bea.DB.prepare('SELECT COUNT(*) AS n FROM comment_reactions WHERE comment_id = ?').bind(alexs.id).first()).n, 0);
+});
+
+test('friends: a friend on an older MyShelf explains why a reaction didn’t go through', async () => {
+  const A = 'https://a.example', B = 'https://b.example';
+  const a = fakeEnv(), b = fakeEnv();
+  await saveSite(b, { title: 'B', owner: 'Bo' });
+  const net = network({ [A]: a, [B]: b });
+  await fed.addFriend(a, `${A}/api/friends`, B, '', net);
+  await fed.acceptFriend(b, `${B}/api/friends`, (await fed.overview(b, `${B}/api/friends`)).friends[0].id, net);
+  const old = async (url, init) => (new URL(url).pathname === INBOX_PATH && JSON.parse(init.body).kind === 'comment-react'
+    ? Response.json({ error: 'Unknown message' }, { status: 400 }) : net(url, init));
+  await assert.rejects(fed.reactOnFriend(a, `${A}/api/friends`, { friendUrl: B, commentId: crypto.randomUUID(), emoji: '👍' }, old), /Bo’s MyShelf needs an update before it can get reactions/);
+});
+
+test('comment counts per item, for the journal', async () => {
+  const env = fakeEnv();
+  await saveItem(env, { item: { title: 'Dune', type: 'book', status: 'finished' }, body: 'Great.' });
+  const row = await getItem(env, 'book-dune');
+  await fed.commentOwn(env, 'https://me.example/api/friends', { slug: 'book-dune', text: 'one' });
+  await fed.commentOwn(env, 'https://me.example/api/friends', { slug: 'book-dune', text: 'two' });
+  const counts = await fed.commentCounts(env);
+  assert.equal(counts.get(row.uid), 2);
+  assert.equal(counts.size, 1);
+});
+
 test('friends: groups are private labels limited to current friends', async () => {
   const A = 'https://a.example', B = 'https://b.example', C = 'https://c.example';
   const a = fakeEnv(), b = fakeEnv(), c = fakeEnv();

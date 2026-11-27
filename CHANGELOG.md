@@ -2,6 +2,13 @@
 
 The version number lives in `package.json` and shows in **Manage → Settings → Updates**. Bump it with each release.
 
+## 0.9.7 (Nov 2026)
+
+- **React to comments with any emoji.** Every comment now has a small smiley button. Tap it for a quick 👍 ❤️ 😂 😮 😢 🔥, or tap *Any emoji* and use your keyboard's emoji key to pick any emoji your phone or computer has, skin tones and flags included. Reactions show under the comment with a count. Tap one to add yours or take it back, and hold the pointer over it to see who reacted. Works on your own items and on friends' items. Your friends need 0.9.7 too before you can react on their items.
+- **Hear about reactions.** When someone reacts to a comment you wrote, it shows up in your Friends inbox, on your items and on friends' items.
+- **Comment counts in the journal.** Journal entries with comments show how many, on the Journal page and in *My Ramblings* on the home page. Tap the count to jump to the comments.
+- **Add to my journal, from friends' items.** Next to *Add to my shelf* on the Friends page and on friends' shelves, *Add to my journal* opens the editor already filled in, with the cursor in the notes box, so you can start writing straight away.
+
 ## 0.9.6 (Nov 2026)
 
 - **Fixed: blank pages and "This promise was created by a request that has since ended" when signing in.** When a site starts up, it makes sure its database is up to date. If the first visitor left while that was still running, every later visit to that copy of the site could fail until Cloudflare restarted it: blank pages, and that error on the Manage sign-in. Each visit now checks for itself, so one visitor leaving can't break the site for the rest.

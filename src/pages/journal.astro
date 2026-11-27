@@ -4,10 +4,13 @@ import JournalCard from '../components/JournalCard.astro';
 import CopyLink from '../components/CopyLink.astro';
 import ShelfEditor from '../components/ShelfEditor.astro';
 import { getItems, editedAt } from '../lib/items.js';
+import { commentCounts } from '../../server/federation/index.js';
 import { TYPES } from '../lib/types.js';
 import '../styles/filters.css';
 
 const entries = (await getItems(Astro.locals.runtime.env)).filter((e) => e.body && e.body.trim());
+// Comments friends (and you) have left on each entry, shown as a count that links to them.
+const comments = entries.length ? await commentCounts(Astro.locals.runtime.env).catch(() => new Map()) : new Map();
 // Filters only offer choices that would narrow the list.
 const types = Object.keys(TYPES).filter((t) => entries.some((e) => e.data.type === t));
 const generic = { finished: 'Finished', 'in-progress': 'In progress', want: 'Want to', abandoned: 'Abandoned' };
@@ -65,7 +68,7 @@ const SORTS = [['edited', 'Last edited'], ['date', 'Date finished / started'], [
         <div class="journal-item" data-type={d.type} data-status={d.status} data-rating={d.rating ?? ''} data-date={date}
           data-edited={editedAt(e) || ''} data-title={String(d.title || '').toLowerCase().replace(/^(the|a|an)\s+/, '')}
           data-text={`${d.title} ${d.creator || ''} ${(d.tags || []).join(' ')} ${e.body}`.toLowerCase()}>
-          <JournalCard entry={e} edited={editedAt(e)} />
+          <JournalCard entry={e} edited={editedAt(e)} comments={comments.get(e.uid) || 0} />
         </div>
       );
     })}
